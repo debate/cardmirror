@@ -119,10 +119,25 @@ export const marks: { [name: string]: MarkSpec } = {
         validate: (v: unknown) => typeof v === 'string',
       },
     },
-    parseDOM: [{ tag: 'mark', getAttrs: () => ({ color: 'yellow' }) }],
+    parseDOM: [
+      { tag: 'mark', getAttrs: () => ({ color: 'yellow' }) },
+      {
+        tag: 'span.pmd-highlight',
+        getAttrs: (dom: HTMLElement) => ({
+          color: dom.dataset['highlight'] ?? 'yellow',
+        }),
+      },
+    ],
+    // Render as <span class="pmd-highlight"> rather than <mark>. Class-
+    // based targeting is more robust than the bare `mark` element
+    // selector — ProseMirror's view layer can normalize element names
+    // in ways that defeat element-typed CSS rules in some cases.
     toDOM: (mark) => [
-      'mark',
-      { 'data-color': String(mark.attrs['color'] ?? 'yellow') },
+      'span',
+      {
+        class: 'pmd-highlight',
+        'data-highlight': String(mark.attrs['color'] ?? 'yellow'),
+      },
       0,
     ],
   },

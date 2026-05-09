@@ -18,12 +18,17 @@ export interface Settings {
   navMaxLevel: number;
   /** Whether to show the cite preview on hover in the nav pane. */
   showCitePreview: boolean;
+  /** Whether read mode is currently active (dims non-read-aloud content,
+   *  blocks editing). Persisted across sessions because some users may
+   *  want it to be the default state. */
+  readMode: boolean;
 }
 
 const DEFAULTS: Settings = {
   navWidth: 300,
   navMaxLevel: 3,
   showCitePreview: true,
+  readMode: false,
 };
 
 /**
@@ -127,6 +132,7 @@ function sanitize(s: Settings): Settings {
     navWidth: clamp(s.navWidth, 150, 800),
     navMaxLevel: clamp(Math.round(s.navMaxLevel), 1, 4),
     showCitePreview: !!s.showCitePreview,
+    readMode: !!s.readMode,
   };
 }
 

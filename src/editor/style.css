@@ -165,8 +165,11 @@ code {
   margin: 0.75rem 0 0.25rem 0;
 }
 
-/* Analytic = same outline level as Tag, dark blue. */
-.pmd-analytic {
+/* Analytic = same outline level as Tag, dark blue. The id-scoped
+   selector is needed because `#editor p { margin: 0 }` has higher
+   specificity than a bare `.pmd-analytic` rule and would otherwise
+   strip the before-margin. */
+#editor .pmd-analytic {
   font-size: 13pt;
   font-weight: bold;
   color: #1F3864;
@@ -256,14 +259,14 @@ code {
   color: #1F3864;
 }
 
-mark {
-  background: #ffff66; /* default; data-color overrides via attribute selector */
+.pmd-highlight {
+  background: #ffff66; /* default; data-highlight overrides */
 }
-mark[data-color="green"] { background: #88ff88; }
-mark[data-color="cyan"] { background: #88ffff; }
-mark[data-color="magenta"] { background: #ff88ff; }
-mark[data-color="blue"] { background: #88aaff; }
-mark[data-color="red"] { background: #ff8888; }
+.pmd-highlight[data-highlight="green"]   { background: #88ff88; }
+.pmd-highlight[data-highlight="cyan"]    { background: #88ffff; }
+.pmd-highlight[data-highlight="magenta"] { background: #ff88ff; }
+.pmd-highlight[data-highlight="blue"]    { background: #88aaff; }
+.pmd-highlight[data-highlight="red"]     { background: #ff8888; }
 
 /* ProseMirror selection visibility */
 .ProseMirror:focus { outline: none; }
@@ -473,6 +476,99 @@ body.pmd-nav-resize-active {
 .pmd-nav-type-analytic .pmd-nav-label       { color: #1F3864; }
 .pmd-nav-type-analytic:hover .pmd-nav-label { color: #1F3864; }
 
+/* ---------------------------------------------- Read mode
+
+   Hides non-read-aloud content. Per the user's spec:
+   - Headings (pocket / hat / block / tag / analytic) — visible.
+   - cite_paragraph — only text with cite_mark visible.
+   - card_body — only text with highlight visible; multiple body
+     paragraphs in the same card flow inline (no line breaks).
+   - undertag, generic paragraph, scratchpad — hidden.
+
+   Approach: pure CSS. We use `font-size: 0 !important` on the body /
+   cite paragraphs and their entire descendant tree to wipe out all
+   visible text, then restore size on `<mark>` (highlight) and
+   `.pmd-cite` (cite_mark) and their descendants. !important is needed
+   because real-doc runs carry inline `font-size: …pt` styles via the
+   font_size mark, which would otherwise win specificity.
+*/
+
+/* Top-level block visibility — show only structure-bearing or card-bearing
+   children of the document. */
+.pmd-read-mode .ProseMirror > * { display: none; }
+.pmd-read-mode .ProseMirror > .pmd-pocket,
+.pmd-read-mode .ProseMirror > .pmd-hat,
+.pmd-read-mode .ProseMirror > .pmd-block,
+.pmd-read-mode .ProseMirror > .pmd-card,
+.pmd-read-mode .ProseMirror > .pmd-analytic-unit {
+  display: block;
+}
+
+/* Inside a card: keep tag, cite_paragraph, in-card analytic, and the
+   condensed-flow body. Hide undertags. */
+.pmd-read-mode .pmd-card > * { display: none; }
+.pmd-read-mode .pmd-card > .pmd-tag { display: block; }
+.pmd-read-mode .pmd-card > .pmd-cite-para { display: block; }
+.pmd-read-mode .pmd-card > .pmd-analytic { display: block; }
+.pmd-read-mode .pmd-card > .pmd-card-body {
+  /* display: contents removes the <p> from layout entirely; the body's
+     children participate directly in the card's flow as if siblings of
+     the tag/cite paragraphs. Cleaner than display: inline because there's
+     no <p> element-boundary that browsers might insert breaks at. */
+  display: contents;
+}
+
+/* Inside an analytic_unit: keep the analytic heading and condensed-flow
+   body. */
+.pmd-read-mode .pmd-analytic-unit > * { display: none; }
+.pmd-read-mode .pmd-analytic-unit > .pmd-analytic { display: block; }
+.pmd-read-mode .pmd-analytic-unit > .pmd-card-body {
+  display: contents;
+}
+
+/* Inline-level visibility: each text node is wrapped (via the
+   read-mode plugin) in a span with `pmd-rm-keep` or `pmd-rm-hide`.
+   Pure display: none / inline rule — no specificity tricks because
+   the class lands directly on the text-level wrapper, not on a
+   nested mark wrapper. */
+.pmd-read-mode .pmd-rm-hide { display: none; }
+.pmd-read-mode .pmd-rm-keep { display: inline; }
+
+/* Ensure exactly one space between consecutive visible chunks. Browser
+   whitespace collapsing (white-space: normal default) reduces multiple
+   consecutive spaces to one, so this is safe even when the kept text
+   already has trailing whitespace. */
+.pmd-read-mode .pmd-rm-keep::after {
+  content: ' ';
+}
+
+/* Hide hard-break / trailing-break elements inside card body and cite
+   paragraphs in read mode — ProseMirror adds a trailing <br> to empty
+   paragraphs for cursor placement; in read mode we want continuous
+   inline flow. */
+.pmd-read-mode .pmd-card-body br,
+.pmd-read-mode .pmd-cite-para br,
+.pmd-read-mode .ProseMirror-trailingBreak {
+  display: none;
+}
+
+/* Active state for the read-mode button (matches the level-N buttons). */
+#read-mode-btn.pmd-active {
+  background: #2563eb;
+  color: #fff;
+  border-color: #2563eb;
+}
+
+#read-mode-btn.pmd-active:hover:not(:disabled) {
+  background: #1d4ed8;
+}
+
+/* While read mode is active, ProseMirror's contenteditable=false makes
+   the cursor read as text-select; force default cursor for clarity. */
+.pmd-read-mode .ProseMirror {
+  cursor: default;
+}
+
 /* ---------------------------------------------- Context menu */
 
 .pmd-nav-context-menu {
@@ -629,9 +725,3 @@ body.pmd-nav-resize-active {
   cursor: pointer;
 }
 
-/* Read-mode hide-class hint (toggle this on the editor root) */
-.pmd-read-mode .pmd-card-body:not(.has-highlighted-text),
-.pmd-read-mode .pmd-undertag,
-.pmd-read-mode .pmd-scratchpad {
-  display: none;
-}

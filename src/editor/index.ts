@@ -17,6 +17,8 @@ import { schema, newHeadingId } from '../schema/index.js';
 import { fromDocx, toDocx } from '../index.js';
 import { NavigationPanel } from './nav-panel.js';
 import { openSettings } from './settings-ui.js';
+import { settings } from './settings.js';
+import { readModePlugin } from './read-mode-plugin.js';
 
 const editorEl = document.getElementById('editor')!;
 const navEl = document.getElementById('nav-panel')!;
@@ -24,13 +26,30 @@ const dropzone = document.getElementById('dropzone') as HTMLInputElement;
 const openBtn = document.getElementById('open-btn') as HTMLButtonElement;
 const exportBtn = document.getElementById('export-btn') as HTMLButtonElement;
 const settingsBtn = document.getElementById('settings-btn') as HTMLButtonElement;
+const readModeBtn = document.getElementById('read-mode-btn') as HTMLButtonElement;
+
+// Module-level state. Declared before the settings subscriber registers
+// so that `applyReadMode` can read `view` without a temporal-dead-zone
+// ReferenceError on initial call.
+let view: EditorView | null = null;
+let currentDoc: PMNode = makeStarterDoc();
+
 openBtn.addEventListener('click', () => dropzone.click());
 settingsBtn.addEventListener('click', () => openSettings());
+readModeBtn.addEventListener('click', () => settings.set('readMode', !settings.get('readMode')));
+
+// Apply read-mode visual state and editing lockdown whenever the
+// setting changes (and once now to handle the persisted value).
+settings.subscribe((s) => applyReadMode(s.readMode));
+applyReadMode(settings.get('readMode'));
+
+function applyReadMode(on: boolean): void {
+  editorEl.classList.toggle('pmd-read-mode', on);
+  readModeBtn.classList.toggle('pmd-active', on);
+  if (view) view.setProps({ editable: () => !on });
+}
 
 const navPanel = new NavigationPanel(navEl);
-
-let currentDoc: PMNode = makeStarterDoc();
-let view: EditorView | null = null;
 
 function makeStarterDoc(): PMNode {
   return schema.nodes['doc']!.createChecked(null, [
@@ -88,10 +107,12 @@ function mountView(doc: PMNode): void {
       history(),
       keymap({ 'Mod-z': undo, 'Mod-y': redo, 'Mod-Shift-z': redo }),
       keymap(baseKeymap),
+      readModePlugin,
     ],
   });
   view = new EditorView(editorEl, {
     state,
+    editable: () => !settings.get('readMode'),
     dispatchTransaction(tx) {
       if (!view) return;
       const next = view.state.apply(tx);
