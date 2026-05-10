@@ -252,7 +252,15 @@ export const nodes: { [name: string]: NodeSpec } = {
    * boundary.
    */
   card: {
-    content: 'tag (undertag | cite_paragraph | analytic | card_body)*',
+    // Order matters: ProseMirror's splitBlock command (and other
+    // schema-driven defaults) calls `defaultBlockAt` to pick the
+    // "natural" type for a freshly-created paragraph in this slot.
+    // It returns the FIRST textblock in the alternation. Putting
+    // `card_body` first ensures that pressing Enter at the start of a
+    // cite (or anywhere else inside a card) creates a normal body
+    // paragraph — never an undertag. Undertag styling is reserved for
+    // text the user explicitly opts into.
+    content: 'tag (card_body | undertag | cite_paragraph | analytic)*',
     defining: true,
     isolating: true,
     parseDOM: [{ tag: 'div.pmd-card' }],
@@ -315,8 +323,9 @@ export const nodes: { [name: string]: NodeSpec } = {
    */
   analytic_unit: {
     // Loosened the same way `card` was — see the card content
-    // expression's comment.
-    content: 'analytic (undertag | card_body)*',
+    // expression's comment, including the rationale for putting
+    // `card_body` first in the alternation.
+    content: 'analytic (card_body | undertag)*',
     defining: true,
     isolating: true,
     parseDOM: [{ tag: 'div.pmd-analytic-unit' }],

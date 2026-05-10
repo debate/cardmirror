@@ -449,6 +449,36 @@ describe('enterAtTagEnd', () => {
   });
 });
 
+// ----- Regression: splitBlock at start of cite_paragraph -----
+
+describe('splitBlock at start of cite_paragraph (default Enter)', () => {
+  it('creates a card_body, NOT an undertag, above the cite', async () => {
+    // Bug: prior schema content order put `undertag` first in the
+    // alternation, so ProseMirror's defaultBlockAt picked undertag as
+    // the type for newly-created paragraphs. The card content
+    // expression now puts card_body first.
+    const { splitBlock } = await import('prosemirror-commands');
+    const doc = makeDoc([
+      schema.nodes['card']!.createChecked(null, [
+        tag('Tag'),
+        schema.nodes['cite_paragraph']!.create(null, schema.text('Cite')),
+      ]),
+    ]);
+    let citeStart = -1;
+    doc.descendants((node, pos) => {
+      if (node.type.name === 'cite_paragraph' && citeStart < 0) citeStart = pos + 1;
+    });
+    const state = stateWithCursor(doc, citeStart);
+    const next = apply(state, splitBlock);
+    expect(next).not.toBe(null);
+    const card = next!.doc.child(0);
+    expect(card.childCount).toBe(3);
+    expect(card.child(0).type.name).toBe('tag');
+    expect(card.child(1).type.name).toBe('card_body');
+    expect(card.child(2).type.name).toBe('cite_paragraph');
+  });
+});
+
 // ----- Analytic equivalence -----
 
 describe('analytic boundary edits behave like tag', () => {
