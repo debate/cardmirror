@@ -158,7 +158,24 @@ export interface Settings {
    * Spacing setting (Wide=1.4ish, Narrow=1.15ish). Range 1.0–2.0.
    */
   lineHeight: number;
+  /**
+   * Display mode for the ribbon's formatting panel (Pocket / Hat /
+   * Block / Tag / Analytic buttons). 'labels' shows the style name on
+   * each button, 'shortcuts' shows the keyboard binding, 'hidden'
+   * removes the panel entirely.
+   */
+  formattingPanelMode: FormattingPanelMode;
+  /**
+   * When true, the formatting-panel buttons preview the visual
+   * treatment of the style they apply (Pocket boxed, Hat double-
+   * underlined, Tag bold, etc.). When false, buttons are rendered as
+   * plain text. Has no effect when formattingPanelMode is 'hidden'.
+   */
+  formattingPanelPreview: boolean;
 }
+
+export type FormattingPanelMode = 'labels' | 'shortcuts' | 'both' | 'hidden';
+const FORMATTING_PANEL_MODES: FormattingPanelMode[] = ['labels', 'shortcuts', 'both', 'hidden'];
 
 const DEFAULTS: Settings = {
   navWidth: 300,
@@ -176,6 +193,8 @@ const DEFAULTS: Settings = {
   displayColors: { ...DEFAULT_DISPLAY_COLORS },
   bodyFont: 'Calibri',
   lineHeight: 1.4,
+  formattingPanelMode: 'labels',
+  formattingPanelPreview: true,
 };
 
 /**
@@ -196,7 +215,8 @@ export interface SettingMeta {
     | 'displayTypography'
     | 'displayColors'
     | 'bodyFont'
-    | 'lineHeight';
+    | 'lineHeight'
+    | 'formattingPanelMode';
 }
 
 export const SETTING_METADATA: SettingMeta[] = [
@@ -248,6 +268,20 @@ export const SETTING_METADATA: SettingMeta[] = [
     description:
       "Font family for body text. Pick the font your team's docs use — Calibri matches Verbatim's default.",
     kind: 'bodyFont',
+  },
+  {
+    key: 'formattingPanelMode',
+    label: 'Formatting panel',
+    description:
+      'How the Pocket / Hat / Block / Tag / Analytic buttons in the ribbon are displayed. "Labels" shows the style name, "Shortcuts" shows the keyboard binding, "Both" shows name · shortcut, "Hidden" removes the panel.',
+    kind: 'formattingPanelMode',
+  },
+  {
+    key: 'formattingPanelPreview',
+    label: 'Preview styles in formatting panel',
+    description:
+      'When on, formatting-panel buttons preview the visual treatment of the style they apply (Pocket boxed, Hat double-underlined, Tag bold, Analytic colored). Applies to both Labels and Shortcuts modes.',
+    kind: 'toggle',
   },
   // Note: `lineHeight` is wired through (defaults to 1.4, applied to
   // #editor via --pmd-line-height) but isn't exposed in the settings
@@ -348,6 +382,13 @@ function sanitize(s: Settings): Settings {
       1.0,
       2.0,
     ),
+    formattingPanelMode: FORMATTING_PANEL_MODES.includes(s.formattingPanelMode as FormattingPanelMode)
+      ? (s.formattingPanelMode as FormattingPanelMode)
+      : DEFAULTS.formattingPanelMode,
+    formattingPanelPreview:
+      s.formattingPanelPreview === undefined
+        ? DEFAULTS.formattingPanelPreview
+        : !!s.formattingPanelPreview,
   };
 }
 

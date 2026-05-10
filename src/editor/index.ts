@@ -24,6 +24,7 @@ import {
   type DisplaySizes,
   type DisplayTypography,
   type DisplayColors,
+  type FormattingPanelMode,
 } from './settings.js';
 import { readModePlugin, PMD_READ_MODE_TOGGLE } from './read-mode-plugin.js';
 import { absorbPlugin } from './absorb-plugin.js';
@@ -36,6 +37,14 @@ import {
   enterAtTagEnd,
   enterInHeading,
 } from './tag-keymap.js';
+import {
+  buildRibbonKeymap,
+  getRibbonCommand,
+  formatKeyForDisplay,
+  DEFAULT_RIBBON_KEYS,
+  RIBBON_COMMAND_LABELS,
+  type RibbonCommandId,
+} from './ribbon-commands.js';
 import { openWordCount } from './word-count-ui.js';
 import { countReadAloudWords, formatReadTime, formatNumber } from './word-count.js';
 
@@ -68,6 +77,65 @@ wordCountBtn.addEventListener('click', () => { if (view) openWordCount(view); })
 zoomOutBtn.addEventListener('click', () => setZoom(settings.get('zoomPct') - 10));
 zoomInBtn.addEventListener('click', () => setZoom(settings.get('zoomPct') + 10));
 zoomResetBtn.addEventListener('click', () => setZoom(100));
+
+// Formatting panel — Verbatim-style ribbon buttons that dispatch the
+// same commands as the F4–F7 / Mod-F7 keymap. Display mode and visual
+// preview are both driven by settings (formattingPanelMode and
+// formattingPanelPreview).
+const FORMATTING_PANEL_BUTTONS: Record<RibbonCommandId, string> = {
+  setPocket: 'style-pocket-btn',
+  setHat: 'style-hat-btn',
+  setBlock: 'style-block-btn',
+  setTag: 'style-tag-btn',
+  setAnalytic: 'style-analytic-btn',
+};
+const FORMATTING_PANEL_SHORT_LABEL: Record<RibbonCommandId, string> = {
+  setPocket: 'Pocket',
+  setHat: 'Hat',
+  setBlock: 'Block',
+  setTag: 'Tag',
+  setAnalytic: 'Analytic',
+};
+const formattingPanelEl = document.getElementById('formatting-panel') as HTMLElement | null;
+const formattingPanelBtnRefs: { id: RibbonCommandId; btn: HTMLButtonElement }[] = [];
+for (const [id, btnId] of Object.entries(FORMATTING_PANEL_BUTTONS) as [RibbonCommandId, string][]) {
+  const btn = document.getElementById(btnId) as HTMLButtonElement | null;
+  if (!btn) continue;
+  const label = RIBBON_COMMAND_LABELS[id];
+  btn.setAttribute('aria-label', label);
+  btn.addEventListener('mousedown', (e) => {
+    // Don't steal focus from the editor — the command needs to act on
+    // the paragraph that holds the live cursor.
+    e.preventDefault();
+  });
+  btn.addEventListener('click', () => {
+    if (!view) return;
+    const cmd = getRibbonCommand(id);
+    cmd(view.state, view.dispatch.bind(view));
+    view.focus();
+  });
+  formattingPanelBtnRefs.push({ id, btn });
+}
+
+function applyFormattingPanel(mode: FormattingPanelMode, preview: boolean): void {
+  if (!formattingPanelEl) return;
+  formattingPanelEl.classList.toggle('hidden', mode === 'hidden');
+  formattingPanelEl.classList.toggle('style-preview', preview);
+  for (const { id, btn } of formattingPanelBtnRefs) {
+    const keyDisplay = formatKeyForDisplay(DEFAULT_RIBBON_KEYS[id]);
+    const shortLabel = FORMATTING_PANEL_SHORT_LABEL[id];
+    const fullLabel = RIBBON_COMMAND_LABELS[id];
+    // ' · ' matches the separator used in the status-bar read-time
+    // display, so the visual rhythm is consistent across the chrome.
+    btn.textContent =
+      mode === 'shortcuts'
+        ? (keyDisplay || shortLabel)
+        : mode === 'both' && keyDisplay
+        ? `${shortLabel} · ${keyDisplay}`
+        : shortLabel;
+    btn.title = keyDisplay ? `${fullLabel} (${keyDisplay})` : fullLabel;
+  }
+}
 
 function setZoom(pct: number): void {
   const clamped = Math.max(50, Math.min(200, Math.round(pct / 10) * 10));
@@ -149,6 +217,7 @@ settings.subscribe((s) => {
   applyDisplayColors(s.displayColors);
   applyBodyFont(s.bodyFont);
   applyLineHeight(s.lineHeight);
+  applyFormattingPanel(s.formattingPanelMode, s.formattingPanelPreview);
   refreshWordCount();
 });
 applyReadMode(settings.get('readMode'));
@@ -158,6 +227,7 @@ applyDisplayTypography(settings.get('displayTypography'));
 applyDisplayColors(settings.get('displayColors'));
 applyBodyFont(settings.get('bodyFont'));
 applyLineHeight(settings.get('lineHeight'));
+applyFormattingPanel(settings.get('formattingPanelMode'), settings.get('formattingPanelPreview'));
 
 function refreshWordCount(): void {
   if (!view) {
@@ -267,6 +337,11 @@ function mountView(doc: PMNode): void {
           enterMidTag(state, dispatch, view) ||
           enterInHeading(state, dispatch, view),
       }),
+      // Verbatim ribbon — structural style hotkeys. Defaults match
+      // Verbatim's F4–F7 (Mod-F7 for Analytic). buildRibbonKeymap()
+      // accepts user overrides keyed by RibbonCommandId; wire those
+      // through once a "Keyboard shortcuts" settings panel exists.
+      keymap(buildRibbonKeymap()),
       keymap(baseKeymap),
       readModePlugin,
       absorbPlugin,

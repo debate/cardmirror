@@ -812,6 +812,22 @@ already have (e.g., `MoveUp`/`MoveDown` are subsumed by drag-and-drop;
 `SelectHeadingAndContent` is subsumed by the navigation panel). The
 remaining commands map directly to schema transforms.
 
+Status — what's wired:
+
+- **Structural-style hotkeys (F4 / F5 / F6 / F7).** Set the current
+  paragraph or heading to Pocket / Hat / Block / Tag respectively.
+  Implementation in `src/editor/ribbon-commands.ts`. Conversion rules:
+  doc-level paragraph ↔ heading is in-place; tag (inside card) and
+  analytic (inside analytic_unit) dissolve their wrapper so the
+  conversion goes through. F7 wraps in a card; on an analytic_unit
+  anchor it converts the unit to a card. Heading IDs are preserved
+  across heading↔heading conversions, minted fresh for paragraph→
+  heading.
+- Cursor in `card_body` / `cite_paragraph` / `undertag` is intentionally
+  a no-op for these hotkeys — a meaningful conversion there would have
+  to split the containing card, which we'll layer in if real usage
+  demands it.
+
 ## 16. Stylepox handling
 
 Cleanup on import is *opt-in by configuration but defaults to on*.

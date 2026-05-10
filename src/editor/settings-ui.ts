@@ -17,6 +17,7 @@ import {
   type DisplaySizes,
   type DisplayTypography,
   type DisplayColors,
+  type FormattingPanelMode,
 } from './settings.js';
 import { isFontAvailable } from './font-detect.js';
 
@@ -188,6 +189,8 @@ class SettingsModal {
       row.appendChild(text);
       row.appendChild(buildLineHeightEditor());
       return row;
+    } else if (meta.kind === 'formattingPanelMode') {
+      label.appendChild(buildFormattingPanelModeEditor());
     }
 
     row.appendChild(label);
@@ -605,6 +608,28 @@ function buildReadersEditor(): HTMLElement {
   });
 
   return wrap;
+}
+
+function buildFormattingPanelModeEditor(): HTMLElement {
+  const select = document.createElement('select');
+  select.className = 'pmd-formatting-panel-mode-select';
+  const options: { value: FormattingPanelMode; label: string }[] = [
+    { value: 'labels', label: 'Show style names' },
+    { value: 'shortcuts', label: 'Show keyboard shortcuts' },
+    { value: 'both', label: 'Show name · shortcut' },
+    { value: 'hidden', label: 'Hide the panel' },
+  ];
+  for (const o of options) {
+    const opt = document.createElement('option');
+    opt.value = o.value;
+    opt.textContent = o.label;
+    if (o.value === settings.get('formattingPanelMode')) opt.selected = true;
+    select.appendChild(opt);
+  }
+  select.addEventListener('change', () => {
+    settings.set('formattingPanelMode', select.value as FormattingPanelMode);
+  });
+  return select;
 }
 
 let singleton: SettingsModal | null = null;

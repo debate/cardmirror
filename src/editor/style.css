@@ -154,6 +154,59 @@ body {
   font-size: 0.95rem;
 }
 
+/* Formatting panel — Verbatim-style apply-paragraph-style buttons.
+   Two-row grid: top row Pocket/Hat/Block (outline-level headings),
+   bottom row Tag/Analytic (leaf-level items). Sits to the right of
+   the Open/Save stack, separated by a thin divider. */
+.ribbon-formatting-panel {
+  display: grid;
+  grid-template-columns: repeat(3, auto);
+  grid-template-rows: repeat(2, auto);
+  gap: 2px 3px;
+  align-content: center;
+  padding-left: 0.5rem;
+  margin-left: 0.25rem;
+  border-left: 1px solid var(--pmd-c-border-soft);
+}
+
+.ribbon-formatting-panel.hidden { display: none; }
+
+#ribbon .formatting-panel-btn {
+  width: auto;
+  min-width: 3rem;
+  padding: 0 0.45rem;
+  height: 1.45rem;
+  font-size: 0.78rem;
+  font-family: 'Calibri', 'Helvetica Neue', sans-serif;
+}
+
+/* Style previews — gated on the container's .style-preview class so
+   the settings toggle can disable them without removing the buttons. */
+#ribbon .ribbon-formatting-panel.style-preview .formatting-panel-btn {
+  font-weight: bold;
+}
+
+#ribbon .ribbon-formatting-panel.style-preview .formatting-panel-pocket {
+  border-width: 2px;
+  border-color: var(--pmd-c-emphasis-box);
+}
+
+#ribbon .ribbon-formatting-panel.style-preview .formatting-panel-hat {
+  text-decoration: underline double;
+  text-underline-offset: 2px;
+}
+
+#ribbon .ribbon-formatting-panel.style-preview .formatting-panel-block {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* Tag — bold only (handled by the .style-preview rule above). */
+
+#ribbon .ribbon-formatting-panel.style-preview .formatting-panel-analytic {
+  color: var(--pmd-color-analytic);
+}
+
 #app {
   margin-top: var(--ribbon-height);
   margin-left: var(--nav-width);
