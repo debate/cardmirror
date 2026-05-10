@@ -26,6 +26,12 @@ import {
 import { readModePlugin } from './read-mode-plugin.js';
 import { absorbPlugin } from './absorb-plugin.js';
 import { fontSizeClassPlugin } from './font-size-class-plugin.js';
+import {
+  backspaceAtTagStart,
+  deleteAtTagEnd,
+  enterMidTag,
+  enterAtTagEnd,
+} from './tag-keymap.js';
 import { openWordCount } from './word-count-ui.js';
 import { countReadAloudWords, formatReadTime, formatNumber } from './word-count.js';
 
@@ -221,6 +227,16 @@ function mountView(doc: PMNode): void {
     plugins: [
       history(),
       keymap({ 'Mod-z': undo, 'Mod-y': redo, 'Mod-Shift-z': redo }),
+      // Tag/analytic boundary editing rules (ARCHITECTURE.md §14.3).
+      // These run before baseKeymap so they get first crack at
+      // Backspace / Delete / Enter when the cursor is in a tag.
+      keymap({
+        Backspace: backspaceAtTagStart,
+        Delete: deleteAtTagEnd,
+        Enter: (state, dispatch, view) =>
+          enterAtTagEnd(state, dispatch, view) ||
+          enterMidTag(state, dispatch, view),
+      }),
       keymap(baseKeymap),
       readModePlugin,
       absorbPlugin,
