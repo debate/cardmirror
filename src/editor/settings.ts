@@ -211,13 +211,11 @@ export const SETTING_METADATA: SettingMeta[] = [
       "Font family for body text. Pick the font your team's docs use — Calibri matches Verbatim's default.",
     kind: 'bodyFont',
   },
-  {
-    key: 'lineHeight',
-    label: 'Line height',
-    description:
-      'Vertical spacing between lines, as a multiplier of font size. Verbatim ships Wide (~1.4) and Narrow (~1.15); pick anything in between for finer control.',
-    kind: 'lineHeight',
-  },
+  // Note: `lineHeight` is wired through (defaults to 1.4, applied to
+  // #editor via --pmd-line-height) but isn't exposed in the settings
+  // UI — the configurable version had a known interaction bug. Once
+  // that's fixed, add a `kind: 'lineHeight'` metadata entry here to
+  // surface it.
 ];
 
 type Listener = (s: Readonly<Settings>) => void;
