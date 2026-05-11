@@ -531,3 +531,24 @@ Rationale: the empty tag is a meaningless boundary the user wants
 gone; the card's content should flow into the natural container
 above it. Eliminates the "stuck — backspace does nothing because the
 preceding content isn't blank" trap.
+
+## 2026-05-10: Forward Delete at the end of a body — refuse destructive merge
+
+Cursor at the end of the LAST body of a card / analytic_unit, press
+Delete:
+
+- If the next doc-level sibling is a card or analytic_unit whose head
+  is blank: absorb its surviving children into the current container
+  (cross-type folding applies). Mirror of the empty-tag-merge rule
+  initiated from the body side.
+- Otherwise (next is a non-empty card/analytic_unit, a heading, a
+  paragraph, or end of doc): no-op, swallow the event.
+
+The "no-op" case explicitly refuses Word's default of pulling the
+next paragraph's text into the current body — that's silently
+destructive at a tag/heading boundary. We'd rather make Delete look
+broken in that one case than corrupt structure.
+
+Symmetric with backspace-into-body-of-prev: both refuse to cross a
+non-blank head boundary destructively, and both *do* cross a blank-
+head boundary by collapsing it.

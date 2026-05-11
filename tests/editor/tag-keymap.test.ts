@@ -10,6 +10,7 @@ import { schema, newHeadingId } from '../../src/schema/index.js';
 import {
   backspaceAtTagStart,
   deleteAtTagEnd,
+  deleteAtContainerEnd,
   enterMidTag,
   enterAtTagEnd,
   enterInHeading,
@@ -739,5 +740,131 @@ describe('analytic boundary edits behave like tag', () => {
     expect(next!.doc.childCount).toBe(2);
     expect(next!.doc.child(0).type.name).toBe('analytic_unit');
     expect(next!.doc.child(1).type.name).toBe('analytic_unit');
+  });
+});
+
+// ----- Delete forward at end of last body in a container -----
+
+describe('deleteAtContainerEnd', () => {
+  function endOfLastBody(doc: ReturnType<typeof makeDoc>, containerIdx = 0): number {
+    let count = 0;
+    let pos = -1;
+    doc.descendants((n, p) => {
+      if (n.type.name === 'card' || n.type.name === 'analytic_unit') {
+        if (count === containerIdx) {
+          const last = n.lastChild!;
+          // last child's start = container start + 1 (open) + sum of prev sizes
+          let off = 1;
+          for (let i = 0; i < n.childCount - 1; i++) off += n.child(i).nodeSize;
+          pos = p + off + 1 + last.content.size;
+        }
+        count++;
+        return false; // don't descend into the container — siblings inside it would confuse indexing
+      }
+      return true;
+    });
+    if (pos < 0) throw new Error(`container #${containerIdx} not found`);
+    return pos;
+  }
+
+  it('absorbs the next card when its tag is blank', () => {
+    const doc = makeDoc([
+      cardTagBody('Tag1', 'body1'),
+      cardWith(
+        tag(''),
+        schema.nodes['card_body']!.create(null, schema.text('body2')),
+      ),
+    ]);
+    const state = stateWithCursor(doc, endOfLastBody(doc, 0));
+    const next = apply(state, deleteAtContainerEnd);
+    expect(next).not.toBe(null);
+    expect(next!.doc.childCount).toBe(1);
+    const card = next!.doc.firstChild!;
+    const types: string[] = [];
+    card.forEach((c) => types.push(c.type.name));
+    expect(types).toEqual(['tag', 'card_body', 'card_body']);
+    expect(card.child(0).textContent).toBe('Tag1');
+    expect(card.child(1).textContent).toBe('body1');
+    expect(card.child(2).textContent).toBe('body2');
+  });
+
+  it('no-op when next card has a non-empty tag (prohibits destructive merge)', () => {
+    const doc = makeDoc([
+      cardTagBody('Tag1', 'body1'),
+      cardTagBody('Tag2', 'body2'),
+    ]);
+    const state = stateWithCursor(doc, endOfLastBody(doc, 0));
+    const next = apply(state, deleteAtContainerEnd);
+    // Returned true (handled / swallowed) without dispatching → apply returns null.
+    expect(next).toBe(null);
+    expect(state.doc.childCount).toBe(2);
+  });
+
+  it('no-op when next sibling is a heading (prohibits destructive merge)', () => {
+    const doc = makeDoc([
+      cardTagBody('Tag1', 'body1'),
+      block('A block'),
+    ]);
+    const state = stateWithCursor(doc, endOfLastBody(doc, 0));
+    const next = apply(state, deleteAtContainerEnd);
+    expect(next).toBe(null);
+  });
+
+  it('returns false (lets default handle) when there is no next sibling', () => {
+    const doc = makeDoc([cardTagBody('T', 'only body')]);
+    const state = stateWithCursor(doc, endOfLastBody(doc, 0));
+    const next = apply(state, deleteAtContainerEnd);
+    expect(next).toBe(null); // apply() returns null for false too
+    // Doc unchanged so far.
+    expect(state.doc.childCount).toBe(1);
+  });
+
+  it('cross-type: card with blank tag absorbs into prev analytic_unit (with cite_paragraph passthrough)', () => {
+    const cite = schema.nodes['cite_paragraph']!.create(
+      null,
+      schema.text('Author 24', [schema.marks['cite_mark']!.create()]),
+    );
+    const doc = makeDoc([
+      schema.nodes['analytic_unit']!.createChecked(null, [
+        schema.nodes['analytic']!.create({ id: newHeadingId() }, schema.text('A')),
+        schema.nodes['card_body']!.create(null, schema.text('body')),
+      ]),
+      schema.nodes['card']!.createChecked(null, [
+        tag(''),
+        cite,
+        schema.nodes['card_body']!.create(null, schema.text('extra')),
+      ]),
+    ]);
+    const state = stateWithCursor(doc, endOfLastBody(doc, 0));
+    const next = apply(state, deleteAtContainerEnd);
+    expect(next).not.toBe(null);
+    expect(next!.doc.childCount).toBe(1);
+    const unit = next!.doc.firstChild!;
+    expect(unit.type.name).toBe('analytic_unit');
+    const types: string[] = [];
+    unit.forEach((c) => types.push(c.type.name));
+    expect(types).toEqual(['analytic', 'card_body', 'cite_paragraph', 'card_body']);
+  });
+
+  it('only fires when cursor is at the end of the LAST child', () => {
+    const doc = makeDoc([
+      cardWith(
+        tag('T'),
+        schema.nodes['card_body']!.create(null, schema.text('first')),
+        schema.nodes['card_body']!.create(null, schema.text('second')),
+      ),
+      cardWith(tag(''), schema.nodes['card_body']!.create(null, schema.text('next'))),
+    ]);
+    // Cursor at end of "first" (which is NOT the last body of card1).
+    let pos = -1;
+    doc.descendants((n, p) => {
+      if (n.isText && n.text === 'first') pos = p + n.nodeSize;
+      return true;
+    });
+    const state = stateWithCursor(doc, pos);
+    const next = apply(state, deleteAtContainerEnd);
+    // Not applicable (not last child) → returns false → apply gets null.
+    expect(next).toBe(null);
+    expect(state.doc.childCount).toBe(2);
   });
 });

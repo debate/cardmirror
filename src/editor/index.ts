@@ -34,6 +34,7 @@ import { editorDragSurface } from './drag-editor-surface.js';
 import {
   backspaceAtTagStart,
   deleteAtTagEnd,
+  deleteAtContainerEnd,
   enterMidTag,
   enterAtTagEnd,
   enterInHeading,
@@ -348,7 +349,9 @@ function mountView(doc: PMNode): void {
       // Backspace / Delete / Enter when the cursor is in a tag.
       keymap({
         Backspace: backspaceAtTagStart,
-        Delete: deleteAtTagEnd,
+        Delete: (state, dispatch, view) =>
+          deleteAtTagEnd(state, dispatch, view) ||
+          deleteAtContainerEnd(state, dispatch, view),
         Enter: (state, dispatch, view) =>
           enterAtTagEnd(state, dispatch, view) ||
           enterMidTag(state, dispatch, view) ||

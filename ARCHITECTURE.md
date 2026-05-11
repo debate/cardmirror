@@ -681,11 +681,6 @@ Surfaced during the design conversation but not yet posed to
 collaborators. Each will become a `[open]` entry above (or a `[draft]`
 proposal) when its area becomes the focus of editor work.
 
-**Mirror cases for tag-boundary actions:**
-
-- Card body — last paragraph, cursor at end, Delete forward: does it
-  pull the next card's tag into the body (destroying the next card)?
-
 **Same matrix for other node types:**
 
 - Cite paragraph — backspace at start (merge into tag?), enter inside
@@ -841,6 +836,27 @@ tag. Merges the two tags into one; the resulting card retains the
 later card's content (cite/body/etc.). When the next paragraph is
 anything else (cite, body, undertag, heading), the operation is
 prohibited.
+
+##### Forward Delete at the end of the last body in a container `[decided]`
+
+Cursor at the end of the LAST child of a card / analytic_unit, where
+that last child is a body slot (card_body / undertag / cite_paragraph
+/ in-card analytic — anything but the container's anchor):
+
+- If the next doc-level sibling is a card or analytic_unit whose head
+  is blank (whitespace-only): drop the blank head and absorb that
+  container's surviving children into the current container. The same
+  cross-type coercion as the empty-tag merge applies — analytic in a
+  card's cite-slot folds to card_body when going into an
+  analytic_unit. Cursor stays at the end of the original last body.
+- Otherwise (next is a non-empty card/analytic_unit, a heading, a
+  paragraph, or end of doc): no-op. The default Word behavior of
+  pulling the next paragraph into the current body as plain text is
+  refused, since it'd silently destroy tag/heading structure.
+
+Mirror of the "empty tag with surviving siblings — merge into
+previous" rule above, just initiated from the body side instead of
+the empty-head side.
 
 ##### Enter at the end of a tag `[decided]`
 

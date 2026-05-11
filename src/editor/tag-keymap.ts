@@ -481,6 +481,96 @@ export const deleteAtTagEnd: Command = (state, dispatch) => {
 };
 
 /**
+ * Forward Delete at the end of the LAST child of a card or
+ * analytic_unit (when that last child is a body slot — card_body /
+ * undertag / cite_paragraph / in-card analytic, anything but the
+ * container's anchor).
+ *
+ * Word's default behavior would pull the next paragraph into the
+ * current body as plain text — destructive on a tag/analytic boundary.
+ * We refuse that:
+ *
+ *   - If the next doc-level sibling is a card or analytic_unit whose
+ *     head is blank (whitespace-only), absorb that container's
+ *     surviving children into the current container. The blank head
+ *     is meaningless and the user wants it gone; the bodies flow
+ *     naturally into our container.
+ *   - In every other case (next is a non-empty card/analytic_unit,
+ *     a heading, a paragraph, end-of-doc), no-op and swallow the
+ *     event so the destructive default doesn't fire.
+ *
+ * Cursor stays where it was — at the end of the original body — which
+ * after the merge is the new boundary between the original last body
+ * and the absorbed survivors.
+ */
+export const deleteAtContainerEnd: Command = (state, dispatch) => {
+  if (!state.selection.empty) return false;
+  const $from = state.selection.$from;
+
+  // Find the cursor's enclosing card / analytic_unit and the body slot
+  // the cursor sits in.
+  let containerDepth = -1;
+  for (let d = $from.depth; d >= 0; d--) {
+    if (CARD_NODE_TYPES.has($from.node(d).type.name)) {
+      containerDepth = d;
+      break;
+    }
+  }
+  if (containerDepth < 0) return false;
+  const childDepth = containerDepth + 1;
+  if ($from.depth < childDepth) return false;
+
+  const container = $from.node(containerDepth);
+  const cursorChild = $from.node(childDepth);
+  // Anchor slot is handled by deleteAtTagEnd; bail.
+  if (HEAD_NODE_TYPES.has(cursorChild.type.name)) return false;
+  // Must be the last child AND the cursor must be at the very end of
+  // its content for the rule to apply.
+  if (container.lastChild !== cursorChild) return false;
+  if ($from.parentOffset !== cursorChild.content.size) return false;
+
+  const containerFrom = $from.before(containerDepth);
+  const containerTo = $from.after(containerDepth);
+  const $afterContainer = state.doc.resolve(containerTo);
+  const next = $afterContainer.nodeAfter;
+
+  if (!next) return false; // end of doc — let default handle (no-op).
+
+  // Only cards / analytic_units with a blank head trigger the absorb.
+  if (!CARD_NODE_TYPES.has(next.type.name)) {
+    // Anything else: prohibit destructive merge.
+    return true;
+  }
+  const nextHead = next.firstChild;
+  if (!nextHead || !HEAD_NODE_TYPES.has(nextHead.type.name) || !isBlank(nextHead)) {
+    return true;
+  }
+
+  if (!dispatch) return true;
+
+  const survivors: PMNode[] = [];
+  next.forEach((child, _o, idx) => {
+    if (idx > 0) survivors.push(child);
+  });
+  const adjusted = container.type.name === 'analytic_unit' && next.type.name === 'card'
+    ? survivors.map(toAnalyticUnitChild)
+    : survivors;
+
+  const mergedContainer = container.copy(
+    container.content.append(Fragment.fromArray(adjusted)),
+  );
+
+  const nextTo = containerTo + next.nodeSize;
+  let tr = state.tr.replaceWith(containerFrom, nextTo, mergedContainer);
+  // The cursor's pre-merge position is at the end of the original
+  // last body — positions before the merge point are unchanged, so
+  // $from.pos still resolves to the same spot.
+  tr = tr.setSelection(Selection.near(tr.doc.resolve($from.pos), -1));
+  dispatch(tr.scrollIntoView());
+  return true;
+};
+
+/**
  * Enter inside a tag/analytic when the cursor is NOT at the end.
  * Splits: a new card with the pre-cursor head content is inserted
  * before the current card; the current head keeps the post-cursor
