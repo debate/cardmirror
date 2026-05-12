@@ -12,6 +12,12 @@
  *   - paragraph → card_body
  *   - cite_paragraph → cite_paragraph (valid as a child of both
  *     `card` and `analytic_unit`).
+ *   - undertag → undertag (valid in both containers; the bare-doc-level
+ *     case shows up after F7 on text that's followed by undertag
+ *     annotations, or after promote-then-demote round-trips). Undertags
+ *     do NOT terminate the absorption zone.
+ *   - card_body → card_body (rare at doc level, but valid in both
+ *     containers and harmless to absorb in place).
  *
  * Cases preserved (no absorption):
  *   - Block / Hat / Pocket → paragraph → tag        (legitimate bridge text)
@@ -85,9 +91,12 @@ export function absorbedDocChildren(doc: PMNode): Fragment | null {
       absorbed.push(schema.nodes['card_body']!.create(null, child.content));
       return;
     }
-    if (t === 'cite_paragraph') {
-      // cite_paragraph is valid in both card and analytic_unit
-      // content expressions, so absorb regardless of container type.
+    if (t === 'cite_paragraph' || t === 'undertag' || t === 'card_body') {
+      // All three are valid in both card and analytic_unit content
+      // expressions, so absorb regardless of container type. The bare
+      // undertag case shows up after F7 on text followed by an undertag
+      // annotation — without this, the undertag would orphan and the
+      // absorption zone would terminate prematurely.
       absorbed.push(child);
       return;
     }

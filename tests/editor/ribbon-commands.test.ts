@@ -379,6 +379,129 @@ describe('setHeading on a card_body — splits the card', () => {
   });
 });
 
+describe('heading commands on cite_paragraph and undertag cursors — splits like card_body', () => {
+  it('F4 (setHeading pocket) on a cite_paragraph splits the card and converts to Pocket', () => {
+    const doc = makeDoc([
+      schema.nodes['card']!.createChecked(null, [
+        tag('T'),
+        citePara('SourceCite'),
+        cardBody('body after cite'),
+      ]),
+    ]);
+    // Cursor inside the cite_paragraph (index 1 within the card).
+    let pos = -1;
+    doc.descendants((n, p) => {
+      if (n.isText && n.text === 'SourceCite') pos = p + 2;
+      return true;
+    });
+    const state = EditorState.create({ doc }).apply(
+      EditorState.create({ doc }).tr.setSelection(TextSelection.create(doc, pos)),
+    );
+    const next = apply(state, setHeading('pocket'));
+    expect(next).not.toBeNull();
+    const types = next!.doc.content.content.map((c) => c.type.name);
+    expect(types).toEqual(['card', 'pocket', 'paragraph']);
+    // Card keeps the tag only (cite was index 1 = first body, so no preceding bodies).
+    const card = next!.doc.firstChild!;
+    expect(card.childCount).toBe(1);
+    expect(card.firstChild!.type.name).toBe('tag');
+    expect(next!.doc.content.content[1]!.textContent).toBe('SourceCite');
+    expect(next!.doc.content.content[2]!.textContent).toBe('body after cite');
+  });
+
+  it('F7 (setTag) on an undertag splits into two cards', () => {
+    const doc = makeDoc([
+      schema.nodes['card']!.createChecked(null, [
+        tag('First'),
+        cardBody('preBody'),
+        undertag('an undertag'),
+        cardBody('postBody'),
+      ]),
+    ]);
+    let pos = -1;
+    doc.descendants((n, p) => {
+      if (n.isText && n.text === 'an undertag') pos = p + 2;
+      return true;
+    });
+    const state = EditorState.create({ doc }).apply(
+      EditorState.create({ doc }).tr.setSelection(TextSelection.create(doc, pos)),
+    );
+    const next = apply(state, setTag());
+    expect(next).not.toBeNull();
+    const types = next!.doc.content.content.map((c) => c.type.name);
+    expect(types).toEqual(['card', 'card']);
+    // First card keeps [tag, preBody]. New card has [new tag (from undertag text), postBody].
+    const firstCard = next!.doc.firstChild!;
+    const firstChildren: string[] = [];
+    firstCard.forEach((c) => firstChildren.push(c.textContent));
+    expect(firstChildren).toEqual(['First', 'preBody']);
+    const secondCard = next!.doc.content.content[1]!;
+    const secondChildren: string[] = [];
+    secondCard.forEach((c) => secondChildren.push(c.textContent));
+    expect(secondChildren[0]).toBe('an undertag');
+    expect(secondCard.firstChild!.type.name).toBe('tag');
+  });
+
+  it('F4 (setHeading pocket) on a doc-level cite_paragraph converts in place', () => {
+    const doc = makeDoc([citePara('SomeCite')]);
+    const state = cursorIn(doc, (n) => n.type.name === 'cite_paragraph');
+    const next = apply(state, setHeading('pocket'));
+    expect(next).not.toBeNull();
+    expect(next!.doc.firstChild!.type.name).toBe('pocket');
+    expect(next!.doc.firstChild!.textContent).toBe('SomeCite');
+    expect(next!.doc.firstChild!.attrs['id']).toBeDefined();
+  });
+
+  it('F4 (setHeading pocket) on a doc-level undertag converts in place', () => {
+    const doc = makeDoc([undertag('an undertag')]);
+    const state = cursorIn(doc, (n) => n.type.name === 'undertag');
+    const next = apply(state, setHeading('pocket'));
+    expect(next).not.toBeNull();
+    expect(next!.doc.firstChild!.type.name).toBe('pocket');
+    expect(next!.doc.firstChild!.textContent).toBe('an undertag');
+  });
+
+  it('F7 (setTag) on a doc-level undertag wraps it into a card+tag', () => {
+    const doc = makeDoc([undertag('an undertag')]);
+    const state = cursorIn(doc, (n) => n.type.name === 'undertag');
+    const next = apply(state, setTag());
+    expect(next).not.toBeNull();
+    expect(next!.doc.firstChild!.type.name).toBe('card');
+    expect(next!.doc.firstChild!.firstChild!.type.name).toBe('tag');
+    expect(next!.doc.firstChild!.firstChild!.textContent).toBe('an undertag');
+  });
+
+  it('Mod-F7 (setAnalytic) on a cite_paragraph splits into card + analytic_unit', () => {
+    const doc = makeDoc([
+      schema.nodes['card']!.createChecked(null, [
+        tag('T'),
+        cardBody('body1'),
+        citePara('SomeCite'),
+        cardBody('body2'),
+      ]),
+    ]);
+    let pos = -1;
+    doc.descendants((n, p) => {
+      if (n.isText && n.text === 'SomeCite') pos = p + 2;
+      return true;
+    });
+    const state = EditorState.create({ doc }).apply(
+      EditorState.create({ doc }).tr.setSelection(TextSelection.create(doc, pos)),
+    );
+    const next = apply(state, setAnalytic());
+    expect(next).not.toBeNull();
+    const types = next!.doc.content.content.map((c) => c.type.name);
+    expect(types).toEqual(['card', 'analytic_unit']);
+    const firstCard = next!.doc.firstChild!;
+    const firstChildren: string[] = [];
+    firstCard.forEach((c) => firstChildren.push(c.textContent));
+    expect(firstChildren).toEqual(['T', 'body1']);
+    const unit = next!.doc.content.content[1]!;
+    expect(unit.firstChild!.type.name).toBe('analytic');
+    expect(unit.firstChild!.textContent).toBe('SomeCite');
+  });
+});
+
 describe('setTag on a card_body — splits into two cards', () => {
   it('cursor in middle body: original keeps prefix; new card holds cursor body + suffix', () => {
     const doc = makeDoc([
@@ -790,6 +913,34 @@ describe('setUndertag', () => {
     const state = cursorIn(doc, (n) => n.type.name === 'undertag');
     const next = apply(state, setUndertag());
     expect(next === null || next.doc.eq(doc)).toBe(true);
+  });
+
+  it('absorbs a dissolved card into the previous card when one exists', () => {
+    const doc = makeDoc([
+      schema.nodes['card']!.createChecked(null, [tag('First'), cardBody('preBody')]),
+      schema.nodes['card']!.createChecked(null, [tag('Second'), cardBody('postBody')]),
+    ]);
+    // Cursor in the SECOND card's tag.
+    let pos = -1;
+    doc.descendants((n, p) => {
+      if (n.isText && n.text === 'Second') pos = p + 1;
+      return true;
+    });
+    const base = EditorState.create({ doc });
+    const state = base.apply(base.tr.setSelection(TextSelection.create(base.doc, pos)));
+    const next = apply(state, setUndertag());
+    expect(next).not.toBeNull();
+    const docTypes = next!.doc.content.content.map((c) => c.type.name);
+    expect(docTypes).toEqual(['card']);
+    const card = next!.doc.firstChild!;
+    const children: { type: string; text: string }[] = [];
+    card.forEach((c) => children.push({ type: c.type.name, text: c.textContent }));
+    expect(children).toEqual([
+      { type: 'tag', text: 'First' },
+      { type: 'card_body', text: 'preBody' },
+      { type: 'undertag', text: 'Second' },
+      { type: 'card_body', text: 'postBody' },
+    ]);
   });
 });
 

@@ -1015,3 +1015,64 @@ state on the integrity toggle: `aria-pressed="true"` when on
 (matching CSS gives a grayed-out pressed look — same treatment as
 the paintbrush-active state on color buttons), `aria-pressed="false"`
 when off.
+
+## 2026-05-11: Absorb-plugin no longer terminates on undertag / card_body
+
+The absorption rule (ARCHITECTURE §14.3) used to treat any non-paragraph,
+non-cite_paragraph sibling as a boundary. That broke the natural case
+of `F7` on plain text followed by undertag annotations:
+
+```
+paragraph   ← cursor here, hit F7
+undertag
+paragraph
+```
+
+The new card from F7 wrapped only the first paragraph. The absorb pass
+saw the trailing undertag and stopped, leaving the undertag orphaned
+at doc level and the third paragraph unabsorbed. Result: visually
+disconnected, structurally surprising.
+
+The rule now treats `paragraph`, `cite_paragraph`, `undertag`, and
+`card_body` as absorbable — exactly the set of body-slot types valid
+inside both `card` and `analytic_unit`. None of these terminate the
+absorption zone; only proper containers (headings, other cards /
+analytic_units, paragraphs at doc start) do.
+
+This also makes the `dissolveContainerToUndertag` previous-card
+absorb logic (next entry) partly redundant with the plugin pass —
+the explicit logic still wins on cursor placement, but if it were
+removed, the plugin would now produce the same shape via lift +
+recalc. Kept for now because it preserves card content without going
+through the paragraph→card_body round-trip and lands the cursor
+deterministically.
+
+## 2026-05-11: Heading commands accept all doc-level inline blocks; tag→undertag re-absorbs
+
+Extends the conversion rules from the 2026-05-10 ribbon-commands entry
+in two ways:
+
+1. **Doc-level reach.** Originally the depth-1 branches of `setHeading`,
+   `setTag`, `setAnalytic`, and `setUndertag` only accepted a plain
+   `paragraph` (or another heading, for IDs). Real docs frequently have
+   bare `cite_paragraph` and `undertag` at doc level — from cite-paste
+   without a destination card, F8 on a doc-level paragraph, or the
+   round-tripped output of a Mod-F8 dissolve. Those used to silently
+   no-op under F4–F7. The set `DOC_LEVEL_CONVERTIBLE` now spans
+   `paragraph`, `cite_paragraph`, `undertag`, `card_body`, plus the
+   three heading types (`pocket`, `hat`, `block`); any of them
+   converts in place. Heading IDs are still preserved when the source
+   was already a heading; otherwise a fresh ID is minted.
+
+2. **Promote-then-demote re-absorb.** Going from undertag → tag with
+   F7 splits the card and produces a new card after it (existing
+   behavior). Demoting that new card's tag back via Mod-F8 used to
+   lift the surviving body children to doc level — losing the card
+   wrapper that the user clearly still wanted. `dissolveContainerToUndertag`
+   now checks the previous doc-level sibling: if it's the same
+   container type (card or analytic_unit), the new undertag plus the
+   current container's non-head children are appended to it and the
+   current container is removed. Both card and analytic_unit accept
+   `undertag` / `card_body` / `cite_paragraph` directly, so no
+   per-child rewriting is needed. When there's no eligible previous
+   sibling the existing lift-to-doc-level fallback still runs.

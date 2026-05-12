@@ -178,4 +178,42 @@ describe('paragraph absorption (ARCHITECTURE.md §14.3)', () => {
     expect(unit.type.name).toBe('analytic_unit');
     expect(unit.lastChild!.type.name).toBe('cite_paragraph');
   });
+
+  it('absorbs a free-floating undertag after a card as an undertag', () => {
+    const undertag = schema.nodes['undertag']!.create(null, schema.text('sub note'));
+    const doc = schema.nodes['doc']!.createChecked(null, [makeCard(), undertag]);
+    const result = absorbedDocChildren(doc);
+    expect(result).not.toBeNull();
+    expect(result!.childCount).toBe(1);
+    const card = result!.child(0);
+    expect(card.lastChild!.type.name).toBe('undertag');
+    expect(card.lastChild!.textContent).toBe('sub note');
+  });
+
+  it('undertag does NOT break the absorption zone — paragraphs after it still absorb', () => {
+    const undertag = schema.nodes['undertag']!.create(null, schema.text('sub'));
+    const doc = schema.nodes['doc']!.createChecked(null, [
+      makeCard(),
+      undertag,
+      para('trailing body'),
+    ]);
+    const result = absorbedDocChildren(doc);
+    expect(result).not.toBeNull();
+    expect(result!.childCount).toBe(1);
+    const card = result!.child(0);
+    const types: string[] = [];
+    card.forEach((c) => types.push(c.type.name));
+    expect(types).toEqual(['tag', 'undertag', 'card_body']);
+    expect(card.child(2).textContent).toBe('trailing body');
+  });
+
+  it('absorbs a free-floating undertag after an analytic_unit', () => {
+    const undertag = schema.nodes['undertag']!.create(null, schema.text('sub note'));
+    const doc = schema.nodes['doc']!.createChecked(null, [makeAnalyticUnit(), undertag]);
+    const result = absorbedDocChildren(doc);
+    expect(result).not.toBeNull();
+    expect(result!.childCount).toBe(1);
+    const unit = result!.child(0);
+    expect(unit.lastChild!.type.name).toBe('undertag');
+  });
 });

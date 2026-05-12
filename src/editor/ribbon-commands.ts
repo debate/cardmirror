@@ -49,6 +49,29 @@ type HeadingTypeName = 'pocket' | 'hat' | 'block';
 
 const DOC_HEADINGS = new Set<string>(['pocket', 'hat', 'block']);
 const CONTAINER_HEAD = new Set<string>(['tag', 'analytic']);
+/** Body-slot textblocks that can appear as non-head children of a
+ *  card or analytic_unit. When the cursor is in one of these and
+ *  the user invokes a heading hotkey (F4-F7 / Mod-F7), the command
+ *  splits the surrounding container at that body slot — the slot
+ *  becomes the new heading; preceding body slots stay in the
+ *  original container; following body slots lift out. */
+const SPLITTABLE_BODY_SLOTS = new Set<string>(['card_body', 'cite_paragraph', 'undertag']);
+
+/** Textblock types whose doc-level instances can be converted to
+ *  a heading / tag / analytic / undertag in place. Body slots
+ *  (cite_paragraph, undertag, card_body) can legally appear at doc
+ *  level (per the schema's BLOCK_CONTENT) — e.g., after a card
+ *  dissolve lifts them out — and the heading hotkeys should treat
+ *  them like a plain paragraph. */
+const DOC_LEVEL_CONVERTIBLE = new Set<string>([
+  'paragraph',
+  'cite_paragraph',
+  'undertag',
+  'card_body',
+  'pocket',
+  'hat',
+  'block',
+]);
 
 /**
  * F4 / F5 / F6 — convert the current paragraph or heading to the target
@@ -68,11 +91,13 @@ export function setHeading(typeName: HeadingTypeName): Command {
       const parent = $from.parent;
       const pname = parent.type.name;
       if (pname === typeName) return true;
-      if (pname !== 'paragraph' && !DOC_HEADINGS.has(pname)) return false;
+      if (!DOC_LEVEL_CONVERTIBLE.has(pname)) return false;
       if (!dispatch) return true;
-      const id = pname === 'paragraph'
-        ? newHeadingId()
-        : ((parent.attrs['id'] as string | null) ?? newHeadingId());
+      // Preserve the existing id when converting between heading
+      // types (pocket↔hat↔block); body slots get a fresh id.
+      const id = DOC_HEADINGS.has(pname)
+        ? ((parent.attrs['id'] as string | null) ?? newHeadingId())
+        : newHeadingId();
       const tr = state.tr.setNodeMarkup(
         $from.before(1),
         schema.nodes[typeName]!,
@@ -86,7 +111,7 @@ export function setHeading(typeName: HeadingTypeName): Command {
       return dissolveContainerToHeading(state, dispatch, typeName);
     }
 
-    if ($from.depth === 2 && $from.parent.type.name === 'card_body') {
+    if ($from.depth === 2 && SPLITTABLE_BODY_SLOTS.has($from.parent.type.name)) {
       return splitContainerAtBody(state, dispatch, { mode: 'heading', headingType: typeName });
     }
 
@@ -108,11 +133,11 @@ export function setTag(): Command {
     if ($from.depth === 1) {
       const parent = $from.parent;
       const pname = parent.type.name;
-      if (pname !== 'paragraph' && !DOC_HEADINGS.has(pname)) return false;
+      if (!DOC_LEVEL_CONVERTIBLE.has(pname)) return false;
       if (!dispatch) return true;
-      const id = pname === 'paragraph'
-        ? newHeadingId()
-        : ((parent.attrs['id'] as string | null) ?? newHeadingId());
+      const id = DOC_HEADINGS.has(pname)
+        ? ((parent.attrs['id'] as string | null) ?? newHeadingId())
+        : newHeadingId();
       const tagNode = schema.nodes['tag']!.create({ id }, parent.content);
       const cardNode = schema.nodes['card']!.create(null, [tagNode]);
       const from = $from.before(1);
@@ -143,7 +168,7 @@ export function setTag(): Command {
       return convertAnalyticUnitToCard(state, dispatch);
     }
 
-    if ($from.depth === 2 && $from.parent.type.name === 'card_body') {
+    if ($from.depth === 2 && SPLITTABLE_BODY_SLOTS.has($from.parent.type.name)) {
       return splitContainerAtBody(state, dispatch, { mode: 'tag' });
     }
 
@@ -167,11 +192,11 @@ export function setAnalytic(): Command {
     if ($from.depth === 1) {
       const parent = $from.parent;
       const pname = parent.type.name;
-      if (pname !== 'paragraph' && !DOC_HEADINGS.has(pname)) return false;
+      if (!DOC_LEVEL_CONVERTIBLE.has(pname)) return false;
       if (!dispatch) return true;
-      const id = pname === 'paragraph'
-        ? newHeadingId()
-        : ((parent.attrs['id'] as string | null) ?? newHeadingId());
+      const id = DOC_HEADINGS.has(pname)
+        ? ((parent.attrs['id'] as string | null) ?? newHeadingId())
+        : newHeadingId();
       const analyticNode = schema.nodes['analytic']!.create({ id }, parent.content);
       const unitNode = schema.nodes['analytic_unit']!.create(null, [analyticNode]);
       const from = $from.before(1);
@@ -202,7 +227,7 @@ export function setAnalytic(): Command {
       return convertCardToAnalyticUnit(state, dispatch);
     }
 
-    if ($from.depth === 2 && $from.parent.type.name === 'card_body') {
+    if ($from.depth === 2 && SPLITTABLE_BODY_SLOTS.has($from.parent.type.name)) {
       return splitContainerAtBody(state, dispatch, { mode: 'analytic' });
     }
 
@@ -232,7 +257,7 @@ export function setUndertag(): Command {
       const parent = $from.parent;
       const pname = parent.type.name;
       if (pname === 'undertag') return true;
-      if (pname !== 'paragraph' && !DOC_HEADINGS.has(pname)) return false;
+      if (!DOC_LEVEL_CONVERTIBLE.has(pname)) return false;
       if (!dispatch) return true;
       const tr = state.tr.setNodeMarkup(
         $from.before(1),
@@ -278,16 +303,44 @@ function dissolveContainerToUndertag(
   if (!dispatch) return true;
 
   const undertagNode = schema.nodes['undertag']!.create(null, head.content);
-  const lifted: PMNode[] = [undertagNode];
+  const nonHeadChildren: PMNode[] = [];
   container.forEach((child, _offset, index) => {
     if (index === 0) return;
-    lifted.push(liftCardChild(child));
+    nonHeadChildren.push(child);
   });
 
-  const from = $from.before(1);
-  const to = $from.after(1);
-  let tr = state.tr.replaceWith(from, to, Fragment.fromArray(lifted));
-  const cursorPos = from + 1 + Math.min($from.parentOffset, head.content.size);
+  const containerStart = $from.before(1);
+  const containerEnd = $from.after(1);
+
+  // If the previous doc-level sibling is the same container type, absorb
+  // [undertag, ...non-head children] into it. Card and analytic_unit both
+  // accept undertag in their content, and the non-head children are already
+  // valid card/analytic_unit content, so no per-child rewriting is needed.
+  const containerIndex = $from.index(0);
+  if (containerIndex > 0) {
+    const prev = state.doc.child(containerIndex - 1);
+    if (prev.type.name === container.type.name) {
+      const prevStart = containerStart - prev.nodeSize;
+      const newPrev = prev.copy(
+        prev.content.append(Fragment.fromArray([undertagNode, ...nonHeadChildren])),
+      );
+      let tr = state.tr.replaceWith(prevStart, containerEnd, newPrev);
+      const cursorPos =
+        prevStart + 1 + prev.content.size + 1 +
+        Math.min($from.parentOffset, head.content.size);
+      tr = tr.setSelection(TextSelection.create(tr.doc, cursorPos));
+      dispatch(tr.scrollIntoView());
+      return true;
+    }
+  }
+
+  const lifted: PMNode[] = [undertagNode, ...nonHeadChildren.map(liftCardChild)];
+  let tr = state.tr.replaceWith(
+    containerStart,
+    containerEnd,
+    Fragment.fromArray(lifted),
+  );
+  const cursorPos = containerStart + 1 + Math.min($from.parentOffset, head.content.size);
   tr = tr.setSelection(TextSelection.create(tr.doc, cursorPos));
   dispatch(tr.scrollIntoView());
   return true;
@@ -341,7 +394,7 @@ function splitContainerAtBody(
 ): boolean {
   const $from = state.selection.$from;
   const cursorBody = $from.parent;
-  if (cursorBody.type.name !== 'card_body') return false;
+  if (!SPLITTABLE_BODY_SLOTS.has(cursorBody.type.name)) return false;
   const container = $from.node(1);
   const containerName = container.type.name;
   if (containerName !== 'card' && containerName !== 'analytic_unit') return false;

@@ -737,19 +737,25 @@ semantic styles.)_
 
 ### 14.3 Decided rules
 
-#### Paragraph and cite_paragraph absorption after card / analytic_unit `[decided]`
+#### Body-slot absorption after card / analytic_unit `[decided]`
 
-A `paragraph` or `cite_paragraph` at doc level whose immediate previous
-sibling is a `card` or `analytic_unit` is auto-absorbed into that
-container. Type mapping:
+A body-slot node at doc level whose immediate previous sibling is a
+`card` or `analytic_unit` is auto-absorbed into that container. The
+absorbable types are exactly the ones that are valid children of both
+container types — `paragraph`, `cite_paragraph`, `undertag`, and the
+already-typed `card_body`. Type mapping:
 
 - `paragraph` → `card_body`.
-- `cite_paragraph` → `cite_paragraph` (preserved as-is — valid in
-  both `card` and `analytic_unit` content expressions).
+- `cite_paragraph` → `cite_paragraph` (preserved as-is).
+- `undertag` → `undertag` (preserved). Undertags do NOT terminate the
+  absorption zone — F7 on plain text followed by undertag annotations
+  should produce a single card with the undertag absorbed, not a card
+  followed by an orphaned undertag.
+- `card_body` → `card_body` (rare at doc level, preserved if seen).
 
-To bound a region of loose paragraphs after a card, insert a heading
-(Pocket / Hat / Block) — anything non-absorbable breaks the
-absorption zone.
+To bound a region of loose body-slot paragraphs after a card, insert
+a heading (Pocket / Hat / Block) or another container — anything not
+in the list above breaks the absorption zone.
 
 Cases preserved (no absorption):
 
@@ -957,11 +963,18 @@ through one overrides surface):
 - **Structural-style hotkeys (F4 / F5 / F6 / F7 / Mod-F7 / Mod-F8).**
   Set the current paragraph or heading to Pocket / Hat / Block / Tag /
   Analytic / Undertag respectively. Conversion rules handle every
-  cursor position: doc-level paragraph ↔ heading is in-place; tag
-  (inside card) and analytic (inside analytic_unit) dissolve their
-  wrapper; card_body splits the card. Multi-paragraph selections
-  apply the target style to every touched paragraph in a single
-  rebuild. Heading IDs preserved across heading↔heading conversions.
+  cursor position: any doc-level textblock that holds inline content
+  (`paragraph`, `cite_paragraph`, `undertag`, `card_body`, `pocket`,
+  `hat`, `block`) ↔ heading is in-place; tag (inside card) and
+  analytic (inside analytic_unit) dissolve their wrapper; any in-card
+  body slot (`card_body`, `cite_paragraph`, `undertag`) splits the
+  card. When dissolving a card's tag to undertag, if the previous
+  doc-level sibling is a card of the same type, the new undertag and
+  any surviving non-head children are absorbed into that previous
+  card (round-trips the F7→Mod-F8 promote-then-demote case cleanly).
+  Multi-paragraph selections apply the target style to every touched
+  paragraph in a single rebuild. Heading IDs preserved across
+  heading↔heading conversions.
 - **Mod-B / Mod-I.** Toggle the `bold` / `italic` direct-formatting
   marks via `toggleMark`. Standard Word semantics.
 - **F8 — apply Cite character style.** Applies `cite_mark` to text in
