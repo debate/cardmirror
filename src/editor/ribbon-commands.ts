@@ -1806,7 +1806,7 @@ export const RIBBON_COMMAND_LABELS: Record<RibbonCommandId, string> = {
   uncondense: 'Uncondense',
   toggleCase: 'Toggle case',
   copyPreviousCite: 'Copy previous cite',
-  pasteAsText: 'Paste Text (plain)',
+  pasteAsText: 'Toggle plain-paste mode',
   clearToNormal: 'Clear to Normal',
 };
 

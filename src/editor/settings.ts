@@ -297,7 +297,7 @@ const DEFAULTS: Settings = {
   displayTypography: { ...DEFAULT_DISPLAY_TYPOGRAPHY },
   displayColors: { ...DEFAULT_DISPLAY_COLORS },
   bodyFont: 'Calibri',
-  lineHeight: 1.2,
+  lineHeight: 1.3,
   lineHeightCite: 1.2,
   lineHeightTag: 1.2,
   lineHeightAnalytic: 1.2,

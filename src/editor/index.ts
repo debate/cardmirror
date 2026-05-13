@@ -17,6 +17,7 @@ import { schema, newHeadingId } from '../schema/index.js';
 import { fromDocx, toDocx } from '../index.js';
 import { NavigationPanel } from './nav-panel.js';
 import { openSettings } from './settings-ui.js';
+import { openReference } from './reference-ui.js';
 import {
   settings,
   DISPLAY_SIZE_KEYS,
@@ -65,6 +66,7 @@ const dropzone = document.getElementById('dropzone') as HTMLInputElement;
 const openBtn = document.getElementById('open-btn') as HTMLButtonElement;
 const exportBtn = document.getElementById('export-btn') as HTMLButtonElement;
 const settingsBtn = document.getElementById('settings-btn') as HTMLButtonElement;
+const referenceBtn = document.getElementById('reference-btn') as HTMLButtonElement | null;
 const readModeBtn = document.getElementById('read-mode-btn') as HTMLButtonElement;
 const wordCountBtn = document.getElementById('word-count-btn') as HTMLButtonElement;
 const wordCountText = document.getElementById('word-count-text')!;
@@ -106,6 +108,7 @@ const ribbonContext: RibbonContext = {
 
 openBtn.addEventListener('click', () => dropzone.click());
 settingsBtn.addEventListener('click', () => openSettings());
+if (referenceBtn) referenceBtn.addEventListener('click', () => openReference());
 readModeBtn.addEventListener('click', () => settings.set('readMode', !settings.get('readMode')));
 wordCountBtn.addEventListener('click', () => { if (view) openWordCount(view); });
 

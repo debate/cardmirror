@@ -138,10 +138,17 @@ body {
   background: var(--pmd-c-hover);
 }
 
-/* Settings gear sits alone in the ribbon-right section. Sized to
-   match the open/save and doc-ops buttons so chrome widths stay
-   consistent. */
-#ribbon #settings-btn {
+/* Settings gear + reference (cheat-sheet) book sit stacked in the
+   ribbon-right section. Each sized to match the open/save and
+   doc-ops buttons so chrome widths stay consistent across the
+   ribbon. */
+.ribbon-right-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+#ribbon #settings-btn,
+#ribbon #reference-btn {
   width: 1.5rem;
   height: 1.45rem;
   font-size: 0.85rem;
@@ -740,7 +747,7 @@ code {
      declaration — everything else has its own explicit override on the
      paragraph class. Defining them as variables now sets up the
      per-type "line spacing" knobs we'll surface in settings later. */
-  --pmd-line-height: 1.2;          /* body (card_body / generic paragraph) */
+  --pmd-line-height: 1.3;          /* body (card_body / generic paragraph) */
   --pmd-line-height-cite: 1.2;     /* cite paragraph */
   --pmd-line-height-tag: 1.2;      /* tag head */
   --pmd-line-height-analytic: 1.2; /* analytic head */
@@ -1933,5 +1940,137 @@ body.pmd-nav-resize-active {
 .pmd-wc-numeric {
   font-variant-numeric: tabular-nums;
   text-align: right !important;
+}
+
+/* Heading-mode setting: radio rows. Long option labels wrap on
+   narrow dialogs, unlike <select>'s OS-rendered options. */
+.pmd-heading-mode-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-top: 0.4rem;
+}
+
+.pmd-heading-mode-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  line-height: 1.3;
+  cursor: pointer;
+}
+
+.pmd-heading-mode-row input[type="radio"] {
+  margin-top: 0.15rem;
+  flex: 0 0 auto;
+}
+
+.pmd-heading-mode-row-label {
+  flex: 1 1 auto;
+}
+
+/* ---------------------------------------------- Reference (cheat-sheet) modal */
+
+.pmd-reference-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--pmd-c-overlay);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.pmd-reference-dialog {
+  background: var(--pmd-c-bg);
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+  width: 90%;
+  max-width: 520px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  font-family: 'Calibri', 'Helvetica Neue', sans-serif;
+}
+
+.pmd-reference-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--pmd-c-divider);
+  flex: 0 0 auto;
+}
+
+.pmd-reference-header h2 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.pmd-reference-close {
+  background: transparent;
+  border: none;
+  font-size: 1.6rem;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--pmd-c-text-muted);
+  padding: 0 0.25rem;
+}
+
+.pmd-reference-close:hover {
+  color: var(--pmd-c-text);
+}
+
+.pmd-reference-body {
+  overflow-y: auto;
+  padding: 0.75rem 1.25rem 1.25rem;
+}
+
+.pmd-reference-group {
+  margin: 0 0 1rem 0;
+}
+
+.pmd-reference-group:last-child {
+  margin-bottom: 0;
+}
+
+.pmd-reference-group-title {
+  margin: 0 0 0.4rem 0;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--pmd-c-text-muted);
+}
+
+.pmd-reference-group-rows {
+  display: grid;
+  /* Fit the widest key chip (e.g., Ctrl+Alt+Shift+F3 on non-mac
+     platforms is ~11rem) with a gutter before the label. */
+  grid-template-columns: 12rem 1fr;
+  gap: 0.2rem 0.75rem;
+  align-items: baseline;
+}
+
+.pmd-reference-row {
+  display: contents;
+}
+
+.pmd-reference-key {
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  font-size: 0.78rem;
+  background: var(--pmd-c-surface, rgba(0, 0, 0, 0.04));
+  border: 1px solid var(--pmd-c-border-soft);
+  border-radius: 3px;
+  padding: 0.1rem 0.4rem;
+  color: var(--pmd-c-text);
+  justify-self: start;
+  white-space: nowrap;
+}
+
+.pmd-reference-label {
+  font-size: 0.88rem;
+  color: var(--pmd-c-text);
 }
 

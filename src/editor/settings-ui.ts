@@ -194,7 +194,9 @@ class SettingsModal {
     } else if (meta.kind === 'formattingPanelMode') {
       label.appendChild(buildFormattingPanelModeEditor());
     } else if (meta.kind === 'headingMode') {
-      label.appendChild(buildHeadingModeEditor());
+      row.appendChild(text);
+      row.appendChild(buildHeadingModeEditor());
+      return row;
     }
 
     row.appendChild(label);
@@ -720,24 +722,35 @@ function buildFormattingPanelModeEditor(): HTMLElement {
 }
 
 function buildHeadingModeEditor(): HTMLElement {
-  const select = document.createElement('select');
-  select.className = 'pmd-heading-mode-select';
+  const wrap = document.createElement('div');
+  wrap.className = 'pmd-heading-mode-editor';
   const options: { value: HeadingMode; label: string }[] = [
-    { value: 'strict', label: 'Strict (no-op on structural spans)' },
-    { value: 'respect', label: 'Respect headings (default)' },
-    { value: 'demolish', label: "Don't respect headings (demolish)" },
+    { value: 'strict', label: "Strict — don't condense if headings are in the selection" },
+    { value: 'respect', label: 'Respect — keep headings separate, merge the rest (default)' },
+    { value: 'demolish', label: 'Demolish — merge everything, headings included' },
   ];
+  // Radio buttons instead of a <select> so the long option labels
+  // wrap to multiple lines if the dialog is narrow.
+  const groupName = `pmd-heading-mode-${Math.random().toString(36).slice(2, 8)}`;
   for (const o of options) {
-    const opt = document.createElement('option');
-    opt.value = o.value;
-    opt.textContent = o.label;
-    if (o.value === settings.get('headingMode')) opt.selected = true;
-    select.appendChild(opt);
+    const row = document.createElement('label');
+    row.className = 'pmd-heading-mode-row';
+    const input = document.createElement('input');
+    input.type = 'radio';
+    input.name = groupName;
+    input.value = o.value;
+    input.checked = o.value === settings.get('headingMode');
+    input.addEventListener('change', () => {
+      if (input.checked) settings.set('headingMode', o.value);
+    });
+    row.appendChild(input);
+    const text = document.createElement('span');
+    text.className = 'pmd-heading-mode-row-label';
+    text.textContent = o.label;
+    row.appendChild(text);
+    wrap.appendChild(row);
   }
-  select.addEventListener('change', () => {
-    settings.set('headingMode', select.value as HeadingMode);
-  });
-  return select;
+  return wrap;
 }
 
 let singleton: SettingsModal | null = null;

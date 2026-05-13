@@ -101,7 +101,13 @@
       </div>
       <div class="ribbon-section ribbon-center"></div>
       <div class="ribbon-section ribbon-right">
-        <button id="settings-btn" type="button" title="Settings" aria-label="Settings">⚙</button>
+        <!-- Settings on top, reference (keyboard-shortcut cheat sheet)
+             below — stacked like the doc-ops / view-ops panels on
+             the left so the chrome reads as one consistent grid. -->
+        <div class="ribbon-right-stack">
+          <button id="settings-btn" type="button" title="Settings" aria-label="Settings">⚙</button>
+          <button id="reference-btn" type="button" title="Keyboard shortcuts" aria-label="Keyboard shortcuts">📖</button>
+        </div>
       </div>
     </header>
     <div id="nav-panel"></div>
