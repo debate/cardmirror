@@ -2520,7 +2520,12 @@ describe('F8/F9/F10 apply strips direct formatting', () => {
     expect(hasMarkOnText(next!.doc, 'small bold', 'font_size')).toBe(false);
   });
 
-  it('applyEmphasis (F8): strips highlight + bold across the selection', () => {
+  it('applyEmphasis (F10): strips bold but PRESERVES highlight on apply', () => {
+    // Per 2026-05-13: applying a named character style (cite /
+    // emphasis / underline) keeps the highlight color — the user
+    // wants to know "this is the argument-text" regardless of the
+    // typographic re-skin. Toggle-off behaviors still strip
+    // highlight when the user opts in.
     const bold = schema.marks['bold']!.create();
     const hl = schema.marks['highlight']!.create({ color: 'yellow' });
     const text = schema.text('important', [bold, hl]);
@@ -2543,7 +2548,8 @@ describe('F8/F9/F10 apply strips direct formatting', () => {
     expect(next).not.toBeNull();
     expect(hasMarkOnText(next!.doc, 'important', 'emphasis_mark')).toBe(true);
     expect(hasMarkOnText(next!.doc, 'important', 'bold')).toBe(false);
-    expect(hasMarkOnText(next!.doc, 'important', 'highlight')).toBe(false);
+    // Highlight survives the apply.
+    expect(hasMarkOnText(next!.doc, 'important', 'highlight')).toBe(true);
   });
 
   it('applyUnderline (F9): apply direction strips direct formatting', () => {

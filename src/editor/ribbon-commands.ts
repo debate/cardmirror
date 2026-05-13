@@ -107,8 +107,39 @@ const DIRECT_FORMATTING_MARK_NAMES = [
   'shading',
 ] as const;
 
+/** Apply-direction strip: the set used when adding a named-style
+ *  mark (F8 Cite, F9 Underline, F10 Emphasis). `highlight` is
+ *  *intentionally excluded* — users keep their highlights when
+ *  applying a character style on top, since the highlight color
+ *  marks "this is the argument-text" and survives a typographic
+ *  re-skin. Shading still strips on apply (its semantic is closer
+ *  to a font color than a content marker). The toggle-off direction
+ *  of F9 still uses the full `DIRECT_FORMATTING_MARK_NAMES` set via
+ *  `stripDirectFormatting` below — pressing F9 twice still clears
+ *  highlight, matching Verbatim's "F9 twice → fully cleared". */
+const APPLY_DIRECT_FORMATTING_STRIP_NAMES = [
+  'font_size',
+  'font_color',
+  'font_family',
+  'bold',
+  'italic',
+  'strikethrough',
+  'shading',
+] as const;
+
 function stripDirectFormatting(tr: Transaction, from: number, to: number): void {
   for (const name of DIRECT_FORMATTING_MARK_NAMES) {
+    const mt = schema.marks[name];
+    if (mt) tr.removeMark(from, to, mt);
+  }
+}
+
+function stripDirectFormattingOnApply(
+  tr: Transaction,
+  from: number,
+  to: number,
+): void {
+  for (const name of APPLY_DIRECT_FORMATTING_STRIP_NAMES) {
     const mt = schema.marks[name];
     if (mt) tr.removeMark(from, to, mt);
   }
@@ -733,9 +764,11 @@ function applyBodyMark(
       tr.addMark(r.from, r.to, mark);
       // F8 / F10 are one-directional applies — the named style's
       // typography is the run's new identity, so direct overrides
-      // (font_size, bold, highlight, etc.) get cleared. The user can
-      // re-apply direct formatting manually after if they want.
-      stripDirectFormatting(tr, r.from, r.to);
+      // (font_size, bold, etc.) get cleared. Highlight is preserved:
+      // it marks "this is the argument-text" and the user typically
+      // wants it to survive a typographic re-skin. Shading still
+      // strips (its semantic is closer to font color).
+      stripDirectFormattingOnApply(tr, r.from, r.to);
     }
     dispatch(tr);
     return true;
@@ -850,9 +883,13 @@ export function applyUnderline(
         const otherMark = seg.structural ? namedMark : directMark;
         tr.removeMark(seg.from, seg.to, otherMark);
         tr.addMark(seg.from, seg.to, markType.create());
-        // Apply direction always strips direct formatting — the named
-        // style's typography replaces direct overrides.
-        stripDirectFormatting(tr, seg.from, seg.to);
+        // Apply direction strips direct formatting (typography
+        // replaces direct overrides) BUT preserves highlight — see
+        // stripDirectFormattingOnApply's comment. F9's toggle-off
+        // branch above still uses the full stripDirectFormatting set
+        // when clearFormattingOnToggleOff is on, so pressing F9
+        // twice still clears highlight.
+        stripDirectFormattingOnApply(tr, seg.from, seg.to);
       }
     }
 
