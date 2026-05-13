@@ -817,6 +817,10 @@ function scheduleHeavyUpdate(): void {
   }, HEAVY_UPDATE_DELAY_MS);
 }
 
+/** Remembers the file the user imported, so Save As can default to
+ *  its name. Set on import, untouched by export. */
+let currentDocFilename: string | null = null;
+
 dropzone.addEventListener('change', async () => {
   const file = dropzone.files?.[0];
   if (!file) return;
@@ -824,12 +828,25 @@ dropzone.addEventListener('change', async () => {
   try {
     const doc = await fromDocx(new Uint8Array(buf));
     mountView(doc);
+    currentDocFilename = file.name;
     console.log(`Loaded ${file.name}: ${countSummary(doc)}`);
   } catch (err) {
     console.error('Failed to load docx:', err);
     alert(`Failed to load: ${err instanceof Error ? err.message : err}`);
   }
 });
+
+/** Default Save-As filename: the imported file's name, or untitled. */
+function defaultSaveFilename(): string {
+  if (currentDocFilename) {
+    // If the imported name already ends in .docx, keep it. Otherwise
+    // append it so the browser doesn't ambiguously type the file.
+    return currentDocFilename.toLowerCase().endsWith('.docx')
+      ? currentDocFilename
+      : `${currentDocFilename}.docx`;
+  }
+  return 'untitled.docx';
+}
 
 exportBtn.addEventListener('click', async () => {
   try {
@@ -840,15 +857,69 @@ exportBtn.addEventListener('click', async () => {
     const blob = new Blob([ab], {
       type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     });
+    const suggestedName = defaultSaveFilename();
+
+    // Preferred path: File System Access API (`showSaveFilePicker`).
+    // Gives the user a native save dialog with the suggested name
+    // pre-filled, and writes straight to disk. Chromium-based
+    // browsers (Chrome / Edge / Opera / Zen). Falls back to a
+    // synthesized download link + prompt for everything else.
+    const showSaveFilePicker = (window as unknown as {
+      showSaveFilePicker?: (opts: {
+        suggestedName?: string;
+        types?: { description: string; accept: Record<string, string[]> }[];
+      }) => Promise<{
+        createWritable(): Promise<{
+          write(data: Blob | ArrayBuffer | Uint8Array): Promise<void>;
+          close(): Promise<void>;
+        }>;
+        name?: string;
+      }>;
+    }).showSaveFilePicker;
+
+    if (typeof showSaveFilePicker === 'function') {
+      let handle;
+      try {
+        handle = await showSaveFilePicker({
+          suggestedName,
+          types: [
+            {
+              description: 'Word document',
+              accept: {
+                'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+              },
+            },
+          ],
+        });
+      } catch (e) {
+        // AbortError = user cancelled the dialog. Quietly bail.
+        if (e instanceof DOMException && e.name === 'AbortError') return;
+        throw e;
+      }
+      const writable = await handle.createWritable();
+      await writable.write(blob);
+      await writable.close();
+      // Remember the user's chosen name as the new default — so a
+      // second Save As prefills the renamed file.
+      if (handle.name) currentDocFilename = handle.name;
+      return;
+    }
+
+    // Fallback: prompt for a name, then download. No real "save
+    // dialog" in the OS sense, but at least the user can rename.
+    const chosen = window.prompt('Save as:', suggestedName);
+    if (!chosen) return;
+    const finalName = chosen.toLowerCase().endsWith('.docx') ? chosen : `${chosen}.docx`;
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'exported.docx';
+    a.download = finalName;
     a.click();
     URL.revokeObjectURL(url);
+    currentDocFilename = finalName;
   } catch (err) {
-    console.error('Export failed:', err);
-    alert(`Export failed: ${err instanceof Error ? err.message : err}`);
+    console.error('Save failed:', err);
+    alert(`Save failed: ${err instanceof Error ? err.message : err}`);
   }
 });
 
