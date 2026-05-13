@@ -123,24 +123,29 @@ function computeDecorationsInRange(doc: PMNode, from: number, to: number): Decor
       }),
     );
 
-    // Lines that don't carry a `font_size` mark on their content
-    // (bare body text, named-style marks like .pmd-cite or .pmd-underline)
-    // would otherwise render at their content's natural ~font-size
-    // extent — which ignores the body line-spacing knob and feels
-    // jarring next to non-shrunken body paragraphs. Give each such
-    // text node an explicit unitless line-height equal to the body
-    // knob, so lines made entirely of non-marked content scale with
-    // body. font_size-marked runs stay on the paragraph's shrunken
-    // strut (no inline decoration), so 4pt citation lines stay
-    // genuinely tight.
+    // Every text run in a shrunken paragraph gets an inline line-height
+    // declaration that:
+    //   1. Tracks the body knob (`var(--pmd-line-height)`), unitless,
+    //      so when applied to an inline element it resolves to
+    //      multiplier × that-element's-own-font-size.
+    //   2. Is floored at 1.2 — enough to clear Calibri's natural
+    //      ascender + descender extent at any font-size, preventing
+    //      adjacent small-font lines from drawing over each other.
+    //
+    // Why this is needed: the paragraph's block-level `line-height:
+    // <minPt × ramp>pt` is an absolute length that's inherited as a
+    // length by descendants. That value can fall below an inline
+    // run's natural rendered extent (e.g., 8.64pt strut vs Calibri
+    // 8pt's ~9.5pt natural extent), causing visible overlap. The
+    // `max(..., 1.2)` floor here is the safe minimum.
     let offset = 1;
     node.forEach((child) => {
-      if (child.isText && !hasFontSizeMark(child)) {
+      if (child.isText) {
         const start = pos + offset;
         const end = start + child.nodeSize;
         decos.push(
           Decoration.inline(start, end, {
-            style: 'line-height: var(--pmd-line-height)',
+            style: 'line-height: max(var(--pmd-line-height), 1.2)',
           }),
         );
       }
@@ -160,9 +165,6 @@ export function computeMinHalfPoints(para: PMNode): number {
   return computeFontSizeStats(para).min;
 }
 
-function hasFontSizeMark(text: PMNode): boolean {
-  return text.marks.some((m) => m.type.name === 'font_size');
-}
 
 /**
  * CSS `line-height` value for a shrunken paragraph as a function of
