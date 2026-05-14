@@ -3555,7 +3555,11 @@ body.pmd-multi-doc #app {
   overflow: hidden;
 }
 body.pmd-multi-doc #status-bar {
-  left: var(--nav-width);
+  /* The shared status bar spans the full window width in multi-doc
+   * mode, including the strip below the nav rail. The nav rail
+   * itself ends at `--status-bar-height`, so the rail sits flush
+   * with the status bar above. */
+  left: 0;
 }
 /* Each pane shows its own word count in its footer, so the
  * shared status-bar word counter is redundant in multi-doc mode.
@@ -3578,17 +3582,6 @@ body.pmd-multi-doc #word-count-display {
   flex-direction: column;
   z-index: 50;
   overflow: hidden;
-}
-/* Match the per-pane footer's height/background/border so the line
- * that separates editor body from pane footer extends seamlessly
- * across the nav rail. As a flex child with `flex: 0 0 22px`, this
- * sits at the bottom of the column and shrinks the sections above
- * by 22px each. Content-less — purely visual. */
-.pmd-multi-nav::after {
-  content: '';
-  flex: 0 0 22px;
-  background: var(--pmd-c-surface-2, var(--pmd-c-surface));
-  border-top: 1px solid var(--pmd-c-border-soft);
 }
 .pmd-multi-nav-section {
   flex: 1 1 0;
