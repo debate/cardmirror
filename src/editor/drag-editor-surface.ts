@@ -74,20 +74,22 @@ export class EditorDragSurface implements DragSurface {
 
     this.unregisterSurface = dragController.registerSurface(this);
     this.unsubscribeDrag = dragController.subscribe((event) => {
-      if (event === 'end') {
+      if (event === 'begin') {
+        // Eager render at drag start ensures cross-pane drop
+        // targets (in multi-doc mode) have indicators ready the
+        // moment the pointer enters them. Earlier attempt at
+        // lazy-render-on-first-hitTest left target panes empty in
+        // some cross-pane scenarios. With the two-pass layout-
+        // batched renderIndicators below the cost is moderate.
+        const session = dragController.getSession();
+        if (session) this.renderIndicators(session.items[0]!.level);
+      } else if (event === 'end') {
         this.removeIndicators();
         this.dragOriginatedHere = false;
         this.detachDragListeners();
         // Re-evaluate cursor based on current modifier state.
         this.applyPickupClass();
       }
-      // 'begin' deliberately does NOT pre-render indicators —
-      // rendering walks the doc + calls coordsAtPos per heading,
-      // each of which forces a browser layout. For docs with
-      // hundreds of headings (and multi-doc with several such
-      // docs) that's a multi-second stall on pointerdown.
-      // Indicators are instead rendered lazily inside `hitTest`
-      // the first time the pointer enters this surface.
     });
 
     document.addEventListener('keydown', this.boundOnKey);
@@ -151,13 +153,6 @@ export class EditorDragSurface implements DragSurface {
     }
 
     const session = dragController.getSession();
-    // Lazy-render: build indicators the first time the pointer
-    // crosses into this surface during an active drag. See the
-    // comment in `attach()` — eager begin-time rendering was the
-    // source of multi-second drag-pickup stalls.
-    if (session && this.indicators.length === 0) {
-      this.renderIndicators(session.items[0]!.level);
-    }
     type Cand = { el: HTMLElement; insertPos: number; centerY: number; dy: number };
     const valid: Cand[] = [];
     for (const r of this.indicators) {

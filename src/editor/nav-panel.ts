@@ -230,15 +230,12 @@ export class NavigationPanel {
     if (this.unsubscribeDrag) this.unsubscribeDrag();
     this.unregisterSurface = dragController.registerSurface(this.dragSurfaceImpl);
     this.unsubscribeDrag = dragController.subscribe((event) => {
-      if (event === 'end') {
+      if (event === 'begin') {
+        const session = dragController.getSession();
+        if (session) this.renderDropIndicators(session.items[0]!.level);
+      } else if (event === 'end') {
         this.removeDropIndicators();
       } else if (event === 'move') {
-        // Drop indicators are now rendered lazily — the first
-        // `hitTest` call with the pointer over this nav builds
-        // them. Pre-rendering at 'begin' on every nav surface
-        // (one per pane in multi-doc) walked each doc + ran
-        // coordsAtPos per heading, which stalled drag pickup for
-        // multiple seconds on large workspaces.
 
         // Run auto-expand / auto-restore / auto-scroll on every
         // controller move event, so editor-sourced drags get the same
@@ -280,15 +277,6 @@ export class NavigationPanel {
     // be very narrow — still registers.)
     const rootRect = this.root.getBoundingClientRect();
     if (clientX < rootRect.left - 8 || clientX > rootRect.right + 8) return null;
-
-    // Lazy-render: build indicators the first time the pointer
-    // enters this nav during a drag. Skipping the eager pre-
-    // render at 'begin' is what keeps pickup snappy on large /
-    // multi-doc workspaces; indicators only get computed in the
-    // surfaces the user actually drags into.
-    if (this.dropIndicators.length === 0) {
-      this.renderDropIndicators(session.items[0]!.level);
-    }
 
     type Cand = { el: HTMLElement; insertPos: number; centerY: number; dy: number };
     const valid: Cand[] = [];
