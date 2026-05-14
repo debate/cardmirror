@@ -70,7 +70,7 @@ const GROUPS: ShortcutGroup[] = [
   },
   {
     title: 'Select',
-    commands: ['selectSimilar', 'selectSimilarScoped'],
+    commands: ['selectSimilar'],
   },
   {
     title: 'Cleanup',

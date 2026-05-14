@@ -29,6 +29,11 @@ export interface ToastOptions {
 }
 
 export function showToast(message: string, opts: ToastOptions = {}): void {
+  // Guard for non-DOM environments (vitest's Node default). Callers
+  // can invoke showToast from any Command without breaking unit tests.
+  if (typeof window === 'undefined' || typeof document === 'undefined') {
+    return;
+  }
   ensureTracking();
   const durationMs = opts.durationMs ?? 1000;
   const fadeMs = opts.fadeMs ?? 200;

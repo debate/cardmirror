@@ -8,12 +8,17 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import { EditorState, TextSelection } from 'prosemirror-state';
 import type { Node as PMNode } from 'prosemirror-model';
 import { schema, newHeadingId } from '../../src/schema/index.js';
 import {
   computeSimilarMatches,
+  buildSimilarSelectionPlugin,
+  selectSimilar,
+  getSimilarSelectionState,
   type EffectivePtResolver,
 } from '../../src/editor/similar-selection-plugin.js';
+import { applyHighlight } from '../../src/editor/ribbon-commands.js';
 
 /**
  * Test-side effective-pt resolver. Mirrors the production
@@ -280,3 +285,118 @@ function textAtRanges(
 ): string[] {
   return ranges.map((r) => doc.textBetween(r.from, r.to));
 }
+
+// ---- Unified Select Similar command + shadow-aware format commands ----
+
+describe('selectSimilar (unified command)', () => {
+  it('with no selection, lights up matches doc-wide and renders decorations', () => {
+    const doc = docOf(
+      card(tag('TagA'), cardBody('aa')),
+      card(tag('TagB'), cardBody('bb')),
+    );
+    const state = EditorState.create({
+      doc,
+      schema,
+      plugins: [buildSimilarSelectionPlugin(effectivePt)],
+    });
+    const tagAStart = findTextStart(state.doc, 'TagA');
+    const positioned = state.apply(
+      state.tr.setSelection(TextSelection.create(state.doc, tagAStart)),
+    );
+    let next: EditorState | null = null;
+    selectSimilar(effectivePt)(positioned, (tr) => { next = positioned.apply(tr); });
+    const ps = getSimilarSelectionState(next!);
+    expect(ps.mode).toBe('idle');
+    expect(ps.matches.length).toBeGreaterThan(0);
+    expect(ps.scope).toBeNull();
+  });
+
+  it('with a non-empty selection, sets the scope and collapses the PM selection', () => {
+    const doc = docOf(
+      card(tag('TagA'), cardBody('aa')),
+      card(tag('TagB'), cardBody('bb')),
+    );
+    const state = EditorState.create({
+      doc,
+      schema,
+      plugins: [buildSimilarSelectionPlugin(effectivePt)],
+    });
+    const tagAStart = findTextStart(state.doc, 'TagA');
+    const tagAEnd = tagAStart + 'TagA'.length;
+    const withSel = state.apply(
+      state.tr.setSelection(TextSelection.create(state.doc, tagAStart, tagAEnd)),
+    );
+    let next: EditorState | null = null;
+    selectSimilar(effectivePt)(withSel, (tr) => { next = withSel.apply(tr); });
+    const ps = getSimilarSelectionState(next!);
+    expect(ps.mode).toBe('awaiting-cursor');
+    expect(ps.scope).not.toBeNull();
+    // PM selection should be collapsed (so the orange tint isn't hidden).
+    expect(next!.selection.empty).toBe(true);
+  });
+
+  it('re-invocation while in awaiting-cursor mode toggles off', () => {
+    const doc = docOf(card(tag('Tag'), cardBody('body')));
+    const state = EditorState.create({
+      doc,
+      schema,
+      plugins: [buildSimilarSelectionPlugin(effectivePt)],
+    });
+    // Set scope via the command with a non-empty selection.
+    const tagStart = findTextStart(state.doc, 'Tag');
+    const withSel = state.apply(
+      state.tr.setSelection(TextSelection.create(state.doc, tagStart, tagStart + 3)),
+    );
+    let s = withSel;
+    selectSimilar(effectivePt)(s, (tr) => { s = s.apply(tr); });
+    expect(getSimilarSelectionState(s).mode).toBe('awaiting-cursor');
+    // Re-invoke: should clear back to idle.
+    selectSimilar(effectivePt)(s, (tr) => { s = s.apply(tr); });
+    const ps = getSimilarSelectionState(s);
+    expect(ps.mode).toBe('idle');
+    expect(ps.matches).toHaveLength(0);
+    expect(ps.scope).toBeNull();
+  });
+});
+
+describe('format commands consume the shadow selection', () => {
+  it('applyHighlight operates across shadow matches when PM selection is collapsed', () => {
+    // Two card_body runs that both qualify for select-similar (plain
+    // body text, same parent type). Light up matches, then hit
+    // applyHighlight — both runs get highlighted in one tr.
+    const doc = docOf(
+      card(tag('T1'), cardBody('alpha')),
+      card(tag('T2'), cardBody('beta')),
+    );
+    let s = EditorState.create({
+      doc,
+      schema,
+      plugins: [buildSimilarSelectionPlugin(effectivePt)],
+    });
+    const alphaStart = findTextStart(s.doc, 'alpha');
+    s = s.apply(s.tr.setSelection(TextSelection.create(s.doc, alphaStart)));
+    // Trigger select similar.
+    selectSimilar(effectivePt)(s, (tr) => { s = s.apply(tr); });
+    const before = getSimilarSelectionState(s);
+    expect(before.matches.length).toBe(2);
+    // Apply highlight — should bridge to both matches in one tr.
+    applyHighlight(() => 'yellow')(s, (tr) => { s = s.apply(tr); });
+    // Both runs should now carry highlight=yellow.
+    const hasYellow = (text: string): boolean => {
+      let found = false;
+      s.doc.descendants((node) => {
+        if (found) return false;
+        if (!node.isText || node.text !== text) return true;
+        found = node.marks.some(
+          (m) => m.type.name === 'highlight' && m.attrs['color'] === 'yellow',
+        );
+        return true;
+      });
+      return found;
+    };
+    expect(hasYellow('alpha')).toBe(true);
+    expect(hasYellow('beta')).toBe(true);
+    // Shadow selection should survive the format apply.
+    expect(getSimilarSelectionState(s).matches.length).toBe(2);
+  });
+});

@@ -227,10 +227,6 @@ if (docMenuBtn) {
             label: 'Select Similar Formatting',
             run: () => runRibbon('selectSimilar'),
           },
-          {
-            label: 'Select Similar Formatting (Scoped)',
-            run: () => runRibbon('selectSimilarScoped'),
-          },
         ],
       },
     ]);

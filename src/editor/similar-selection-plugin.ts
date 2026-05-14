@@ -29,9 +29,16 @@
  * is pure decoration. See DECISIONS for the deferred work.
  */
 
-import { Plugin, PluginKey, type EditorState, type Command } from 'prosemirror-state';
+import {
+  Plugin,
+  PluginKey,
+  TextSelection,
+  type EditorState,
+  type Command,
+} from 'prosemirror-state';
 import { Decoration, DecorationSet } from 'prosemirror-view';
 import type { Node as PMNode, Mark } from 'prosemirror-model';
+import { showToast } from './toast.js';
 
 export interface RangePair {
   from: number;
@@ -45,6 +52,14 @@ export interface SimilarSelectionState {
 }
 
 const META_KEY = 'pmd-similar-selection';
+
+/** Transaction meta flag a format command can set when it's applying
+ *  marks ACROSS the shadow selection. The plugin's apply respects
+ *  this flag: a doc-changing transaction with the flag preserves the
+ *  shadow state (so the user can chain bold → italic → font color
+ *  without the matches dissipating); without it, doc edits dismiss
+ *  the shadow as usual. */
+export const META_OPERATING_ON_SHADOW = 'pmd-shadow-op';
 
 type Meta =
   | { type: 'setMatches'; matches: RangePair[] }
@@ -83,8 +98,12 @@ export function buildSimilarSelectionPlugin(
           return { matches: meta.matches, scope: null, mode: 'idle' };
         }
 
-        // Any doc edit dissipates the shadow selection.
-        if (tr.docChanged) {
+        // Any doc edit dissipates the shadow selection — UNLESS the
+        // transaction is a format command operating ON the shadow,
+        // marked with `META_OPERATING_ON_SHADOW`. That lets the user
+        // chain bold → italic → font color etc. without losing the
+        // match highlighting between each.
+        if (tr.docChanged && !tr.getMeta(META_OPERATING_ON_SHADOW)) {
           if (prev.matches.length > 0 || prev.scope) {
             return { matches: [], scope: null, mode: 'idle' };
           }
@@ -274,54 +293,64 @@ export function computeSimilarMatches(
   return out;
 }
 
-/** Unscoped Select Similar (Doc menu). No-op on a non-empty
- *  selection per the user spec; otherwise lights up every run in
- *  the doc whose fingerprint matches the cursor's. */
+/**
+ * Unified Select Similar Formatting (Doc menu). Branches on the PM
+ * selection state:
+ *
+ *   - **No selection (collapsed cursor):** unscoped flow. Compute
+ *     matches across the whole doc using the cursor's fingerprint
+ *     and light them up.
+ *   - **Non-empty selection:** scoped flow. The selection becomes
+ *     the scope; the PM selection is then collapsed (so the scope
+ *     tint isn't hidden under the browser's selection highlight),
+ *     the plugin enters `awaiting-cursor` mode, and a toast nudges
+ *     the user to click inside the scope to pick a sample. The
+ *     next collapsed-cursor transaction inside the scope triggers
+ *     matching (handled in the plugin's apply); a cursor outside
+ *     cancels.
+ *   - **Re-invocation while in `awaiting-cursor` mode:** toggle
+ *     off — clear the scope, return to idle. Matches the Escape
+ *     semantic so the binding doubles as a cancel.
+ */
 export function selectSimilar(effectivePt: EffectivePtResolver): Command {
   return (state, dispatch) => {
-    if (!state.selection.empty) return false;
-    const matches = computeSimilarMatches(
-      state.doc,
-      state.selection.from,
-      null,
-      effectivePt,
-    );
-    if (matches.length === 0) return false;
-    if (!dispatch) return true;
-    dispatch(
-      state.tr.setMeta(META_KEY, { type: 'setMatches', matches } as Meta),
-    );
-    return true;
-  };
-}
+    const ps = similarSelectionKey.getState(state);
 
-/** Scoped Select Similar (Doc menu).
- *
- *  Two-stage flow:
- *
- *    1. First invocation requires a non-empty selection. That range
- *       becomes the scope; the plugin enters `awaiting-cursor` mode
- *       and renders a faint background tint around the scope.
- *    2. The next collapsed-cursor transaction handled by the plugin
- *       triggers matching: if the cursor lands inside the scope, all
- *       similar runs within the scope are highlighted; if outside,
- *       the scope is cancelled.
- *
- *  If invoked with an empty selection, the command no-ops (and the
- *  caller — menu / button — can surface "make a selection first"
- *  inline if it wants). The matching itself happens inside the plugin
- *  apply, which is wired up with the resolver via `wireSimilarSelection`. */
-export function selectSimilarScoped(): Command {
-  return (state, dispatch) => {
+    // Toggle-off when already waiting for a click inside the scope.
+    if (ps?.mode === 'awaiting-cursor') {
+      if (!dispatch) return true;
+      dispatch(state.tr.setMeta(META_KEY, { type: 'clear' } as Meta));
+      return true;
+    }
+
     const { from, to, empty } = state.selection;
-    if (empty) return false;
+
+    if (empty) {
+      // Unscoped: match doc-wide using the cursor's fingerprint.
+      const matches = computeSimilarMatches(
+        state.doc,
+        from,
+        null,
+        effectivePt,
+      );
+      if (matches.length === 0) return false;
+      if (!dispatch) return true;
+      dispatch(
+        state.tr.setMeta(META_KEY, { type: 'setMatches', matches } as Meta),
+      );
+      return true;
+    }
+
+    // Scoped: set the selection range as scope, COLLAPSE the PM
+    // selection at its leading edge (so the orange tint isn't
+    // hidden under the browser's selection highlight), and nudge
+    // the user with a toast.
     if (!dispatch) return true;
-    dispatch(
-      state.tr.setMeta(META_KEY, {
-        type: 'setScope',
-        scope: { from, to },
-      } as Meta),
-    );
+    const tr = state.tr
+      .setMeta(META_KEY, { type: 'setScope', scope: { from, to } } as Meta)
+      .setSelection(TextSelection.create(state.doc, from));
+    dispatch(tr);
+    showToast('Click in the highlighted area to select similar.');
     return true;
   };
 }
@@ -353,4 +382,31 @@ export function getSimilarSelectionState(
       mode: 'idle',
     }
   );
+}
+
+/**
+ * What text ranges should a format command actually operate on?
+ *
+ *   - If the PM selection is non-empty → that selection range. The
+ *     user's explicit selection wins.
+ *   - Else if the shadow selection has matches → those match ranges
+ *     (`fromShadow: true`). Format commands should also set
+ *     `META_OPERATING_ON_SHADOW` on their tr so the plugin keeps
+ *     the matches alive for chained edits.
+ *   - Otherwise → no ranges. The caller can decide whether to
+ *     no-op or fall back to other behavior (e.g., commands that
+ *     act on the cursor's current run regardless of selection).
+ */
+export function getOperatingRanges(
+  state: EditorState,
+): { ranges: RangePair[]; fromShadow: boolean } {
+  const sel = state.selection;
+  if (!sel.empty) {
+    return { ranges: [{ from: sel.from, to: sel.to }], fromShadow: false };
+  }
+  const ps = similarSelectionKey.getState(state);
+  if (ps && ps.matches.length > 0) {
+    return { ranges: ps.matches.map((r) => ({ ...r })), fromShadow: true };
+  }
+  return { ranges: [], fromShadow: false };
 }

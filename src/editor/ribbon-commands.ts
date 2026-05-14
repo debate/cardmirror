@@ -48,7 +48,8 @@ import {
 import { togglePlainPaste } from './paste-plugin.js';
 import {
   selectSimilar,
-  selectSimilarScoped,
+  getOperatingRanges,
+  META_OPERATING_ON_SHADOW,
 } from './similar-selection-plugin.js';
 
 type HeadingTypeName = 'pocket' | 'hat' | 'block';
@@ -726,35 +727,38 @@ function applyBodyMark(
   opts: { expandToWordWhenEmpty?: boolean } = {},
 ): Command {
   return (state, dispatch) => {
-    const sel = state.selection;
-    let from = sel.from;
-    let to = sel.to;
-    if (sel.empty) {
-      if (!opts.expandToWordWhenEmpty) return false;
-      const word = wordRangeAtCursor(state);
-      if (!word) return false;
-      from = word.from;
-      to = word.to;
-    }
-
     const markType = schema.marks[markName];
     if (!markType) return false;
 
-    // Collect ranges first; only dispatch if we'd actually mark
-    // anything. Structural-block skip is enforced by the nodesBetween
-    // callback — a word at the cursor inside a tag/undertag yields
-    // an empty range list and returns false.
+    // Operating ranges: PM selection if non-empty, otherwise the
+    // shadow-selection matches if any are active, otherwise fall
+    // back to the per-command default (word-expand at cursor for
+    // F10 Emphasis; nothing for F8 Cite).
+    const op = getOperatingRanges(state);
+    let opRanges = op.ranges;
+    if (opRanges.length === 0) {
+      if (!opts.expandToWordWhenEmpty) return false;
+      const word = wordRangeAtCursor(state);
+      if (!word) return false;
+      opRanges = [word];
+    }
+
+    // Collect per-textblock ranges; structural-block skip is enforced
+    // by the nodesBetween callback (a touched tag / undertag yields
+    // no range and contributes nothing).
     const ranges: { from: number; to: number }[] = [];
-    state.doc.nodesBetween(from, to, (node, pos) => {
-      if (!node.isTextblock) return true;
-      if (NAMED_STYLE_SKIP_BLOCKS.has(node.type.name)) return false;
-      const tbStart = pos + 1;
-      const tbEnd = pos + node.nodeSize - 1;
-      const applyFrom = Math.max(tbStart, from);
-      const applyTo = Math.min(tbEnd, to);
-      if (applyFrom < applyTo) ranges.push({ from: applyFrom, to: applyTo });
-      return false;
-    });
+    for (const { from, to } of opRanges) {
+      state.doc.nodesBetween(from, to, (node, pos) => {
+        if (!node.isTextblock) return true;
+        if (NAMED_STYLE_SKIP_BLOCKS.has(node.type.name)) return false;
+        const tbStart = pos + 1;
+        const tbEnd = pos + node.nodeSize - 1;
+        const applyFrom = Math.max(tbStart, from);
+        const applyTo = Math.min(tbEnd, to);
+        if (applyFrom < applyTo) ranges.push({ from: applyFrom, to: applyTo });
+        return false;
+      });
+    }
     if (ranges.length === 0) return false;
     if (!dispatch) return true;
 
@@ -770,6 +774,7 @@ function applyBodyMark(
       // strips (its semantic is closer to font color).
       stripDirectFormattingOnApply(tr, r.from, r.to);
     }
+    if (op.fromShadow) tr.setMeta(META_OPERATING_ON_SHADOW, true);
     dispatch(tr);
     return true;
   };
@@ -812,87 +817,79 @@ export function applyUnderline(
   clearFormattingOnToggleOff: () => boolean = () => true,
 ): Command {
   return (state, dispatch) => {
-    const { from, to, empty } = state.selection;
     const namedMark = schema.marks['underline_mark']!;
     const directMark = schema.marks['underline_direct']!;
 
-    let runStart = from;
-    let runEnd = to;
-    if (empty) {
+    // Operating ranges: PM selection > shadow ranges > word-at-cursor.
+    const op = getOperatingRanges(state);
+    let opRanges = op.ranges;
+    if (opRanges.length === 0) {
       const word = wordRangeAtCursor(state);
       if (!word) return false;
-      runStart = word.from;
-      runEnd = word.to;
+      opRanges = [word];
     }
 
-    // Are all characters in [runStart, runEnd] already underlined?
+    // "Already underlined?" check across all operating ranges. If
+    // every text char in every range carries one of the two
+    // underline marks, the gesture toggles OFF; otherwise it adds.
     let everyUnderlined = true;
     let anyText = false;
-    state.doc.nodesBetween(runStart, runEnd, (node) => {
-      if (!node.isText) return true;
-      anyText = true;
-      const u = node.marks.some(
-        (m) => m.type === namedMark || m.type === directMark,
-      );
-      if (!u) everyUnderlined = false;
-      return true;
-    });
+    for (const { from, to } of opRanges) {
+      state.doc.nodesBetween(from, to, (node) => {
+        if (!node.isText) return true;
+        anyText = true;
+        const u = node.marks.some(
+          (m) => m.type === namedMark || m.type === directMark,
+        );
+        if (!u) everyUnderlined = false;
+        return true;
+      });
+    }
     if (!anyText) return false;
 
     if (!dispatch) return true;
 
     const tr = state.tr;
     if (everyUnderlined) {
-      // Toggle off: strip both underline marks across the range.
-      tr.removeMark(runStart, runEnd, namedMark);
-      tr.removeMark(runStart, runEnd, directMark);
-      // Symmetric Verbatim parity: "press F9 twice clears formatting."
-      // The toggle-off-also-strips direction is opt-out via setting so
-      // users who want F9 as a pure underline toggle can disable it.
-      if (clearFormattingOnToggleOff()) {
-        stripDirectFormatting(tr, runStart, runEnd);
+      // Toggle off: strip both underline marks across each range.
+      for (const { from, to } of opRanges) {
+        tr.removeMark(from, to, namedMark);
+        tr.removeMark(from, to, directMark);
+        // Verbatim's "press F9 twice clears formatting" — opt-out
+        // via setting.
+        if (clearFormattingOnToggleOff()) stripDirectFormatting(tr, from, to);
       }
     } else {
-      // Toggle on: add the appropriate mark per parent textblock.
-      // For body textblocks `underline_mark` carries `excludes:
-      // 'cite_mark underline_mark emphasis_mark'`, so `tr.addMark`
-      // auto-strips conflicting named-style marks in the range. For
-      // structural textblocks `underline_direct` has no excludes
-      // (cite/emphasis shouldn't appear there anyway). We also strip
-      // the *wrong-context* underline variant explicitly so mixed
-      // ranges (e.g., text that imported as underline_mark inside a
-      // tag) end up canonical.
+      // Toggle on: per-textblock segments across all operating
+      // ranges. Body uses underline_mark (named-style with
+      // excludes); structural uses underline_direct.
       const segments: { from: number; to: number; structural: boolean }[] = [];
-      state.doc.nodesBetween(runStart, runEnd, (node, pos) => {
-        if (!node.isTextblock) return true;
-        const tbStart = pos + 1;
-        const tbEnd = pos + node.nodeSize - 1;
-        const f = Math.max(tbStart, runStart);
-        const t = Math.min(tbEnd, runEnd);
-        if (f < t) {
-          segments.push({
-            from: f,
-            to: t,
-            structural: STRUCTURAL_TEXTBLOCKS_FOR_UNDERLINE.has(node.type.name),
-          });
-        }
-        return false;
-      });
+      for (const { from, to } of opRanges) {
+        state.doc.nodesBetween(from, to, (node, pos) => {
+          if (!node.isTextblock) return true;
+          const tbStart = pos + 1;
+          const tbEnd = pos + node.nodeSize - 1;
+          const f = Math.max(tbStart, from);
+          const t = Math.min(tbEnd, to);
+          if (f < t) {
+            segments.push({
+              from: f,
+              to: t,
+              structural: STRUCTURAL_TEXTBLOCKS_FOR_UNDERLINE.has(node.type.name),
+            });
+          }
+          return false;
+        });
+      }
       for (const seg of segments) {
         const markType = seg.structural ? directMark : namedMark;
         const otherMark = seg.structural ? namedMark : directMark;
         tr.removeMark(seg.from, seg.to, otherMark);
         tr.addMark(seg.from, seg.to, markType.create());
-        // Apply direction strips direct formatting (typography
-        // replaces direct overrides) BUT preserves highlight — see
-        // stripDirectFormattingOnApply's comment. F9's toggle-off
-        // branch above still uses the full stripDirectFormatting set
-        // when clearFormattingOnToggleOff is on, so pressing F9
-        // twice still clears highlight.
         stripDirectFormattingOnApply(tr, seg.from, seg.to);
       }
     }
-
+    if (op.fromShadow) tr.setMeta(META_OPERATING_ON_SHADOW, true);
     dispatch(tr);
     return true;
   };
@@ -901,6 +898,47 @@ export function applyUnderline(
 const STRUCTURAL_TEXTBLOCKS_FOR_UNDERLINE = new Set([
   'tag', 'analytic', 'pocket', 'hat', 'block', 'undertag',
 ]);
+
+/**
+ * Shadow-aware drop-in replacement for `toggleMark` from
+ * `prosemirror-commands`. Falls back to PM's `toggleMark` when the
+ * PM selection is non-empty (preserves the standard Word/PM toggle
+ * semantic), but when the selection is collapsed AND the shadow
+ * selection has matches, toggles the mark across every match in a
+ * single transaction.
+ */
+function shadowAwareToggleMark(markType: MarkType): Command {
+  const pmToggle = toggleMark(markType);
+  return (state, dispatch, view) => {
+    const op = getOperatingRanges(state);
+    if (!op.fromShadow) return pmToggle(state, dispatch, view);
+    if (op.ranges.length === 0) return false;
+
+    let allMarked = true;
+    let anyText = false;
+    for (const { from, to } of op.ranges) {
+      state.doc.nodesBetween(from, to, (node) => {
+        if (!node.isText) return true;
+        anyText = true;
+        if (!node.marks.some((m) => m.type === markType)) allMarked = false;
+        return true;
+      });
+    }
+    if (!anyText) return false;
+    if (!dispatch) return true;
+
+    const tr = state.tr;
+    if (allMarked) {
+      for (const { from, to } of op.ranges) tr.removeMark(from, to, markType);
+    } else {
+      const mark = markType.create();
+      for (const { from, to } of op.ranges) tr.addMark(from, to, mark);
+    }
+    tr.setMeta(META_OPERATING_ON_SHADOW, true);
+    dispatch(tr);
+    return true;
+  };
+}
 
 /**
  * F11 — toggle Highlight across the selection with the active
@@ -916,26 +954,38 @@ const STRUCTURAL_TEXTBLOCKS_FOR_UNDERLINE = new Set([
  */
 export function applyHighlight(activeColor: () => string): Command {
   return (state, dispatch) => {
-    const sel = state.selection;
-    if (sel.empty) return false;
     const highlightType = schema.marks['highlight'];
     if (!highlightType) return false;
 
-    const { from, to } = sel;
-    const { allMarked, anyText } = scanTextMarkPresence(state.doc, from, to, 'highlight');
+    // Operating ranges: PM selection > shadow ranges. No word-expand
+    // fallback — highlights typically span multiple words and users
+    // select before applying.
+    const op = getOperatingRanges(state);
+    if (op.ranges.length === 0) return false;
+
+    let allMarked = true;
+    let anyText = false;
+    for (const { from, to } of op.ranges) {
+      const r = scanTextMarkPresence(state.doc, from, to, 'highlight');
+      if (r.anyText) anyText = true;
+      if (!r.allMarked) allMarked = false;
+    }
     if (!anyText) return false;
 
     if (!dispatch) return true;
     const tr = state.tr;
     if (allMarked) {
-      tr.removeMark(from, to, highlightType);
+      for (const { from, to } of op.ranges) tr.removeMark(from, to, highlightType);
     } else {
-      // Replace any existing highlight color with the active one across
-      // the whole range. removeMark + addMark guarantees the new color
-      // wins even where a different highlight already exists.
-      tr.removeMark(from, to, highlightType);
-      tr.addMark(from, to, highlightType.create({ color: activeColor() }));
+      // Replace any existing highlight color with the active one
+      // across each range. removeMark + addMark guarantees the new
+      // color wins even where a different highlight already exists.
+      for (const { from, to } of op.ranges) {
+        tr.removeMark(from, to, highlightType);
+        tr.addMark(from, to, highlightType.create({ color: activeColor() }));
+      }
     }
+    if (op.fromShadow) tr.setMeta(META_OPERATING_ON_SHADOW, true);
     dispatch(tr);
     return true;
   };
@@ -952,23 +1002,32 @@ export function applyHighlight(activeColor: () => string): Command {
  */
 export function applyShading(activeColor: () => string): Command {
   return (state, dispatch) => {
-    const sel = state.selection;
-    if (sel.empty) return false;
     const shadingType = schema.marks['shading'];
     if (!shadingType) return false;
 
-    const { from, to } = sel;
-    const { allMarked, anyText } = scanTextMarkPresence(state.doc, from, to, 'shading');
+    const op = getOperatingRanges(state);
+    if (op.ranges.length === 0) return false;
+
+    let allMarked = true;
+    let anyText = false;
+    for (const { from, to } of op.ranges) {
+      const r = scanTextMarkPresence(state.doc, from, to, 'shading');
+      if (r.anyText) anyText = true;
+      if (!r.allMarked) allMarked = false;
+    }
     if (!anyText) return false;
 
     if (!dispatch) return true;
     const tr = state.tr;
     if (allMarked) {
-      tr.removeMark(from, to, shadingType);
+      for (const { from, to } of op.ranges) tr.removeMark(from, to, shadingType);
     } else {
-      tr.removeMark(from, to, shadingType);
-      tr.addMark(from, to, shadingType.create({ color: activeColor() }));
+      for (const { from, to } of op.ranges) {
+        tr.removeMark(from, to, shadingType);
+        tr.addMark(from, to, shadingType.create({ color: activeColor() }));
+      }
     }
+    if (op.fromShadow) tr.setMeta(META_OPERATING_ON_SHADOW, true);
     dispatch(tr);
     return true;
   };
@@ -987,14 +1046,17 @@ export function applyShading(activeColor: () => string): Command {
  */
 export function setHighlightColor(color: string): Command {
   return (state, dispatch) => {
-    const sel = state.selection;
-    if (sel.empty) return false;
     const type = schema.marks['highlight'];
     if (!type) return false;
+    const op = getOperatingRanges(state);
+    if (op.ranges.length === 0) return false;
     if (!dispatch) return true;
     const tr = state.tr;
-    tr.removeMark(sel.from, sel.to, type);
-    tr.addMark(sel.from, sel.to, type.create({ color }));
+    for (const { from, to } of op.ranges) {
+      tr.removeMark(from, to, type);
+      tr.addMark(from, to, type.create({ color }));
+    }
+    if (op.fromShadow) tr.setMeta(META_OPERATING_ON_SHADOW, true);
     dispatch(tr);
     return true;
   };
@@ -1002,14 +1064,17 @@ export function setHighlightColor(color: string): Command {
 
 export function setShadingColor(rgb: string): Command {
   return (state, dispatch) => {
-    const sel = state.selection;
-    if (sel.empty) return false;
     const type = schema.marks['shading'];
     if (!type) return false;
+    const op = getOperatingRanges(state);
+    if (op.ranges.length === 0) return false;
     if (!dispatch) return true;
     const tr = state.tr;
-    tr.removeMark(sel.from, sel.to, type);
-    tr.addMark(sel.from, sel.to, type.create({ color: rgb.toUpperCase() }));
+    for (const { from, to } of op.ranges) {
+      tr.removeMark(from, to, type);
+      tr.addMark(from, to, type.create({ color: rgb.toUpperCase() }));
+    }
+    if (op.fromShadow) tr.setMeta(META_OPERATING_ON_SHADOW, true);
     dispatch(tr);
     return true;
   };
@@ -1198,16 +1263,19 @@ function runUniColor(
 
 export function setFontColor(rgb: string | null): Command {
   return (state, dispatch) => {
-    const sel = state.selection;
-    if (sel.empty) return false;
     const type = schema.marks['font_color'];
     if (!type) return false;
+    const op = getOperatingRanges(state);
+    if (op.ranges.length === 0) return false;
     if (!dispatch) return true;
     const tr = state.tr;
-    tr.removeMark(sel.from, sel.to, type);
-    if (rgb !== null) {
-      tr.addMark(sel.from, sel.to, type.create({ color: rgb.toUpperCase() }));
+    for (const { from, to } of op.ranges) {
+      tr.removeMark(from, to, type);
+      if (rgb !== null) {
+        tr.addMark(from, to, type.create({ color: rgb.toUpperCase() }));
+      }
     }
+    if (op.fromShadow) tr.setMeta(META_OPERATING_ON_SHADOW, true);
     dispatch(tr);
     return true;
   };
@@ -1236,6 +1304,32 @@ export function adjustFontSize(
     if (!type) return false;
     const sel = state.selection;
     const nudge = (pt: number) => Math.max(1, Math.min(409, pt + delta));
+
+    // Shadow-selection path: if PM sel is empty but shadow matches
+    // are active, nudge every text run inside each match (per-run
+    // currentPt is the resolver's answer, so a 22pt + an 11pt run
+    // get nudged from their own starting points).
+    const shadowOp = sel.empty ? getOperatingRanges(state) : null;
+    if (shadowOp && shadowOp.fromShadow && shadowOp.ranges.length > 0) {
+      if (!dispatch) return true;
+      const tr = state.tr;
+      for (const { from, to } of shadowOp.ranges) {
+        state.doc.nodesBetween(from, to, (node, pos, parent) => {
+          if (!node.isText || !parent) return true;
+          const start = Math.max(from, pos);
+          const end = Math.min(to, pos + node.nodeSize);
+          if (start >= end) return true;
+          const currentPt = effectivePt(node, parent);
+          const targetHp = Math.round(nudge(currentPt) * 2);
+          tr.removeMark(start, end, type);
+          tr.addMark(start, end, type.create({ halfPoints: targetHp }));
+          return true;
+        });
+      }
+      tr.setMeta(META_OPERATING_ON_SHADOW, true);
+      dispatch(tr);
+      return true;
+    }
 
     if (sel.empty) {
       if (!dispatch) return true;
@@ -1296,6 +1390,24 @@ export function setFontSize(pt: number | null): Command {
     const type = schema.marks['font_size'];
     if (!type) return false;
     const sel = state.selection;
+
+    // Shadow-selection path: PM sel empty + shadow matches active →
+    // apply across all matches as a single tr.
+    const shadowOp = sel.empty ? getOperatingRanges(state) : null;
+    if (shadowOp && shadowOp.fromShadow && shadowOp.ranges.length > 0) {
+      if (!dispatch) return true;
+      const tr = state.tr;
+      for (const { from, to } of shadowOp.ranges) {
+        tr.removeMark(from, to, type);
+        if (pt !== null) {
+          tr.addMark(from, to, type.create({ halfPoints: Math.round(pt * 2) }));
+        }
+      }
+      tr.setMeta(META_OPERATING_ON_SHADOW, true);
+      dispatch(tr);
+      return true;
+    }
+
     if (sel.empty) {
       if (!dispatch) return true;
       const current = state.storedMarks ?? sel.$from.marks();
@@ -1449,6 +1561,25 @@ export function clearToNormal(): Command {
   return (state, dispatch) => {
     const sel = state.selection;
     const isEmpty = sel.empty;
+
+    // Shadow-selection path: when the PM selection is collapsed and
+    // shadow matches are active, treat each match as a partial-mode
+    // strip across its range. Structural demotes (cursor / full)
+    // don't apply — the user picked specific runs to clean, not
+    // whole paragraphs.
+    if (isEmpty) {
+      const shadowOp = getOperatingRanges(state);
+      if (shadowOp.fromShadow && shadowOp.ranges.length > 0) {
+        if (!dispatch) return true;
+        const tr = state.tr;
+        for (const { from, to } of shadowOp.ranges) {
+          applyClearToNormalPartial(tr, from, to);
+        }
+        tr.setMeta(META_OPERATING_ON_SHADOW, true);
+        dispatch(tr);
+        return true;
+      }
+    }
 
     const ops: ClearToNormalOp[] = [];
     state.doc.nodesBetween(sel.from, sel.to, (node, pos) => {
@@ -2681,7 +2812,6 @@ export type RibbonCommandId =
   | 'wordCountSelection'
   | 'openShortcutsReference'
   | 'selectSimilar'
-  | 'selectSimilarScoped'
   | 'removeHyperlinks'
   | 'convertAnalyticsToTags'
   | 'fixFormattingGaps';
@@ -2723,7 +2853,6 @@ export const RIBBON_COMMAND_IDS: RibbonCommandId[] = [
   'wordCountSelection',
   'openShortcutsReference',
   'selectSimilar',
-  'selectSimilarScoped',
   'removeHyperlinks',
   'convertAnalyticsToTags',
   'fixFormattingGaps',
@@ -2762,7 +2891,6 @@ export const RIBBON_COMMAND_LABELS: Record<RibbonCommandId, string> = {
   wordCountSelection: 'Word count selection',
   openShortcutsReference: 'Open keyboard shortcuts',
   selectSimilar: 'Select Similar Formatting',
-  selectSimilarScoped: 'Select Similar Formatting (Scoped)',
   removeHyperlinks: 'Remove Hyperlinks',
   convertAnalyticsToTags: 'Convert Analytics to Tags',
   fixFormattingGaps: 'Fix Formatting Gaps',
@@ -2811,7 +2939,6 @@ export const DEFAULT_RIBBON_KEYS: Record<RibbonCommandId, string | string[]> = {
   wordCountSelection: '',
   openShortcutsReference: '',
   selectSimilar: '',
-  selectSimilarScoped: '',
   removeHyperlinks: '',
   convertAnalyticsToTags: '',
   fixFormattingGaps: '',
@@ -2907,8 +3034,8 @@ function commandFor(id: RibbonCommandId, ctx: RibbonContext): Command {
     case 'setTag': return setTag();
     case 'setAnalytic': return setAnalytic();
     case 'setUndertag': return setUndertag();
-    case 'toggleBold': return toggleMark(schema.marks['bold']!);
-    case 'toggleItalic': return toggleMark(schema.marks['italic']!);
+    case 'toggleBold': return shadowAwareToggleMark(schema.marks['bold']!);
+    case 'toggleItalic': return shadowAwareToggleMark(schema.marks['italic']!);
     case 'applyCite': return applyCite();
     case 'applyUnderline': return applyUnderline(ctx.clearFormattingOnNamedStyleToggleOff);
     case 'applyEmphasis': return applyEmphasis();
@@ -2995,8 +3122,6 @@ function commandFor(id: RibbonCommandId, ctx: RibbonContext): Command {
       };
     case 'selectSimilar':
       return selectSimilar(ctx.effectivePtForNode);
-    case 'selectSimilarScoped':
-      return selectSimilarScoped();
     case 'removeHyperlinks':
       return removeHyperlinks();
     case 'convertAnalyticsToTags':
