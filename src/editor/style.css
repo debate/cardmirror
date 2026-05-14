@@ -3679,7 +3679,11 @@ body.pmd-multi-doc #word-count-display {
    * independently. */
   overflow-y: hidden;
   scroll-snap-type: x mandatory;
-  scroll-behavior: smooth;
+  /* No `scroll-behavior: smooth` here — programmatic scrolls into
+   * a side pane were getting paused mid-animation by ProseMirror's
+   * mousedown handling (focus + cursor placement). Pair the snap
+   * behaviour with `behavior: 'auto'` on the scrollIntoView call
+   * so the transition lands instantly and crisply. */
 }
 .pmd-multi-row[data-layout="wide"][data-active="3"] {
   --pmd-pane-width: calc(100% / 2.1);

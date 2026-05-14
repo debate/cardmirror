@@ -520,7 +520,22 @@ class MultiPaneShell {
         paneRect.left >= rowRect.left - 0.5 &&
         paneRect.right <= rowRect.right + 0.5;
       if (!fullyVisible) {
-        slot.paneEl.scrollIntoView({ inline: 'start', block: 'nearest', behavior: 'smooth' });
+        // `behavior: 'auto'` overrides the row's
+        // `scroll-behavior: smooth`. Smooth scroll would otherwise
+        // get paused mid-animation by ProseMirror's own pointerdown
+        // handling on the same tick (focus + cursor placement +
+        // implicit focused-element scroll-into-view), which made
+        // the user have to hold the mouse button down to see the
+        // transition finish. Instant snap with `scroll-snap-type`
+        // still keeps the landing position aligned.
+        //
+        // The rAF defer also helps — PM's handlers run on the
+        // current tick; we run on the next so the scroll target
+        // doesn't get clobbered before it takes effect.
+        const target = slot.paneEl;
+        requestAnimationFrame(() => {
+          target.scrollIntoView({ inline: 'start', block: 'nearest', behavior: 'auto' });
+        });
       }
     }
   }
