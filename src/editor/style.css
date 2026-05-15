@@ -3929,6 +3929,14 @@ body.pmd-multi-doc #word-count-display {
    * controls scale per-pane content, and the editor drag surface's
    * zoom-aware math lands drop indicators at the right Y position. */
   zoom: var(--editor-zoom, 1);
+  /* Single-doc `#editor` sets these directly on itself so every
+   * descendant inherits the body size + line-height. Multi-pane's
+   * editor surface isn't a descendant of `#editor`, so it has to
+   * stamp them on its own root — otherwise body text falls back to
+   * the browser default 16px (= 12pt) and tags / cite marks
+   * (correctly 13pt) only look 1pt larger than body. */
+  font-size: var(--pmd-size-normal);
+  line-height: var(--pmd-line-height);
 }
 /* Re-use the global editor styling for the per-pane ProseMirror
  * surface (the ProseMirror's own root element gets class

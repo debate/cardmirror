@@ -1143,21 +1143,29 @@ function effectiveFontSizeForDisplay(state: EditorState): FontSizeInfo {
     const $pos = sel.$from;
     const parent = $pos.parent;
     if (!parent.isTextblock) return { pt: null, direct: false };
-    // storedMarks takes precedence — that's what the next typed
-    // character will use. Word-like behavior after the user types a
-    // size into the chip with an empty selection.
-    if (state.storedMarks) {
-      const fs = state.storedMarks.find((m) => m.type.name === 'font_size');
-      if (fs) return { pt: Number(fs.attrs['halfPoints'] ?? 22) / 2, direct: true };
+    // PM's effective marks at the cursor: storedMarks (if set) override
+    // the marks at the cursor position. Otherwise `$pos.marks()`
+    // resolves correctly for both the mid-run case (returns the
+    // containing text node's marks) and the boundary case (returns the
+    // left-neighbor's marks, matching the "next typed char extends
+    // left" semantics). The earlier `parent.child(idx-1)` lookup
+    // confused these two cases — for a cursor sitting INSIDE an 11pt
+    // run that followed an 8pt run, it returned the 8pt run as the
+    // "before" node, so the chip reported 8pt even though the cursor
+    // wasn't there.
+    const marks = state.storedMarks ?? $pos.marks();
+    const fs = marks.find((m) => m.type.name === 'font_size');
+    if (fs) return { pt: Number(fs.attrs['halfPoints'] ?? 22) / 2, direct: true };
+    const sizes = settings.get('displaySizes');
+    for (const m of marks) {
+      switch (m.type.name) {
+        case 'cite_mark': return { pt: sizes.cite, direct: false };
+        case 'underline_mark': return { pt: sizes.underline, direct: false };
+        case 'emphasis_mark': return { pt: sizes.emphasis, direct: false };
+        case 'undertag_mark': return { pt: sizes.undertag, direct: false };
+        case 'analytic_mark': return { pt: sizes.analytic, direct: false };
+      }
     }
-    const idx = $pos.index();
-    // Prefer the text node immediately BEFORE the cursor — that's the
-    // run the user is about to extend by typing. Falls back to the
-    // node AFTER for cursors at the start of a line.
-    const before = idx > 0 ? parent.child(idx - 1) : null;
-    const after = idx < parent.childCount ? parent.child(idx) : null;
-    const target = before?.isText ? before : (after?.isText ? after : null);
-    if (target) return ptForRun(target, parent);
     return { pt: paragraphDefaultPt(parent.type.name), direct: false };
   }
 
