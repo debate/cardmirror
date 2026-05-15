@@ -77,16 +77,22 @@ referenced files.
   surface; web is for collaboration and accessibility. — `ARCHITECTURE.md`
   §6.
 - **Multi-doc workspace is foundational, not retrofitted.** Required by
-  send-to-speech, search results, drag-between-panes, transclusion. —
-  `ARCHITECTURE.md` §7.
+  send-to-speech, search results, drag-between-panes, transclusion.
+  The three-slot workspace shell (compact + wide-scroll layouts, per-
+  slot stacks, drag-copy between panes) is shipped. —
+  `ARCHITECTURE.md` §7, [`SPEC-multi-pane.md`](./SPEC-multi-pane.md).
 - **Editor UI surfaces** — pageless web-view as default, Word-style
   navigation panel for outline manipulation, faithful render fixtures
   for Pocket/Emphasis boxes. — `ARCHITECTURE.md` §8.
 - **Read mode as a first-class peer to edit mode.** The reading surface
   at the podium matters as much as the editing surface; ironclad against
-  accidental input. — `ARCHITECTURE.md` §9.
+  accidental input. In multi-doc mode read mode is per-pane state, so
+  one slot can be a read surface while others stay editable. —
+  `ARCHITECTURE.md` §9.
 - **Send-to-speech is the most architecturally demanding feature** and
-  drives the workspace + read-mode + cross-doc-coordinator foundation. —
+  drives the workspace + read-mode + cross-doc-coordinator foundation.
+  The backtick / Alt-backtick chord, NewSpeech, mark-as-speech, and a
+  resolver interface for future multi-window are shipped. —
   `ARCHITECTURE.md` §10.
 - **Round-trip is the dominant correctness criterion.** Schema, importer,
   and exporter are one tightly-coupled project. The Stylepox normalizer
@@ -117,28 +123,33 @@ referenced files.
   presentation. CSS hooks already exist in `style.css`; pattern-
   match the existing `--pmd-line-height` plumbing.
 
-### Planned: AI features (round 2)
+### AI features
 
-Comments are deliberately groundwork for an AI-explainer flow. The
-data type's `kind: 'human' | 'ai'` field, the `commentAuthor` /
-`anthropicApiKey` / `aiFeaturesEnabled` settings, and the
-side-column UI all exist today. Round 2 adds the wiring:
+The `aiFeaturesEnabled` setting gates a master toggle for every AI
+call, plus `anthropicApiKey` (sent direct from the browser to
+Anthropic — there's no server middleman) and `commentAuthor` for
+attribution.
 
-- A keyboard shortcut on a selection opens a fresh comment input
-  in the side column. The user types their question, hits submit,
-  and the editor builds a context payload (selection + containing
-  tag / analytic / cite_paragraphs, or just selection at doc
-  level) plus the question, and POSTs to Anthropic. The reply
-  lands as a `kind: 'ai'` comment in the new thread.
-- Inside an existing thread, replying with text that contains an
-  `@AI` mention re-invokes the model with the thread + range as
-  context.
-- AI comments are visually distinguished (purple badge already in
-  the side column). They round-trip via docx as regular comments;
-  the `kind` field is lost on export (Word has no concept).
-- The master toggle (`aiFeaturesEnabled`) hides all AI UI when
-  off, even if a key is set, so users can keep credentials saved
-  but go fully offline ad-hoc.
+**Shipped today:**
+
+- `aiAskAboutSelection` — Mod-Shift-Q on a selection POSTs the
+  surrounding tag / analytic / cite-paragraph context plus the
+  user's question, replies land as a `kind: 'ai'` comment in a
+  fresh thread. `@AI` mentions inside an existing thread re-invoke
+  the model with the thread + range as context.
+- `aiCreateCite` — Mod-Shift-X on a selection formats it into a
+  Verbatim-style citation, with `cite_mark` applied to the
+  extracted tokens. Shows a purple "Thinking…" pill while in
+  flight.
+- **AI image features** — right-click any image and choose
+  "Generate alt text from image" (writes a `[ALT TEXT: …]`
+  paragraph below the image, using the user's omission-bracket
+  style) or "Generate table from image" (extracts a real PM
+  `table` node with bold/italic marks and merge attrs).
+
+AI comments are visually distinguished (purple badge in the side
+column). They round-trip via docx as regular comments; the `kind`
+field is lost on export (Word has no concept).
 
 ### Explicit non-goals
 

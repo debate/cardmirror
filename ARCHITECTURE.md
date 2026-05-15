@@ -311,13 +311,37 @@ operations":
   area, drag-drop between panes).
 - **Send-to-speech** (a card from the source doc lands in a designated
   speech doc).
-- **Block Search results** (see §10) opening in another pane.
-- **Transclusion targets** (see §9) needing to be loaded in the
+- **Block Search results** opening in another pane.
+- **Transclusion targets** (see §12) needing to be loaded in the
   background.
 
 A single-pane editor would have to be retrofitted for all of these.
-Building multi-pane scaffolding from day one (even if v0 ships
-single-pane visible) avoids that retrofit.
+Building the multi-pane scaffolding from day one avoided that retrofit.
+
+The shipped shell is a three-slot workspace (per
+[`SPEC-multi-pane.md`](./SPEC-multi-pane.md)). Two layouts switch
+automatically based on viewport width: **compact** (vertical stack,
+narrow viewports) and **wide-scroll** (slots side-by-side at a fixed
+target width, the workspace overflow-scrolls horizontally when more
+than two slots are visible). Each slot owns its own doc stack
+(open-doc history with back / forward / close-and-restore semantics)
+so working on a doc, hopping to a related one, and returning lands
+the user back exactly where they were. **Mod-1 / Mod-2 / Mod-3** focus
+slots 1, 2, and 3 respectively.
+
+Cross-pane copy is a drag gesture: pick up a card or heading subtree
+in one slot's editor or nav panel, drop into another slot. The
+implementation is a coordinator-level transaction pair (serialize
+from source, apply to target) sharing machinery with send-to-speech
+(§10) — same primitive, different pickup affordance (per §13). Schema
+validation runs on the destination, so cross-pane drops respect the
+target's content rules just like in-doc drops.
+
+**Per-pane state** that does *not* live on the doc: read mode (§9),
+nav-panel collapsed state, scroll position, paintbrush arming. Two
+slots can hold the same doc — one in edit mode for the cutter, one
+in read mode at the podium — without conflict; per-doc view config
+is plugin state keyed by `editorId`.
 
 Cross-doc operations are coordinator code: ProseMirror transactions are
 per-doc, but a coordinator can apply paired transactions in two docs as
@@ -414,6 +438,14 @@ same editor with an invisibility filter applied. Same NodeViews, same
 schema, same doc; non-read-aloud content is hidden via a CSS-class
 toggle. This is the non-destructive equivalent of `InvisibilityOn`.
 
+Read mode is **per-pane** in the multi-doc workspace (§7), not global
+and not a doc attribute. One slot can be a read surface at the podium
+while another slot holds the same (or a different) doc in edit mode
+— the read-mode flag lives in pane state keyed by `editorId`. The
+ribbon's read-mode toggle (`toggleReadMode` in the command registry,
+§15) acts on the focused pane and is rebindable through the keyboard-
+shortcuts settings panel.
+
 What read mode actually does:
 
 - **Hide non-read-aloud content** via the read-aloud predicate (below).
@@ -499,17 +531,19 @@ beyond "insert text at cursor."
 
 ## 11. Search
 
-Two scopes, two phases.
+Two scopes, two phases. **Neither is shipped yet** — the workspace
+shell, schema, and round-trip are in; full-text and schema-aware
+search across docs is roadmap work.
 
-**Workspace search (v1)** — across all currently-open docs in the
+**Workspace search** — across all currently-open docs in the
 workspace. Index lives in memory, updates incrementally as docs are
 edited. Schema-aware: queries can filter by node type ("all cards
 under hat X", "all cites by author Y"), not just text.
 
-**Corpus search (v2)** — across the user's entire evidence library on
+**Corpus search** — across the user's entire evidence library on
 disk, including files not currently open. Persistent on-disk index,
-file-watcher for updates, larger engineering investment. This is the
-v2 priority that supersedes the existing standalone Block Search tool.
+file-watcher for updates, larger engineering investment. The
+priority that supersedes the existing standalone Block Search tool.
 
 Block Search's current capabilities (Ctrl+Space focus, Context View,
 multi-select, batch-process, send-to-target) are the feature targets;
@@ -698,6 +732,11 @@ doc. Cross-doc drops respect the destination schema.
 
 Performance consideration for very long docs (1000+ cards): only
 compute drop targets near the drop point, not across the whole tree.
+Concretely the drag-handle plugin uses an `IntersectionObserver` to
+lazily mount drop-indicator decorations only on the heading nodes
+currently near the viewport (with a generous root margin so a fast
+scroll-then-drop still hits a primed target). Headings outside that
+window keep zero DOM overhead until the user gets close.
 
 ## 14. Editing semantics (card-aware editing behavior)
 
@@ -726,61 +765,8 @@ resolved.
 ### Status legend
 
 - `[decided]` — rule is settled; rationale logged in `DECISIONS.md`.
-- `[open]` — actively gathering input from collaborators / project owner.
-- `[draft]` — proposed by the implementer, not yet polled.
 
-### 14.1 Open questions (under collaborator review)
-
-(none currently — see §14.3 for decided rules)
-
-### 14.2 Question backlog (not yet drafted in poll form)
-
-Surfaced during the design conversation but not yet posed to
-collaborators. Each will become a `[open]` entry above (or a `[draft]`
-proposal) when its area becomes the focus of editor work.
-
-**Same matrix for other node types:**
-
-(Undertag is fully covered: Backspace at start of an undertag in the
-first body slot is handled by the §14.3 "first body slot" rule;
-Backspace at start of an undertag elsewhere falls through to
-within-container `joinBackward`, which folds the undertag into the
-previous body — the user's "escape this annotation" gesture. Enter
-at end creates a new `card_body` via ProseMirror's `defaultBlockAt`
-on the card's content expression. Cite_paragraph mirror cases follow
-from the cite-classifier — see the rule below.)
-
-**Selection-spanning operations:**
-
-- Selection across a card boundary, then Delete: does the partially-
-  cut card survive (schema-invalid)? Merge into the surviving card?
-  Refuse / clamp to card boundary?
-- Paste of content containing its own headings: structure preserved?
-  Flattened? Refused if it would break invariants?
-
-**Style-apply edge cases not yet covered by the shipped commands:**
-
-- F12 Clear with cursor in a tag — strip the card wrap and downgrade
-  to body? Just downgrade the tag (leaving the card invalid)? Refuse?
-_(All four F-key inline marks are now decided: F8 Cite skips
-structural, F9 Underline applies the body-vs-structural variant,
-F10 Emphasis skips structural, F11 Highlight + Mod-F11 Shading apply
-unconditionally since they're runtime annotations rather than
-semantic styles.)_
-
-**Outline navigation:**
-
-- Tab / Shift-Tab on a heading — promote/demote (Pocket↔Hat↔Block↔Tag)?
-  Demoting Block→Tag would need to wrap in a card.
-
-**Empty/degenerate states:**
-
-- User deletes all text inside a Pocket/Hat/Block — does an empty
-  heading persist? (The tag case is already covered: an empty tag is
-  treated as a merge boundary — see "Empty tag with surviving siblings"
-  in §14.3.)
-
-### 14.3 Decided rules
+### Decided rules
 
 #### Body-slot absorption after card / analytic_unit `[decided]`
 
@@ -1296,6 +1282,64 @@ Verbatim's F3 family — Condense / CondenseNoPilcrows /
 CondenseWithPilcrows / Uncondense — is shipped via our F3 / Alt+F3 /
 Mod+Alt+F3 / Mod+Alt+Shift+F3 rebinding.)
 
+### Image insertion
+
+Images live in the schema as an `image` inline atom — base64 PNG/JPEG
+bytes, EMU width/height (round-tripped through OOXML's
+`<wp:inline>` / `<wp:extent>`), and an `alt` attribute (round-tripped
+through `<wp:docPr descr>`, per §18). Insertion paths:
+
+- **Ribbon insert-image button** (next to the table dropdown in the
+  formatting panel) opens a file picker, reads the blob via
+  `src/editor/image-insert.ts:buildImageNodeFromBlob`, decodes
+  intrinsic pixel dimensions on a hidden `<img>`, and inserts an
+  `image` node at the cursor with EMU = px × 9525.
+- **Paste-image-from-clipboard** (Mod-V) is handled by the existing
+  paste plugin: when the clipboard carries an image blob (no html /
+  plain text wins over it), the plugin routes through the same
+  `buildImageNodeFromBlob` path.
+- **Right-click context menu** on an image (`image-context-menu-
+  plugin.ts`) holds the AI image actions described below.
+
+### AI features
+
+All AI is gated by the `aiFeaturesEnabled` setting plus a user-
+provided `anthropicApiKey` stored in localStorage and POSTed direct
+from the browser to Anthropic (no server middleman). Master toggle
+hides every AI UI when off, even if a key is set. Cite-creator and
+image features share `src/editor/ai/activity-cycler.ts` and
+`src/editor/ai/thinking-tooltip.ts` for the purple "thinking" pill
+(a span whose width tracks the current activity line via
+`ResizeObserver` so the chip auto-fits the active label).
+
+Shipped commands:
+
+- **`aiCreateCite` (Mod-Shift-X) — format selection as a cite.**
+  POSTs the selection text to Claude with the user's omission-
+  bracket style preferences; the reply is a citation paragraph with
+  `cite_mark` on the extracted author/title tokens. Inserts at the
+  cite slot above the cursor's card.
+- **`aiAskAboutSelection` (Mod-Shift-Q) — start an AI comment
+  thread.** Builds context from the selection plus the enclosing
+  tag / analytic / cite-paragraph and POSTs it to Claude with the
+  user's question; reply lands as a `kind: 'ai'` comment in a fresh
+  thread anchored to the selection. `@AI` mentions inside an
+  existing thread re-invoke the model with thread history + range
+  as context.
+- **`aiGenerateAltText` (right-click an image → Generate alt text
+  from image).** Sends the image bytes plus a vision content block;
+  reply is wrapped in the user's omission-bracket style as
+  `[ALT TEXT: …]` and inserted as a paragraph immediately after the
+  image (the transaction preserves the user's existing
+  selection/scroll position — earlier versions accidentally jumped
+  the viewport to the end of the doc).
+- **`aiGenerateTable` (right-click an image → Generate table from
+  image).** Sends the image bytes with a structured-output prompt
+  asking Claude to extract the table as a JSON description; the
+  result is converted to a real schema `table` node (with `bold` /
+  `italic` marks and `gridSpan` / `vMerge` attrs for merged cells)
+  and inserted below the image.
+
 ## 16. Stylepox handling
 
 Cleanup on import is *opt-in by configuration but defaults to on*.
@@ -1374,8 +1418,10 @@ specific things need to be true from the ground up:
   family; a preset library (OpenDyslexic, Lexie Readable, etc.) plugs
   into the existing setting. Fonts will need to be bundled (offline
   desktop) or loaded from a CDN (web).
-- **Image alt-text editing UI.** A small dialog accessed from a
-  selected `image` node; sets the schema attribute. Not yet built.
+- **Manual image alt-text editing UI.** A small dialog accessed from
+  a selected `image` node; sets `image.attrs.alt` directly. The
+  AI-generated alt text path (§15) is shipped; a manual edit dialog
+  is the deferred companion for users without AI features enabled.
 - **Reduced-motion respect.** Drag pickup animation (vacuum) and any
   other transitions should be gated on
   `@media (prefers-reduced-motion: reduce)` once we ship more motion.

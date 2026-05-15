@@ -1,9 +1,10 @@
-# Multi-pane document view — spec draft (v3)
+# Multi-pane document view — spec (v3, implemented)
 
-Working draft for a single-window UI that holds up to three documents
-side by side, sharing a ribbon and a nav pane. Captured from sketches +
-description (2026-05-14), with two rounds of answers folded in. All
-open questions resolved; implementation-ready as of v3.
+Single-window UI that holds up to three documents side by side,
+sharing a ribbon and a nav pane. Originally drafted 2026-05-14 (v3,
+two rounds of answers folded in). **Implementation is complete and
+merged into main.** Spec retained here as the design rationale of
+record; for the live behavior, the code is authoritative.
 
 ## 1. Goals
 
@@ -101,6 +102,16 @@ focused pane.
   active, if slot1 is empty).
 - Save / Save As / Print / Export / Find / Replace all act on the
   focused pane.
+- **Mod-1 / Mod-2 / Mod-3** focus slot 1, 2, or 3 from the keyboard.
+  No-op for empty slots.
+
+### Per-pane state (not stored on the doc)
+
+The slot record holds per-pane state that should not travel with the
+docx: read mode (§9 of `ARCHITECTURE.md`), nav-panel collapsed state,
+scroll position, paintbrush arming. Two slots can hold the same doc
+(by `docUid`) with independent read-mode flags — one in edit mode for
+the cutter, one in read mode at the podium.
 
 ## 7. Nav pane
 
@@ -294,6 +305,9 @@ layout identity with content identity.)
 - Closing the last doc in a slot collapses the slot; layout reflows.
 - Drag payloads carry `{ slotId, docUid }`; cross-doc detection
   compares `docUid`.
+- Read mode is per-pane state, not a doc attribute. Two slots can
+  hold the same doc with different read-mode flags.
+- Slot focus keyboard shortcuts: Mod-1 / Mod-2 / Mod-3.
 
 ## 13. Out of scope (v1)
 
