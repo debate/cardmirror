@@ -42,14 +42,14 @@ is installed.
 ### 2. Download CardMirror
 
 1. Open
-   [the CardMirror page on GitHub](https://github.com/ant981228/prosemirror-debate)
+   [the CardMirror page on GitHub](https://github.com/ant981228/cardmirror)
    in your browser.
 2. Click the **green `<> Code` button** near the top of the file list
    (right side, above the file table).
 3. In the dropdown that opens, click **"Download ZIP"** at the bottom.
-4. A file called `prosemirror-debate-main.zip` lands in your Downloads
+4. A file called `cardmirror-main.zip` lands in your Downloads
    folder. Double-click it to unzip.
-5. You'll get a folder called **`prosemirror-debate-main`**. Move it
+5. You'll get a folder called **`cardmirror-main`**. Move it
    somewhere you can find later — your **Desktop** is fine, or
    **Documents**. The exact location doesn't matter, only that you
    can get back to it.
@@ -66,7 +66,7 @@ CardMirror folder*, so you don't have to navigate anywhere.
   2. Tick the box next to **"New Terminal at Folder"** (this is a
      one-time setup; macOS hides it by default).
   3. Close Settings.
-  4. Open **Finder** and navigate to the `prosemirror-debate-main`
+  4. Open **Finder** and navigate to the `cardmirror-main`
      folder you unzipped.
   5. **Right-click** (or Control-click) the folder itself — *not*
      double-click — and choose **Services → New Terminal at
@@ -76,7 +76,7 @@ CardMirror folder*, so you don't have to navigate anywhere.
 
 - **Windows** —
   1. Open **File Explorer** and navigate into the
-     `prosemirror-debate-main` folder (so you can see `package.json`,
+     `cardmirror-main` folder (so you can see `package.json`,
      `README.md`, etc. in the file list).
   2. Click the **address bar** at the top of the File Explorer window
      once so the path becomes editable.
@@ -88,7 +88,7 @@ CardMirror folder*, so you don't have to navigate anywhere.
 
 - **Linux** — most file managers (Nautilus / Dolphin / Thunar) have an
   **"Open Terminal Here"** entry in the right-click menu. Right-click
-  inside the `prosemirror-debate-main` folder and pick that. If your
+  inside the `cardmirror-main` folder and pick that. If your
   file manager doesn't offer it, open a terminal manually and type
   `cd ` (note the trailing space), then drag the folder from the
   file manager onto the terminal window — the path gets pasted in

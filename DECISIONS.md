@@ -145,9 +145,9 @@ has no UI to render against.
 ## 2026-05-08: Single package, monorepo deferred
 
 Starting with a single package containing schema + import + export +
-(eventually) editor. We'll split into a monorepo (`@prosemirror-debate/schema`,
-`@prosemirror-debate/docx-converter`, etc.) only if web/desktop divergence
-or external publication forces it. YAGNI for v0.
+(eventually) editor. We'll split into a monorepo (e.g.
+`@cardmirror/schema`, `@cardmirror/docx-converter`) only if
+web/desktop divergence or external publication forces it. YAGNI for v0.
 
 ## 2026-05-08: Stable heading IDs via crypto.randomUUID()
 
