@@ -8,9 +8,54 @@
   "scripts": {
     "build:main": "tsc -p tsconfig.json",
     "build": "tsc -p tsconfig.json",
+    "build:renderer": "npm --prefix ../.. run build",
     "start:web": "npm --prefix ../.. run dev",
     "start:electron": "wait-on http://localhost:5173 && electron .",
-    "dev": "npm run build:main && concurrently --kill-others-on-fail --names \"vite,electron\" --prefix-colors \"cyan,magenta\" \"npm:start:web\" \"npm:start:electron\""
+    "dev": "npm run build:main && concurrently --kill-others-on-fail --names \"vite,electron\" --prefix-colors \"cyan,magenta\" \"npm:start:web\" \"npm:start:electron\"",
+    "pack": "npm run build:renderer && npm run build:main && electron-builder --dir",
+    "dist": "npm run build:renderer && npm run build:main && electron-builder",
+    "release": "npm run build:renderer && npm run build:main && electron-builder --publish always"
+  },
+  "build": {
+    "appId": "com.cardmirror.app",
+    "productName": "CardMirror",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../../dist",
+        "to": "renderer",
+        "filter": ["**/*"]
+      }
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "target": [
+        { "target": "dmg", "arch": ["x64", "arm64"] }
+      ]
+    },
+    "win": {
+      "target": [
+        { "target": "nsis", "arch": ["x64"] }
+      ]
+    },
+    "linux": {
+      "category": "Office",
+      "target": [
+        { "target": "AppImage", "arch": ["x64"] }
+      ]
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "ant981228",
+      "repo": "cardmirror"
+    }
   },
   "dependencies": {
     "electron-updater": "^6.3.9"
@@ -18,6 +63,7 @@
   "devDependencies": {
     "concurrently": "^9.1.0",
     "electron": "^33.2.0",
+    "electron-builder": "^25.1.8",
     "wait-on": "^8.0.1"
   }
 }

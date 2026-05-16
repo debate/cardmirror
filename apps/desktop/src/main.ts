@@ -102,8 +102,14 @@ function createWindow(initialDoc?: InitialDocPayload): BrowserWindow {
     void win.loadURL(DEV_SERVER_URL);
     win.webContents.openDevTools({ mode: 'detach' });
   } else {
+    // electron-builder packages the renderer's vite-build output
+    // under `Resources/renderer/` via the `extraResources` block in
+    // apps/desktop/package.json. `process.resourcesPath` resolves
+    // to that Resources dir on every platform (Contents/Resources on
+    // macOS, resources/ on Windows / Linux). Same code path for all
+    // packaged builds.
     void win.loadFile(
-      path.join(__dirname, '..', '..', '..', '..', 'dist', 'index.html'),
+      path.join(process.resourcesPath, 'renderer', 'index.html'),
     );
   }
 

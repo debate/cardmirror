@@ -1,0 +1,56 @@
+name: Release
+
+# Triggered when a git tag matching `v*.*.*` (e.g. `v0.1.0-alpha.1`)
+# is pushed. Builds desktop installers on macOS, Windows, and Linux
+# in parallel and publishes them as assets on the matching GitHub
+# Release. The first matrix job to finish creates the Release;
+# subsequent jobs upload their platform's artifacts to it.
+#
+# Builds are unsigned for the alpha. README documents the
+# right-click → Open / More info → Run anyway workaround for the
+# first-launch warnings on macOS Gatekeeper and Windows SmartScreen.
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  build:
+    name: Build & publish (${{ matrix.os }})
+    strategy:
+      matrix:
+        os: [macos-latest, windows-latest, ubuntu-latest]
+      fail-fast: false
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        # npm ci with workspaces installs both the root package and
+        # apps/desktop in one shot.
+        run: npm ci
+
+      - name: Run tests
+        # Same as the CI workflow — runs against ubuntu but we let
+        # the other platforms skip to save build minutes; the
+        # build itself catches any platform-specific issues.
+        if: matrix.os == 'ubuntu-latest'
+        run: npm test
+
+      - name: Build and publish desktop installer
+        env:
+          # electron-builder reads GH_TOKEN (not GITHUB_TOKEN) for
+          # GitHub Releases publishing.
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm --workspace=@cardmirror/desktop run release
