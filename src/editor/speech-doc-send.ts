@@ -160,9 +160,35 @@ export function insertSpeechSlice(
         $from.depth >= 1 &&
         $from.parent.isTextblock &&
         $from.parent.content.size === 0;
+      // If the cursor sits at the very start / end of a non-empty
+      // textblock, insert at that block's TOP-LEVEL boundary
+      // instead of at the cursor position. Otherwise PM has to
+      // split the surrounding block to fit a block-level slice,
+      // which produces an empty heading sibling above (start case)
+      // or below (end case) — matches the bug "the lines added
+      // above and below are the same heading level as my cursor's
+      // block." Inserting at the doc-level boundary cleanly drops
+      // the slice as a sibling without disturbing the cursor's
+      // block's structure.
+      const atStartOfBlock =
+        isEmpty &&
+        $from.depth >= 1 &&
+        $from.parent.isTextblock &&
+        $from.parent.content.size > 0 &&
+        $from.parentOffset === 0;
+      const atEndOfBlock =
+        isEmpty &&
+        $from.depth >= 1 &&
+        $from.parent.isTextblock &&
+        $from.parent.content.size > 0 &&
+        $from.parentOffset === $from.parent.content.size;
       if (inBlank) {
         liveFrom = $from.before($from.depth);
         liveTo = $from.after($from.depth);
+      } else if (atStartOfBlock) {
+        liveFrom = liveTo = $from.before(1);
+      } else if (atEndOfBlock) {
+        liveFrom = liveTo = $from.after(1);
       } else {
         liveFrom = liveState.selection.from;
         liveTo = liveState.selection.from;
