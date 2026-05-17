@@ -48,3 +48,8 @@ release/
 # Re-include that specific path.
 !apps/desktop/build/
 !apps/desktop/build/**
+
+# Local-only running notes / wishlist / scratchpad files. WISHLIST.md
+# is the running queue of usability ideas and feedback to act on
+# before the next release.
+WISHLIST.md
