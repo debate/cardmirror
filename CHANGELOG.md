@@ -6,7 +6,43 @@ internal refactors live in commit messages, not here.
 
 ## Unreleased
 
-(Nothing yet.)
+- New setting: **default file format for new docs**. Pick `.docx`
+  (default — Word- / Verbatim-compatible) or `.cmir` (CardMirror's
+  native format, enables autosave); the Save-As dialog defaults to
+  that format for any doc that doesn't yet have an on-disk handle.
+  Existing files on disk still re-save in whatever format they were
+  opened from.
+- New setting: **jump to doc top when read mode toggles**. Off by
+  default (today's stay-put behavior). When on, toggling read mode
+  in either direction scrolls to the top of the doc and places the
+  cursor at the start.
+- Zoom in / out / reset and the highlight / shading paint-mode
+  toggles are now registered ribbon commands, so users can bind
+  them to keys via Settings → Keybindings. Default bindings:
+  `Mod-=` for zoom in, `Mod--` for zoom out; `zoomReset` and the
+  paintbrush toggles ship unbound (`Mod-0` is a browser-level
+  reset that Chromium won't always let the page intercept, so the
+  status-bar reset button remains the discoverable affordance).
+- Keyboard-shortcut command labels (Settings → Keybindings) now
+  use consistent title casing across the board.
+- The AI alt-text generator now ships surrounding context with the
+  image — the enclosing card's tag and cite, plus the paragraphs
+  immediately before and after the image — so descriptions reflect
+  what the image is *doing* in the argument instead of generic
+  "a chart with bars" captions.
+- Shift-F3 (cycle case) now keeps the selection after each press,
+  so the user can re-press to advance to the next case state
+  (lower → UPPER → Title → lower) without re-selecting.
+- Speech-doc designation now uses the same warm-gold accent in both
+  single-window multi-window mode (the banner under the ribbon) and
+  single-window multi-pane mode (the per-pane chip), so the "this
+  is the speech doc" affordance reads the same regardless of window
+  topology.
+- Ribbon cleanup: the plain-paste toggle (`T`) is hidden on desktop
+  (F2 reads the clipboard directly there — no armed state to show),
+  and the autosave toggle (⏱) is hidden on the web edition
+  (autosave requires an on-disk file handle, which the browser
+  can't provide).
 
 ## 0.1.0-alpha.1 — 2026-05-16
 

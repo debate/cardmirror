@@ -27,7 +27,7 @@ import {
   type CondenseWarningDelimiter,
 } from '../settings.js';
 import { showToast } from '../toast.js';
-import { AnthropicError, callAnthropic } from './anthropic.js';
+import { AnthropicError, callAnthropic, type AnthropicContentBlock } from './anthropic.js';
 import { ThinkingTooltip } from './thinking-tooltip.js';
 
 /** Resolve the user-configured omission-bracket pair. Matches the
@@ -115,7 +115,76 @@ function tooltipAnchorFor(view: EditorView, imagePos: number): {
 // Alt-text generation
 // ============================================================
 
-const ALT_TEXT_SYSTEM_PROMPT = `You write short, plain-English alt text for images embedded in debate evidence documents. Keep the description to ONE sentence, under 25 words, factual, no commentary. Do not start with "An image of" or similar filler. Just describe what's visible.`;
+const ALT_TEXT_SYSTEM_PROMPT = `You write short, plain-English alt text for images embedded in debate evidence documents. Keep the description to ONE sentence, under 25 words, factual, no commentary. Do not start with "An image of" or similar filler. Just describe what's visible.
+
+You may also receive surrounding text from the document (the card's tag, cite, and the paragraphs immediately before and after the image) as context. Use it to decide which features of the image are salient enough to mention — but the alt text describes the IMAGE itself, not the surrounding text. Do not quote or summarize the context in the alt text.`;
+
+interface ImageContext {
+  tag: string;
+  cite: string;
+  paragraphBefore: string;
+  paragraphAfter: string;
+}
+
+/** Gather the four pieces of surrounding context we ship with the
+ *  image: the enclosing card's tag and cite (if any), plus the
+ *  textblock siblings immediately before and after the image's
+ *  containing textblock. Each piece may be empty — the caller
+ *  filters empties out before building the prompt. */
+function gatherImageContext(view: EditorView, imagePos: number): ImageContext {
+  const ctx: ImageContext = { tag: '', cite: '', paragraphBefore: '', paragraphAfter: '' };
+  const doc = view.state.doc;
+  const $pos = doc.resolve(imagePos);
+
+  // Locate the textblock containing the image. `resolve(imagePos)`
+  // lands at the image's position; depth points at the textblock
+  // when the parent is a textblock containing inline content.
+  let blockDepth = $pos.depth;
+  while (blockDepth > 0 && !$pos.node(blockDepth).isTextblock) blockDepth--;
+  if (blockDepth === 0) return ctx;
+
+  // Walk ancestors to find the enclosing `card`, if any.
+  for (let d = blockDepth - 1; d >= 0; d--) {
+    const node = $pos.node(d);
+    if (node.type.name === 'card') {
+      node.forEach((child) => {
+        if (child.type.name === 'tag' && !ctx.tag) {
+          ctx.tag = child.textContent.trim();
+        } else if (child.type.name === 'cite_paragraph' && !ctx.cite) {
+          ctx.cite = child.textContent.trim();
+        }
+      });
+      break;
+    }
+  }
+
+  // Sibling textblocks at the same level as the image's textblock.
+  const parent = $pos.node(blockDepth - 1);
+  const idx = $pos.index(blockDepth - 1);
+  const siblingTextAt = (i: number): string => {
+    if (i < 0 || i >= parent.childCount) return '';
+    const child = parent.child(i);
+    if (!child.isTextblock) return '';
+    return child.textContent.trim();
+  };
+  ctx.paragraphBefore = siblingTextAt(idx - 1);
+  ctx.paragraphAfter = siblingTextAt(idx + 1);
+
+  return ctx;
+}
+
+/** Render the gathered context as a single text block to prepend
+ *  to the user message. Returns `''` when nothing useful was
+ *  gathered (e.g., a doc-level paragraph with no neighbors). */
+function formatImageContextForPrompt(ctx: ImageContext): string {
+  const lines: string[] = [];
+  if (ctx.tag) lines.push(`Card tag: ${ctx.tag}`);
+  if (ctx.cite) lines.push(`Cite: ${ctx.cite}`);
+  if (ctx.paragraphBefore) lines.push(`Paragraph before the image: ${ctx.paragraphBefore}`);
+  if (ctx.paragraphAfter) lines.push(`Paragraph after the image: ${ctx.paragraphAfter}`);
+  if (lines.length === 0) return '';
+  return `Context from the surrounding document:\n${lines.join('\n')}`;
+}
 
 export function runGenerateAltText(
   view: EditorView,
@@ -135,20 +204,21 @@ export function runGenerateAltText(
   const tooltip = new ThinkingTooltip();
   tooltip.show(tooltipAnchorFor(view, imagePos));
 
+  const contextText = formatImageContextForPrompt(gatherImageContext(view, imagePos));
+
   void (async () => {
     try {
+      const userContent: AnthropicContentBlock[] = [];
+      if (contextText) userContent.push({ type: 'text', text: contextText });
+      userContent.push({
+        type: 'image',
+        source: { type: 'base64', media_type: contentType, data },
+      });
+      userContent.push({ type: 'text', text: 'Write the alt text for this image.' });
       const reply = await callAnthropic({
         apiKey,
         system: ALT_TEXT_SYSTEM_PROMPT,
-        messages: [
-          {
-            role: 'user',
-            content: [
-              { type: 'image', source: { type: 'base64', media_type: contentType, data } },
-              { type: 'text', text: 'Write the alt text for this image.' },
-            ],
-          },
-        ],
+        messages: [{ role: 'user', content: userContent }],
       });
       const altText = reply.text.trim().replace(/\s+/g, ' ');
       if (!altText) {

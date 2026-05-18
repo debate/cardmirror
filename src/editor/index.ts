@@ -88,6 +88,11 @@ import { wireColorPanel } from './color-panel.js';
 import { countReadAloudWords, formatReadTime, formatNumber } from './word-count.js';
 import { getHost, getElectronHost, type OpenedFile, type JournalEntry } from './host/index.js';
 
+// Tag the body with the host kind so CSS can gate platform-specific
+// chrome (e.g. the plain-paste toggle button only appears in the
+// browser edition; the autosave button only appears on desktop).
+document.body.classList.add('pmd-host-' + getHost().kind);
+
 const editorEl = document.getElementById('editor')!;
 
 /** Mousedown handler: when the user clicks below the rendered
@@ -365,6 +370,10 @@ let multiDocOnNewDoc: (() => Promise<void> | void) | null = null;
  *  read-mode ribbon button to the shell's per-pane toggle. */
 let multiDocToggleReadMode: (() => void) | null = null;
 let multiDocToggleAutosave: (() => void) | null = null;
+/** Assigned by `wireColorPanel(...)` further below. Referenced by the
+ *  `togglePaintbrushHighlight` / `togglePaintbrushShading` ribbon
+ *  commands so users can arm the paintbrush via a keybinding. */
+let colorPanel: import('./color-panel.js').ColorPanelHandle | null = null;
 /** Speech-doc command hooks. Installed by the multi-pane shell; in
  *  single-doc mode these stay null and the commands no-op (no
  *  second doc to send TO, and a single doc doesn't gain anything
@@ -567,9 +576,13 @@ const ribbonContext: RibbonContext = {
       // state and apply it locally without touching the global
       // setting (so the other panes keep theirs).
       multiDocToggleReadMode();
-      return;
+    } else {
+      settings.set('readMode', !settings.get('readMode'));
     }
-    settings.set('readMode', !settings.get('readMode'));
+    if (settings.get('jumpToDocTopOnReadModeToggle') && view) {
+      const tr = view.state.tr.setSelection(Selection.atStart(view.state.doc));
+      view.dispatch(tr.scrollIntoView());
+    }
   },
   openShortcutsReference: () => openReference(),
   toggleCommentsVisible: () => {
@@ -667,6 +680,17 @@ const ribbonContext: RibbonContext = {
   insertImage: () => {
     if (!view) return;
     openImagePicker(view);
+  },
+  zoomIn: () => setZoom(settings.get('zoomPct') + 10),
+  zoomOut: () => setZoom(settings.get('zoomPct') - 10),
+  zoomReset: () => setZoom(100),
+  togglePaintbrushHighlight: () => {
+    if (!view) return;
+    colorPanel?.togglePaintbrush('highlight');
+  },
+  togglePaintbrushShading: () => {
+    if (!view) return;
+    colorPanel?.togglePaintbrush('shading');
   },
 };
 
@@ -1433,6 +1457,12 @@ const VIEWLESS_RIBBON_COMMANDS = new Set<RibbonCommandId>([
   // commands DO need an active doc (a source for send, or the
   // focused doc for mark) so they stay gated on `view`.
   'newSpeechDocument',
+  // Zoom modifies a persisted setting + a CSS variable on
+  // documentElement — no doc dispatch required, so it works even
+  // when multi-doc has zero panes open.
+  'zoomIn',
+  'zoomOut',
+  'zoomReset',
 ]);
 
 function runViewlessRibbon(id: RibbonCommandId): void {
@@ -1444,13 +1474,16 @@ function runViewlessRibbon(id: RibbonCommandId): void {
     case 'toggleAutosave': ribbonContext.toggleAutosave(); return;
     case 'openShortcutsReference': ribbonContext.openShortcutsReference(); return;
     case 'newSpeechDocument': ribbonContext.newSpeechDocument(); return;
+    case 'zoomIn': ribbonContext.zoomIn(); return;
+    case 'zoomOut': ribbonContext.zoomOut(); return;
+    case 'zoomReset': ribbonContext.zoomReset(); return;
   }
 }
 
 // Wire the color panel (split buttons + swatch pickers). Pass a ref
 // object so the panel reads the live view through `view.view` even
 // when the EditorView gets re-mounted (e.g. on docx import).
-wireColorPanel({ get view() { return view; } });
+colorPanel = wireColorPanel({ get view() { return view; } });
 
 // Paragraph Integrity toggle — clicking flips the setting; the
 // settings subscriber below mirrors the live value into the
@@ -2572,7 +2605,10 @@ async function serializeForSave(
 export async function runSaveAsFlow(): Promise<boolean> {
   const file = activeFile();
   const suggestedName = basenameWithoutExt(file.filename ?? 'untitled');
-  const defaultFormat: 'cmir' | 'docx' = file.format ?? 'cmir';
+  // Existing on-disk handle wins (preserves the file's current
+  // format on Save As); otherwise honor the user's preferred
+  // default for new docs.
+  const defaultFormat: 'cmir' | 'docx' = file.format ?? settings.get('defaultSaveFormat');
   const choice = await openSaveAs({
     initialFilename: suggestedName,
     defaultFormat,

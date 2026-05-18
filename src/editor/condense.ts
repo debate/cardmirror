@@ -983,6 +983,11 @@ export function toggleCase(): Command {
       return true;
     });
 
+    // Preserve the selection so the user can cycle again without
+    // re-selecting. Case transforms preserve string length, so the
+    // original from/to positions are still valid in the new doc.
+    tr.setSelection(TextSelection.create(tr.doc, from, to));
+
     dispatch(tr);
     return true;
   };

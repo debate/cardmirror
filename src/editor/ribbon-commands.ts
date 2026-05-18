@@ -2905,7 +2905,12 @@ export type RibbonCommandId =
   | 'markActiveAsSpeech'
   | 'sendToSpeechAtCursor'
   | 'sendToSpeechAtEnd'
-  | 'insertImage';
+  | 'insertImage'
+  | 'zoomIn'
+  | 'zoomOut'
+  | 'zoomReset'
+  | 'togglePaintbrushHighlight'
+  | 'togglePaintbrushShading';
 
 export const STRUCTURAL_RIBBON_COMMAND_IDS: StructuralRibbonCommandId[] = [
   'setPocket',
@@ -2974,47 +2979,52 @@ export const RIBBON_COMMAND_IDS: RibbonCommandId[] = [
   'sendToSpeechAtCursor',
   'sendToSpeechAtEnd',
   'insertImage',
+  'zoomIn',
+  'zoomOut',
+  'zoomReset',
+  'togglePaintbrushHighlight',
+  'togglePaintbrushShading',
 ];
 
 export const RIBBON_COMMAND_LABELS: Record<RibbonCommandId, string> = {
-  setPocket: 'Apply Pocket style',
-  setHat: 'Apply Hat style',
-  setBlock: 'Apply Block style',
-  setTag: 'Apply Tag style',
-  setAnalytic: 'Apply Analytic style',
-  setUndertag: 'Apply Undertag style',
+  setPocket: 'Apply Pocket Style',
+  setHat: 'Apply Hat Style',
+  setBlock: 'Apply Block Style',
+  setTag: 'Apply Tag Style',
+  setAnalytic: 'Apply Analytic Style',
+  setUndertag: 'Apply Undertag Style',
   toggleBold: 'Bold',
   toggleItalic: 'Italic',
   toggleStrikethrough: 'Strikethrough',
   toggleSuperscript: 'Superscript',
   toggleSubscript: 'Subscript',
-  applyCite: 'Apply Cite style',
+  applyCite: 'Apply Cite Style',
   applyUnderline: 'Toggle Underline',
-  applyEmphasis: 'Apply Emphasis style',
+  applyEmphasis: 'Apply Emphasis Style',
   applyHighlight: 'Toggle Highlight',
   applyShading: 'Toggle Background Color',
   condenseDefault: 'Condense',
-  condenseNoIntegrity: 'Condense without paragraph integrity',
-  condenseNoIntegrityWithPilcrows: 'Condense without paragraph integrity (with pilcrows)',
-  condenseWithWarning: 'Condense with warning',
+  condenseNoIntegrity: 'Condense Without Paragraph Integrity',
+  condenseNoIntegrityWithPilcrows: 'Condense Without Paragraph Integrity (With Pilcrows)',
+  condenseWithWarning: 'Condense With Warning',
   uncondense: 'Uncondense',
-  toggleCase: 'Toggle case',
-  copyPreviousCite: 'Copy previous cite',
-  pasteAsText: 'Paste plain text',
+  toggleCase: 'Toggle Case',
+  copyPreviousCite: 'Copy Previous Cite',
+  pasteAsText: 'Paste Plain Text',
   clearToNormal: 'Clear',
-  shrink: 'Shrink card text',
+  shrink: 'Shrink Card Text',
   createReference: 'Create Reference',
   highlightToShading: 'Highlight to Background',
   shadingToHighlight: 'Background to Highlight',
   standardizeHighlight: 'Standardize Highlighting',
   standardizeShading: 'Standardize Background Color',
-  toggleReadMode: 'Toggle read mode',
-  toggleCommentsVisible: 'Show / hide comments',
-  addCommentToSelection: 'Add comment to selection',
-  aiAskAboutSelection: 'Ask AI about selection',
-  aiCreateCite: 'Format cite from selection',
-  wordCountSelection: 'Word count selection',
-  openShortcutsReference: 'Open keyboard shortcuts',
+  toggleReadMode: 'Toggle Read Mode',
+  toggleCommentsVisible: 'Show / Hide Comments',
+  addCommentToSelection: 'Add Comment to Selection',
+  aiAskAboutSelection: 'Ask AI About Selection',
+  aiCreateCite: 'Format Cite From Selection',
+  wordCountSelection: 'Word Count Selection',
+  openShortcutsReference: 'Open Keyboard Shortcuts',
   selectSimilar: 'Select Similar Formatting',
   removeHyperlinks: 'Remove Hyperlinks',
   convertAnalyticsToTags: 'Convert Analytics to Tags',
@@ -3029,16 +3039,21 @@ export const RIBBON_COMMAND_LABELS: Record<RibbonCommandId, string> = {
   mergeTableCells: 'Merge Cells',
   splitTableCell: 'Split Cell',
   deleteTable: 'Delete Table',
-  newDocument: 'New document',
-  openFile: 'Open file',
+  newDocument: 'New Document',
+  openFile: 'Open File',
   save: 'Save',
-  saveAs: 'Save as…',
-  toggleAutosave: 'Toggle autosave',
-  newSpeechDocument: 'New speech document',
-  markActiveAsSpeech: 'Mark / unmark active doc as the speech doc',
-  sendToSpeechAtCursor: 'Send to speech (at cursor)',
-  sendToSpeechAtEnd: 'Send to speech (at end)',
-  insertImage: 'Insert image at cursor',
+  saveAs: 'Save As…',
+  toggleAutosave: 'Toggle Autosave',
+  newSpeechDocument: 'New Speech Document',
+  markActiveAsSpeech: 'Mark / Unmark Active Doc as the Speech Doc',
+  sendToSpeechAtCursor: 'Send to Speech (At Cursor)',
+  sendToSpeechAtEnd: 'Send to Speech (At End)',
+  insertImage: 'Insert Image at Cursor',
+  zoomIn: 'Zoom In',
+  zoomOut: 'Zoom Out',
+  zoomReset: 'Reset Zoom to 100%',
+  togglePaintbrushHighlight: 'Toggle Highlight Paint Mode',
+  togglePaintbrushShading: 'Toggle Background-Color Paint Mode',
 };
 
 /**
@@ -3127,6 +3142,22 @@ export const DEFAULT_RIBBON_KEYS: Record<RibbonCommandId, string | string[]> = {
   newSpeechDocument: '',
   markActiveAsSpeech: '',
   insertImage: '',
+  // Zoom. Mod-=/Mod-- mirror Word's editor-zoom convention (the `=`
+  // key is the unshifted version of `+`). Mod-= overlaps with
+  // toggleSubscript's default; the editor's keymap resolves the
+  // overlap in the user's favor via Settings → Keybindings, where
+  // either command can be rebound. zoomReset stays unbound by
+  // default — Mod-0 is a browser-level "reset zoom" chord that
+  // Chromium won't always let the page intercept.
+  zoomIn: 'Mod-=',
+  zoomOut: 'Mod--',
+  zoomReset: '',
+  // Paintbrush toggles — no obvious convention here, so register
+  // them in the keybinding registry without a default. Users who
+  // want a hotkey for sticky highlight / shading can bind one in
+  // Settings → Keybindings.
+  togglePaintbrushHighlight: '',
+  togglePaintbrushShading: '',
 };
 
 /**
@@ -3212,6 +3243,18 @@ export interface RibbonContext {
    *  clipboard goes through paste-plugin instead — no ctx hook
    *  needed for that path. */
   insertImage: () => void;
+  /** Zoom controls — bumps the persisted `zoomPct` setting one
+   *  step up/down or resets it to 100%. The status-bar buttons
+   *  use the same handlers. */
+  zoomIn: () => void;
+  zoomOut: () => void;
+  zoomReset: () => void;
+  /** Paint-mode toggles for highlight / background-color. Mirror
+   *  what clicking the ribbon's main color button does when the
+   *  selection is empty (arming sticky paint until the next click
+   *  or Escape). */
+  togglePaintbrushHighlight: () => void;
+  togglePaintbrushShading: () => void;
 }
 
 const DEFAULT_RIBBON_CONTEXT: RibbonContext = {
@@ -3248,6 +3291,11 @@ const DEFAULT_RIBBON_CONTEXT: RibbonContext = {
   sendToSpeechAtCursor: () => {},
   sendToSpeechAtEnd: () => {},
   insertImage: () => {},
+  zoomIn: () => {},
+  zoomOut: () => {},
+  zoomReset: () => {},
+  togglePaintbrushHighlight: () => {},
+  togglePaintbrushShading: () => {},
 };
 
 function commandFor(id: RibbonCommandId, ctx: RibbonContext): Command {
@@ -3467,6 +3515,36 @@ function commandFor(id: RibbonCommandId, ctx: RibbonContext): Command {
       return (_state, dispatch) => {
         if (!dispatch) return true;
         ctx.insertImage();
+        return true;
+      };
+    case 'zoomIn':
+      return (_state, dispatch) => {
+        if (!dispatch) return true;
+        ctx.zoomIn();
+        return true;
+      };
+    case 'zoomOut':
+      return (_state, dispatch) => {
+        if (!dispatch) return true;
+        ctx.zoomOut();
+        return true;
+      };
+    case 'zoomReset':
+      return (_state, dispatch) => {
+        if (!dispatch) return true;
+        ctx.zoomReset();
+        return true;
+      };
+    case 'togglePaintbrushHighlight':
+      return (_state, dispatch) => {
+        if (!dispatch) return true;
+        ctx.togglePaintbrushHighlight();
+        return true;
+      };
+    case 'togglePaintbrushShading':
+      return (_state, dispatch) => {
+        if (!dispatch) return true;
+        ctx.togglePaintbrushShading();
         return true;
       };
   }

@@ -70,6 +70,14 @@ body {
   --pmd-c-drop-mid: #d8e7ff;
   --pmd-c-drop-tint: rgba(40, 103, 216, 0.06);
 
+  /* Speech-doc designation. Same accent in both indicators so the
+     "this is the speech doc" affordance reads identically whether
+     the user is in single-window mode (full-width banner) or
+     multi-pane single-window mode (per-pane chip tint). */
+  --pmd-c-speech-bg: #fff3cd;
+  --pmd-c-speech-border: #ffe69c;
+  --pmd-c-speech-text: #5a3e00;
+
   /* Editor-specific decorations */
   --pmd-c-card-hover: #c0c0c0;         /* card left-border on hover */
   --pmd-c-emphasis-box: #333;          /* emphasis box border */
@@ -263,9 +271,9 @@ body:not(.pmd-multi-doc):not(.pmd-multi-window) #speech-stack { display: none; }
   padding: 0 1rem;
   font-size: 0.85rem;
   font-weight: 600;
-  color: #5a3e00;
-  background: #fff3cd;
-  border-bottom: 1px solid #ffe69c;
+  color: var(--pmd-c-speech-text);
+  background: var(--pmd-c-speech-bg);
+  border-bottom: 1px solid var(--pmd-c-speech-border);
 }
 #speech-doc-banner[hidden] { display: none; }
 .pmd-speech-doc-banner-icon { font-size: 1rem; line-height: 1; }
@@ -279,6 +287,21 @@ body.pmd-speech-banner-visible #app {
 /* Multi-pane uses per-pane chips for the same purpose — suppress
    the banner there to avoid a redundant indicator. */
 body.pmd-multi-doc #speech-doc-banner { display: none; }
+
+/* Host-gated ribbon buttons.
+   - The plain-paste toggle (T) is the browser edition's
+     armed-state UI for sticky paste (Chromium won't let JS read
+     the clipboard synchronously, so the workaround is to flip a
+     flag and let the next Ctrl/Cmd+V trigger the rewrite). On
+     desktop, F2 reads the clipboard directly — no toggle state
+     to show, no reason for the button.
+   - The autosave toggle (⏱) only works when the host can do
+     in-place file writes against an existing `.cmir` handle.
+     Browser has no on-disk handles (every save is a download via
+     File System Access API or Save-As) — the button can never go
+     from "inert" to "effective" there. Hide it. */
+body.pmd-host-electron #plain-paste-toggle-btn { display: none; }
+body.pmd-host-browser #autosave-btn { display: none; }
 /* `mark active as speech` is a toggle — when this button is the
    active doc's speech designation, it stays pressed-down so the
    user can see at a glance which slot holds the speech doc. */
@@ -4304,13 +4327,19 @@ body.pmd-multi-doc #word-count-display {
   content: '🎤';
   margin-right: 0.3em;
 }
-/* Light blue tint when the slot is NOT focused. When focused, the
-   `.pmd-pane-focused .pmd-pane-chip` rule takes over (dark blue
-   bg + white text) — without the `:not()` guard the speech rule
-   wins on source order and leaves white text on a light-blue
-   chip, which is unreadable. */
+/* Speech-doc tint when the slot is NOT focused. Matches the
+   multi-window speech-doc banner so the "this is the speech doc"
+   affordance reads the same across window topologies. When
+   focused, the `.pmd-pane-focused .pmd-pane-chip` rule takes over
+   (dark blue bg + white text) — without the `:not()` guard the
+   speech rule wins on source order and leaves white text on a
+   light-yellow chip, which is unreadable. */
 .pmd-pane-speech:not(.pmd-pane-focused) .pmd-pane-chip {
-  background: var(--pmd-c-drop-soft, var(--pmd-c-surface));
+  background: var(--pmd-c-speech-bg);
+  border-bottom-color: var(--pmd-c-speech-border);
+}
+.pmd-pane-speech:not(.pmd-pane-focused) .pmd-pane-chip-name {
+  color: var(--pmd-c-speech-text);
 }
 .pmd-pane-chip-stack {
   flex: 0 0 auto;

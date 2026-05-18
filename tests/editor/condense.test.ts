@@ -526,4 +526,19 @@ describe('toggleCase', () => {
     const next = apply(state, toggleCase());
     expect(next).toBeNull();
   });
+
+  it('preserves the selection so the user can cycle again', () => {
+    const doc = makeDoc([paragraph('hello world')]);
+    const state = setSelectionRange(doc, 'hello', 0, 'world', 5);
+    const { from: origFrom, to: origTo } = state.selection;
+    const next = apply(state, toggleCase());
+    expect(next).not.toBeNull();
+    expect(next!.selection.empty).toBe(false);
+    expect(next!.selection.from).toBe(origFrom);
+    expect(next!.selection.to).toBe(origTo);
+    // And cycling again from the preserved selection advances the
+    // case — proving the selection truly stayed on the rewritten text.
+    const after = apply(next!, toggleCase());
+    expect(caseStateOf(after!.doc, 'Hello')).toBe('Hello World');
+  });
 });

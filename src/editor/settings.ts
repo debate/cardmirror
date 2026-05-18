@@ -162,6 +162,16 @@ export interface Settings {
    *  background save path skips .docx because `toDocx` is too
    *  expensive to run on a debounce). */
   defaultSpeechDocFormat: 'cmir' | 'docx';
+  /** Format the Save-As dialog defaults to for a doc that doesn't
+   *  yet have an on-disk handle (new doc, first save). Existing
+   *  on-disk files always Save As in their current format — the
+   *  handle wins over this default. */
+  defaultSaveFormat: 'cmir' | 'docx';
+  /** When read mode is toggled (either direction), scroll the
+   *  editor to the very top of the doc and place the cursor at
+   *  the start. Default off — toggling read mode keeps the
+   *  viewport / cursor where they were. */
+  jumpToDocTopOnReadModeToggle: boolean;
   /** Whether "New Speech Document" seeds the doc with a Pocket
    *  heading carrying the speech's name. On (default) matches
    *  Verbatim's `NewSpeech`. Off creates a fully blank doc — one
@@ -517,6 +527,8 @@ const DEFAULTS: Settings = {
   showOnboardingStarter: true,
   defaultSpeechDocFolder: '',
   defaultSpeechDocFormat: 'docx',
+  defaultSaveFormat: 'docx',
+  jumpToDocTopOnReadModeToggle: false,
   includeSpeechDocPocket: true,
   showCitePreview: true,
   editorSpellcheck: false,
@@ -641,6 +653,7 @@ export interface SettingMeta {
     | 'text'
     | 'folder'
     | 'speechDocFormat'
+    | 'saveFormat'
     | 'password'
     | 'clod'
     | 'aiCitePrompt'
@@ -710,6 +723,14 @@ export const SETTING_METADATA: SettingMeta[] = [
     category: 'general',
   },
   {
+    key: 'defaultSaveFormat',
+    label: 'Default file format for new documents',
+    description:
+      'Sets the format the Save-As dialog defaults to for a doc you haven\'t saved before. .docx is the default — Word- and Verbatim-compatible. Pick .cmir to make every new doc save in CardMirror\'s native format (lossless, and the only format that supports autosave). Doesn\'t affect existing files on disk — those always re-save in whatever format they were opened from.',
+    kind: 'saveFormat',
+    category: 'general',
+  },
+  {
     key: 'includeSpeechDocPocket',
     label: 'Seed new speech docs with a Pocket heading',
     description:
@@ -738,6 +759,14 @@ export const SETTING_METADATA: SettingMeta[] = [
     label: 'Text drag-and-drop',
     description:
       "Allow click-and-drag of selected text to move it to another position. On by default. Disabling stops you (and the browser) from initiating a text-move drag — useful if you keep accidentally dragging selections. Doesn't affect the card / heading pickup-modifier drag.",
+    kind: 'toggle',
+    category: 'general',
+  },
+  {
+    key: 'jumpToDocTopOnReadModeToggle',
+    label: 'Jump to doc top when read mode toggles',
+    description:
+      'When on, toggling read mode (in either direction) scrolls to the top of the doc and places the cursor at the start. Off by default — the viewport stays where it was.',
     kind: 'toggle',
     category: 'general',
   },
@@ -1071,6 +1100,9 @@ function sanitize(s: Settings): Settings {
         : '',
     defaultSpeechDocFormat:
       s.defaultSpeechDocFormat === 'cmir' ? 'cmir' : 'docx',
+    defaultSaveFormat:
+      s.defaultSaveFormat === 'cmir' ? 'cmir' : 'docx',
+    jumpToDocTopOnReadModeToggle: !!s.jumpToDocTopOnReadModeToggle,
     includeSpeechDocPocket:
       s.includeSpeechDocPocket === false ? false : true,
     showCitePreview: !!s.showCitePreview,

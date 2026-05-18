@@ -38,7 +38,15 @@ import {
 import { schema } from '../schema/index.js';
 
 type ViewRef = { view: EditorView | null };
-type PaintbrushMode = 'highlight' | 'shading' | 'fontcolor';
+export type PaintbrushMode = 'highlight' | 'shading' | 'fontcolor';
+
+export interface ColorPanelHandle {
+  /** Toggle paint mode for the given target — turns it on if off,
+   *  off if already on, or switches modes if a different one was on.
+   *  Used by the keybinding-driven ribbon commands so users can arm
+   *  the paintbrush without clicking the ribbon button. */
+  togglePaintbrush(mode: PaintbrushMode): void;
+}
 
 interface ColorControlSetup {
   mainBtnId: string;
@@ -55,7 +63,7 @@ interface ColorControlSetup {
   updateIndicator: () => void;
 }
 
-export function wireColorPanel(viewRef: ViewRef): void {
+export function wireColorPanel(viewRef: ViewRef): ColorPanelHandle {
   let activePaintbrush: PaintbrushMode | null = null;
 
   const controls: ColorControlSetup[] = [
@@ -164,6 +172,12 @@ export function wireColorPanel(viewRef: ViewRef): void {
   settings.subscribe(() => {
     for (const c of controls) c.updateIndicator();
   });
+
+  return {
+    togglePaintbrush: (mode: PaintbrushMode) => {
+      setPaintbrush(activePaintbrush === mode ? null : mode);
+    },
+  };
 }
 
 function buildHighlightControl(): ColorControlSetup {
