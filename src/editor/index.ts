@@ -53,6 +53,8 @@ import { citeClassifierPlugin } from './cite-classifier-plugin.js';
 import { namedStyleNormalizerPlugin } from './named-style-normalizer-plugin.js';
 import { fontSizeClassPlugin } from './font-size-class-plugin.js';
 import { buildSimilarSelectionPlugin } from './similar-selection-plugin.js';
+import { findReplacePlugin } from './find-replace-plugin.js';
+import { FindReplaceBar } from './find-replace-ui.js';
 import { tableEditing, columnResizing } from 'prosemirror-tables';
 import { buildPastePlugin } from './paste-plugin.js';
 import { buildImageNodeFromBlob, insertImageNode } from './image-insert.js';
@@ -374,6 +376,16 @@ let multiDocToggleAutosave: (() => void) | null = null;
  *  `togglePaintbrushHighlight` / `togglePaintbrushShading` ribbon
  *  commands so users can arm the paintbrush via a keybinding. */
 let colorPanel: import('./color-panel.js').ColorPanelHandle | null = null;
+/** Created lazily on the first Ctrl-F / Ctrl-H press. Reads the
+ *  active view via the `getView` getter so the bar follows the
+ *  currently-focused pane in multi-doc mode. */
+let findReplaceBar: FindReplaceBar | null = null;
+function ensureFindReplaceBar(): FindReplaceBar {
+  if (!findReplaceBar) {
+    findReplaceBar = new FindReplaceBar(() => view);
+  }
+  return findReplaceBar;
+}
 /** Speech-doc command hooks. Installed by the multi-pane shell; in
  *  single-doc mode these stay null and the commands no-op (no
  *  second doc to send TO, and a single doc doesn't gain anything
@@ -691,6 +703,14 @@ const ribbonContext: RibbonContext = {
   togglePaintbrushShading: () => {
     if (!view) return;
     colorPanel?.togglePaintbrush('shading');
+  },
+  openFind: () => {
+    if (!view) return;
+    ensureFindReplaceBar().open('find');
+  },
+  openFindReplace: () => {
+    if (!view) return;
+    ensureFindReplaceBar().open('replace');
   },
 };
 
@@ -2094,6 +2114,7 @@ export function buildEditorPlugins(): Plugin[] {
     namedStyleNormalizerPlugin,
     fontSizeClassPlugin,
     buildSimilarSelectionPlugin(effectivePtForNode),
+    findReplacePlugin(),
     tableEditing(),
     columnResizing(),
     // Tab / Shift-Tab indent — registered AFTER tableEditing so it

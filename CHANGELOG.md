@@ -25,6 +25,15 @@ internal refactors live in commit messages, not here.
   status-bar reset button remains the discoverable affordance).
 - Keyboard-shortcut command labels (Settings → Keybindings) now
   use consistent title casing across the board.
+- **Find and Replace** (Ctrl-F / Ctrl-H). Floating bar in the
+  upper-right with case-sensitive and whole-word toggles, next /
+  prev navigation, a match count, Replace, and Replace All. Every
+  match is highlighted in light yellow in the doc; the
+  currently-active one gets a stronger orange band so you can
+  see what Replace will touch. Escape closes the bar and
+  restores focus to the editor. (Nav-pane integration and
+  categorized vs proximity result ordering are still on the
+  wishlist for a future release.)
 - Re-pressing a heading shortcut (F4 / F5 / F6 / F7 / Mod-F7 /
   Mod-F8) on a paragraph that already has that heading style now
   strips the paragraph's indentation while keeping the heading

@@ -2936,7 +2936,9 @@ export type RibbonCommandId =
   | 'zoomOut'
   | 'zoomReset'
   | 'togglePaintbrushHighlight'
-  | 'togglePaintbrushShading';
+  | 'togglePaintbrushShading'
+  | 'openFind'
+  | 'openFindReplace';
 
 export const STRUCTURAL_RIBBON_COMMAND_IDS: StructuralRibbonCommandId[] = [
   'setPocket',
@@ -3010,6 +3012,8 @@ export const RIBBON_COMMAND_IDS: RibbonCommandId[] = [
   'zoomReset',
   'togglePaintbrushHighlight',
   'togglePaintbrushShading',
+  'openFind',
+  'openFindReplace',
 ];
 
 export const RIBBON_COMMAND_LABELS: Record<RibbonCommandId, string> = {
@@ -3080,6 +3084,8 @@ export const RIBBON_COMMAND_LABELS: Record<RibbonCommandId, string> = {
   zoomReset: 'Reset Zoom to 100%',
   togglePaintbrushHighlight: 'Toggle Highlight Paint Mode',
   togglePaintbrushShading: 'Toggle Background-Color Paint Mode',
+  openFind: 'Find',
+  openFindReplace: 'Find and Replace',
 };
 
 /**
@@ -3184,6 +3190,11 @@ export const DEFAULT_RIBBON_KEYS: Record<RibbonCommandId, string | string[]> = {
   // Settings → Keybindings.
   togglePaintbrushHighlight: '',
   togglePaintbrushShading: '',
+  // Browser-level Ctrl-F opens the page's find. Electron will let us
+  // intercept (we drive our own bar); the web edition may see the
+  // browser's UI also pop up. Documented + user-rebindable.
+  openFind: 'Mod-f',
+  openFindReplace: 'Mod-h',
 };
 
 /**
@@ -3281,6 +3292,9 @@ export interface RibbonContext {
    *  or Escape). */
   togglePaintbrushHighlight: () => void;
   togglePaintbrushShading: () => void;
+  /** Open the floating Find / Find+Replace bar. */
+  openFind: () => void;
+  openFindReplace: () => void;
 }
 
 const DEFAULT_RIBBON_CONTEXT: RibbonContext = {
@@ -3322,6 +3336,8 @@ const DEFAULT_RIBBON_CONTEXT: RibbonContext = {
   zoomReset: () => {},
   togglePaintbrushHighlight: () => {},
   togglePaintbrushShading: () => {},
+  openFind: () => {},
+  openFindReplace: () => {},
 };
 
 function commandFor(id: RibbonCommandId, ctx: RibbonContext): Command {
@@ -3571,6 +3587,18 @@ function commandFor(id: RibbonCommandId, ctx: RibbonContext): Command {
       return (_state, dispatch) => {
         if (!dispatch) return true;
         ctx.togglePaintbrushShading();
+        return true;
+      };
+    case 'openFind':
+      return (_state, dispatch) => {
+        if (!dispatch) return true;
+        ctx.openFind();
+        return true;
+      };
+    case 'openFindReplace':
+      return (_state, dispatch) => {
+        if (!dispatch) return true;
+        ctx.openFindReplace();
         return true;
       };
   }

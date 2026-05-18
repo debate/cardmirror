@@ -2837,6 +2837,109 @@ body.pmd-nav-resize-active {
   background-color: rgba(255, 196, 102, 0.32);
 }
 
+/* ---------------------------------------------- Find / Replace bar */
+
+/* Floating bar pinned to the top-right of the viewport, under the
+   ribbon. Stays out of the editor's main column so it doesn't push
+   content around as the user types. */
+.pmd-find-bar {
+  position: fixed;
+  top: calc(var(--ribbon-height) + 0.5rem);
+  right: 1rem;
+  z-index: 200;
+  background: var(--pmd-c-bg);
+  border: 1px solid var(--pmd-c-border-soft);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  padding: 0.4rem 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  min-width: 360px;
+}
+.pmd-find-bar[hidden] { display: none; }
+.pmd-find-row,
+.pmd-find-replace-row {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.pmd-find-input {
+  flex: 1 1 auto;
+  min-width: 120px;
+  padding: 0.25rem 0.4rem;
+  border: 1px solid var(--pmd-c-border-soft);
+  border-radius: 3px;
+  font-family: inherit;
+  font-size: 0.85rem;
+  background: var(--pmd-c-bg);
+  color: var(--pmd-c-text);
+}
+.pmd-find-input:focus {
+  outline: 2px solid var(--pmd-c-accent);
+  outline-offset: -1px;
+}
+.pmd-find-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.15rem 0.35rem;
+  border: 1px solid var(--pmd-c-border-soft);
+  border-radius: 3px;
+  cursor: pointer;
+  user-select: none;
+  background: var(--pmd-c-bg);
+}
+.pmd-find-toggle:has(input:checked) {
+  background: var(--pmd-c-hover-strong);
+  border-color: var(--pmd-c-accent);
+}
+.pmd-find-toggle input { display: none; }
+.pmd-find-count {
+  flex: 0 0 auto;
+  min-width: 4em;
+  text-align: right;
+  color: var(--pmd-c-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.pmd-find-icon-btn,
+.pmd-find-action {
+  background: var(--pmd-c-bg);
+  border: 1px solid var(--pmd-c-border-soft);
+  border-radius: 3px;
+  padding: 0.2rem 0.5rem;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.85rem;
+}
+.pmd-find-icon-btn { padding: 0.1rem 0.45rem; }
+.pmd-find-icon-btn:hover:not(:disabled),
+.pmd-find-action:hover:not(:disabled) {
+  background: var(--pmd-c-hover);
+}
+.pmd-find-icon-btn:disabled,
+.pmd-find-action:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.pmd-find-close { font-size: 1.1rem; line-height: 1; padding: 0 0.35rem; }
+.pmd-find-replace-row[hidden] { display: none; }
+
+/* Match decorations inside the editor. Standard light-yellow band
+   for every match; a slightly stronger orange band for the
+   currently-active hit so the user knows which one Replace would
+   touch. */
+.pmd-find-match {
+  background-color: rgba(255, 235, 59, 0.45);
+  border-radius: 2px;
+}
+.pmd-find-match-current {
+  background-color: rgba(255, 165, 0, 0.55);
+  outline: 1px solid rgba(180, 100, 0, 0.7);
+  outline-offset: 0;
+}
+
 /* ---------------------------------------------- Reference (cheat-sheet) modal */
 
 /* ---------------------------------------------- Comments column */
