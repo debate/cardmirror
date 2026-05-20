@@ -5998,7 +5998,15 @@ html.pmd-emphasis-box .pmd-pane-editor .pmd-emphasis {
 }
 .pmd-timer-panel[hidden] { display: none; }
 
-.pmd-timer-panel button {
+/* `#ribbon` prefix is required to beat the generic `#ribbon
+   button` rule (1 ID + 1 element = higher specificity than
+   our 1 class + 1 element). Without the prefix, height +
+   font-size silently fall back to the ribbon-wide defaults
+   (1.7rem implicit height from line-height, 0.95rem font),
+   which is what was making the timer rows tower over the
+   adjacent file-ops button stack. Same trick
+   `.ribbon-button-stack button` uses. */
+#ribbon .pmd-timer-panel button {
   background: var(--pmd-c-bg);
   border: 1px solid var(--pmd-c-border);
   border-radius: 3px;
@@ -6010,14 +6018,7 @@ html.pmd-emphasis-box .pmd-pane-editor .pmd-emphasis {
   padding: 0 0.3rem;
   line-height: 1;
   box-sizing: border-box;
-  /* Hard-pin to the same height as `.ribbon-button-stack button`
-     so each row of the timer aligns with one row of the
-     adjacent file-ops / formatting button stacks. */
   height: 1.45rem;
-  /* Explicit centering so a glyph (▶, ↻, etc.) sits on the same
-     baseline as the text labels next to it — browser-default
-     button alignment isn't quite right when mixing icon + text
-     buttons in the same grid row. */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -6032,7 +6033,7 @@ html.pmd-emphasis-box .pmd-pane-editor .pmd-emphasis {
    clipping. The `height: auto` overrides the button-rule's
    `height: 1.45rem` so the row-spanning item can stretch to
    fill its 2-row grid area. */
-.pmd-timer-reset {
+#ribbon .pmd-timer-reset {
   grid-column: 1;
   grid-row: 1 / span 2;
   height: auto;
@@ -6071,29 +6072,29 @@ html.pmd-emphasis-box .pmd-pane-editor .pmd-emphasis {
 }
 
 /* Start / Pause — col 3, row 1. */
-.pmd-timer-start {
+#ribbon .pmd-timer-start {
   grid-column: 3;
   grid-row: 1;
   min-width: 1.6rem;
 }
-.pmd-timer-start[aria-pressed="true"] {
+#ribbon .pmd-timer-start[aria-pressed="true"] {
   background: var(--pmd-c-accent);
   color: var(--pmd-c-text-on-accent);
 }
 
 /* Presets — col 4 row 1 (9), col 3 row 2 (6), col 4 row 2 (3). */
-.pmd-timer-preset {
+#ribbon .pmd-timer-preset {
   font-variant-numeric: tabular-nums;
   min-width: 1.6rem;
 }
-#timer-preset-1-btn { grid-column: 4; grid-row: 1; }
-#timer-preset-2-btn { grid-column: 3; grid-row: 2; }
-#timer-preset-3-btn { grid-column: 4; grid-row: 2; }
+#ribbon #timer-preset-1-btn { grid-column: 4; grid-row: 1; }
+#ribbon #timer-preset-2-btn { grid-column: 3; grid-row: 2; }
+#ribbon #timer-preset-3-btn { grid-column: 4; grid-row: 2; }
 
 /* Prep buttons — col 5. Aff on row 1 (blue), Neg on row 2 (red).
    Single-line "A: 10:00" / "N: 10:00" — the time span just
    carries tabular-nums so digits don't jitter as they tick. */
-.pmd-timer-prep {
+#ribbon .pmd-timer-prep {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -6104,19 +6105,19 @@ html.pmd-emphasis-box .pmd-pane-editor .pmd-emphasis {
 .pmd-timer-prep-time {
   font-variant-numeric: tabular-nums;
 }
-.pmd-timer-aff {
+#ribbon .pmd-timer-aff {
   color: var(--pmd-c-aff, #1e6fcc);
   border-color: var(--pmd-c-aff, #1e6fcc);
   grid-column: 5;
   grid-row: 1;
 }
-.pmd-timer-neg {
+#ribbon .pmd-timer-neg {
   color: var(--pmd-c-neg, #c53030);
   border-color: var(--pmd-c-neg, #c53030);
   grid-column: 5;
   grid-row: 2;
 }
-.pmd-timer-prep-active {
+#ribbon .pmd-timer-prep-active {
   background: var(--pmd-c-surface);
   box-shadow: inset 0 0 0 1px currentColor;
 }
