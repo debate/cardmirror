@@ -284,6 +284,31 @@ describe('marks', () => {
     }
   });
 
+  it('highlight toDOM emits a luminance band per OOXML name', () => {
+    // `data-highlight-band` lets CSS pick black-vs-white text /
+    // underline contrast via a single attribute check instead of
+    // enumerating every OOXML highlight name in a `:has()` clause.
+    const cases: { color: string; expected: 'light' | 'dark' | 'none' }[] = [
+      { color: 'yellow', expected: 'light' },
+      { color: 'green', expected: 'light' },
+      { color: 'lightGray', expected: 'light' },
+      { color: 'blue', expected: 'dark' },
+      { color: 'darkGreen', expected: 'dark' },
+      { color: 'black', expected: 'dark' },
+      { color: 'none', expected: 'none' },
+    ];
+    for (const { color, expected } of cases) {
+      const mark = schema.marks['highlight']!.create({ color });
+      const [, attrs] = mark.type.spec.toDOM!(mark, true) as [
+        string,
+        Record<string, string>,
+        number,
+      ];
+      expect(attrs['data-highlight']).toBe(color);
+      expect(attrs['data-highlight-band'], `${color} should be ${expected}`).toBe(expected);
+    }
+  });
+
   it('shading toDOM emits a luminance band so CSS can pick contrast', () => {
     const lightShading = schema.marks['shading']!.create({ color: 'FFFF00' });
     const darkShading = schema.marks['shading']!.create({ color: '000080' });

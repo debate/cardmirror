@@ -53,6 +53,34 @@ export function colorBand(hex: string): 'dark' | 'light' {
   return lum < 0.4 ? 'dark' : 'light';
 }
 
+/**
+ * Perceived-luminance band for each OOXML named highlight color.
+ * Mirrors the per-color CSS rules at `.pmd-highlight[data-highlight=...]`
+ * — `light` backgrounds get black text, `dark` backgrounds get white.
+ * `none` opts out (no background fill, so no band-specific contrast
+ * decision needed). Used as the source for `data-highlight-band`,
+ * which downstream selectors read instead of expanding every named
+ * color into its own `:has()` clause.
+ */
+export const HIGHLIGHT_BAND: Record<string, 'light' | 'dark' | 'none'> = {
+  yellow: 'light',
+  green: 'light',
+  cyan: 'light',
+  magenta: 'light',
+  red: 'light',
+  lightGray: 'light',
+  blue: 'dark',
+  darkBlue: 'dark',
+  darkCyan: 'dark',
+  darkGreen: 'dark',
+  darkMagenta: 'dark',
+  darkRed: 'dark',
+  darkYellow: 'dark',
+  darkGray: 'dark',
+  black: 'dark',
+  none: 'none',
+};
+
 export const marks: { [name: string]: MarkSpec } = {
   // -------- Outermost: per-run font size --------
   // `font_size` is listed first so it renders as the OUTERMOST DOM
@@ -337,14 +365,27 @@ export const marks: { [name: string]: MarkSpec } = {
     // though emphasis is OUTER to highlight in mark rank (a continuous
     // emphasis run renders as ONE `.pmd-emphasis` span regardless of
     // which sub-runs carry highlight — no phantom internal borders).
-    toDOM: (mark) => [
-      'span',
-      {
-        class: 'pmd-highlight',
-        'data-highlight': String(mark.attrs['color'] ?? 'yellow'),
-      },
-      0,
-    ],
+    toDOM: (mark) => {
+      const color = String(mark.attrs['color'] ?? 'yellow');
+      // `data-highlight-band` is the perceived-luminance bucket for
+      // the named highlight color. Lets downstream CSS pick a single
+      // band attribute instead of having to enumerate every named
+      // color via `:has(.pmd-highlight[data-highlight=COLOR])`
+      // selectors — collapsing 16 `:has()` checks per `.pmd-underline`
+      // down to 2 (one per band). Big style-recalc win on big docs
+      // when cv:auto cards stream into view. `data-highlight-band`
+      // is "none" for the explicit no-highlight value so the CSS
+      // selector chain doesn't fire on transparent containers.
+      return [
+        'span',
+        {
+          class: 'pmd-highlight',
+          'data-highlight': color,
+          'data-highlight-band': HIGHLIGHT_BAND[color] ?? 'none',
+        },
+        0,
+      ];
+    },
   },
 
   font_color: {
