@@ -367,6 +367,8 @@ and history modules — is ProseMirror's. The work in this repo is a
 debate-domain editor *on top of* that substrate, not a reinvention
 of it.
 
+The idea to use ProseMirror, as well as credit for dozens of course-corrections along the way, belongs to [text editor wizard Slim Lim](https://slim.computer/). 
+
 If you're curious how ProseMirror works under the hood,
 [Marijn's launch post](https://marijnhaverbeke.nl/blog/prosemirror-1.html)
 is the best high-level introduction, and
