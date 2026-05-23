@@ -7,6 +7,74 @@ in each release, see `CHANGELOG.md`.
 
 ## Unreleased
 
+- **Viewport-rockets-to-doc-end on paste / F7 fixed by
+  changing the absorb-plugin from a wholesale doc replace to
+  per-region surgical edits.** Two community reports surfaced
+  the same underlying bug: (1) Cumdog: pasting multi-line text
+  with an F7-styled tag somewhere above sends the cursor to the
+  very end of the doc; (2) Buntin: pressing F7 on a paragraph
+  that has any doc-level paragraphs below it does the same.
+  Both reduce to the same root cause — the card-body
+  absorption rule (an `appendTransaction` plugin that absorbs
+  doc-level paragraphs / cite_paragraphs / undertags after a
+  card or analytic_unit) was doing the rewrite in a single
+  `tr.replaceWith(0, doc.content.size, rebuilt)`. PM's default
+  selection mapping treats the deleted range as fully replaced
+  and pushes the cursor (with association-right) to the END of
+  the inserted content, which for the absorb tr is the end of
+  the last absorbed orphan-now-card-body.
+
+  The new shape: walk the doc to find each contiguous
+  absorption region (a `card` / `analytic_unit` followed by
+  one or more absorbable doc-level siblings), then for each
+  region, in a single transaction, perform two surgical steps
+  right-to-left so position arithmetic stays valid: (a)
+  `tr.insert(cardContentEnd, absorbedBodiesFragment)` to put
+  the new bodies inside the card just before its closing
+  boundary, and (b) `tr.delete(orphansStart + insertedSize,
+  orphansEnd + insertedSize)` to remove the originals from doc
+  level. The cursor (typically NOT inside the moved orphans —
+  it's in the absorbing card's tag, or somewhere unrelated)
+  stays exactly where it was. The existing
+  `absorbedDocChildren` helper is retained for tests that
+  probe absorb behavior directly. New `findAbsorbRegions`
+  function returns the per-region `{ absorbingPos,
+  absorbingNodeSize, orphansStart, orphansEnd, bodiesContent }`
+  shape that the new appendTransaction consumes.
+
+- **Phantom-empty-tag card on multi-paragraph paste fixed by
+  pre-fitting the slice in the paste handler.** Pasting two or
+  more paragraphs into a `card_body` that has sibling
+  `card_body`s used to bubble PM's slice fit up to the card
+  level: the original card split into two cards with the
+  second one carrying an empty `tag` and the original
+  trailing card_bodies absorbed into it. Root cause: PM's
+  `replace`-with-slice fitting can't insert a multi-paragraph
+  slice into a `card_body` (whose content rule is `inline*`)
+  without splitting, so it lifts the split up until the slice
+  fits as siblings — which at the card level requires opening
+  a new card, which requires a tag (= empty placeholder tag).
+
+  New `tryPasteAsCardBodies(state, slice)` in
+  `paste-plugin.ts` runs after the existing head-detection
+  branch in `handlePaste`. When the slice is 2+ top-level
+  paragraphs and the cursor's parent is a `card_body` inside
+  a `card` or `analytic_unit`, it converts each paragraph into
+  a `card_body` of the same content (preserving inline marks)
+  and dispatches the replace with the new slice. The cursor's
+  containing card now naturally accepts multiple `card_body`s
+  as siblings, so the split stays inside the card.
+  `openStart` / `openEnd` carry through from the original
+  slice so the first body still joins inline with the
+  pre-cursor text and the last body still joins inline with
+  the post-cursor text — same UX as a single-paragraph paste,
+  just with the multi-line break preserved at the card_body
+  boundary. Falls through to PM's default for single-paragraph
+  slices, slices with non-paragraph top-level children
+  (carries / wholesale-card pastes go through the existing
+  head-detection branch), and cursors outside the card_body
+  context.
+
 ## 0.1.0-alpha.4 — 2026-05-22
 
 - **Layer 2 (keyboard navigation keymap) from the Word-selection

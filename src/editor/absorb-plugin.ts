@@ -41,13 +41,111 @@ const ABSORBING_TYPES = new Set(['card', 'analytic_unit']);
 export const absorbPlugin: Plugin = new Plugin({
   appendTransaction(transactions, _oldState, newState) {
     if (!transactions.some((t) => t.docChanged)) return null;
-
-    const rebuilt = absorbedDocChildren(newState.doc);
-    if (!rebuilt) return null;
-
-    return newState.tr.replaceWith(0, newState.doc.content.size, rebuilt);
+    const regions = findAbsorbRegions(newState.doc);
+    if (regions.length === 0) return null;
+    const tr = newState.tr;
+    // Apply right-to-left so each region's positions stay valid
+    // through the in-flight transaction. Within each region we
+    // do TWO surgical steps:
+    //   1. Insert the absorbed-bodies fragment INSIDE the
+    //      absorbing card, just before its closing boundary.
+    //   2. Delete the doc-level orphan paragraphs that were
+    //      absorbed.
+    // Splitting it this way means the part of the card
+    // CONTAINING THE CURSOR is never touched, so PM's selection
+    // mapping leaves the cursor exactly where it was — fixing
+    // the "viewport rockets to doc end" bug that the previous
+    // single `replaceWith(0, doc.content.size, rebuilt)` form
+    // triggered via PM's default mapping for cursors inside the
+    // wholesale-replaced range.
+    for (let i = regions.length - 1; i >= 0; i--) {
+      const r = regions[i]!;
+      const cardContentEnd = r.absorbingPos + r.absorbingNodeSize - 1;
+      tr.insert(cardContentEnd, r.bodiesContent);
+      const insertSize = r.bodiesContent.size;
+      tr.delete(r.orphansStart + insertSize, r.orphansEnd + insertSize);
+    }
+    return tr;
   },
 });
+
+interface AbsorbRegion {
+  /** Doc position of the absorbing card / analytic_unit. */
+  absorbingPos: number;
+  /** Original `nodeSize` of the absorbing container (before the
+   *  insert step grows it). */
+  absorbingNodeSize: number;
+  /** Doc position of the first absorbable doc-level orphan that
+   *  belongs to this region (= just after the absorbing
+   *  container). */
+  orphansStart: number;
+  /** Doc position just past the last absorbable doc-level
+   *  orphan in this region. */
+  orphansEnd: number;
+  /** The absorbed bodies as a Fragment (already wrapped — bare
+   *  paragraph orphans get converted into card_bodies; other
+   *  absorbable types pass through). */
+  bodiesContent: Fragment;
+}
+
+/** Walk the doc's top-level children and find each contiguous
+ *  region where an absorbing container (card / analytic_unit) is
+ *  followed by one or more absorbable doc-level siblings. The
+ *  appendTransaction above uses this to surgically MOVE the
+ *  orphans into the container (preserving cursor positions
+ *  outside the moved range) rather than wholesale-replacing the
+ *  doc content. */
+function findAbsorbRegions(doc: PMNode): AbsorbRegion[] {
+  const regions: AbsorbRegion[] = [];
+  let cursor = 0; // doc-level offset from start
+  let absorbing: PMNode | null = null;
+  let absorbingPos = 0;
+  let bodiesPieces: PMNode[] = [];
+  let regionEndPos = 0;
+  let firstOrphanPos = 0;
+
+  function flush(): void {
+    if (absorbing !== null && bodiesPieces.length > 0) {
+      regions.push({
+        absorbingPos,
+        absorbingNodeSize: absorbing.nodeSize,
+        orphansStart: firstOrphanPos,
+        orphansEnd: regionEndPos,
+        bodiesContent: Fragment.fromArray(bodiesPieces),
+      });
+    }
+    absorbing = null;
+    bodiesPieces = [];
+  }
+
+  doc.forEach((child) => {
+    const childStart = cursor;
+    const childEnd = cursor + child.nodeSize;
+    const t = child.type.name;
+    if (ABSORBING_TYPES.has(t)) {
+      flush();
+      absorbing = child;
+      absorbingPos = childStart;
+      firstOrphanPos = childEnd;
+      regionEndPos = childEnd;
+    } else if (absorbing === null) {
+      // Outside any absorption zone — nothing to do.
+    } else if (t === 'paragraph') {
+      bodiesPieces.push(schema.nodes['card_body']!.create(null, child.content));
+      regionEndPos = childEnd;
+    } else if (t === 'cite_paragraph' || t === 'undertag' || t === 'card_body') {
+      bodiesPieces.push(child);
+      regionEndPos = childEnd;
+    } else {
+      // Anything else breaks the absorption zone.
+      flush();
+    }
+    cursor = childEnd;
+  });
+  flush();
+
+  return regions;
+}
 
 /**
  * Walk the doc's top-level children and produce a new Fragment with

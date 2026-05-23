@@ -7,6 +7,30 @@ see `DETAILED_CHANGELOG.md`.
 
 ## Unreleased
 
+### Fixed
+
+- **Viewport no longer rockets to the doc end after a paste or
+  F7 wrap that triggers card-body absorption.** The card-body
+  absorption rule (paragraphs and friends after a `card` get
+  absorbed into it) was wholesale-rewriting the doc in a single
+  `replaceWith(0, content.size, rebuilt)` transaction, and PM's
+  default selection mapping for that shape pushed the cursor to
+  the END of the rebuilt content. Absorb now does the same
+  rewrite as two surgical steps per region (insert the absorbed
+  bodies inside the card, then delete the doc-level orphans), so
+  PM's mapping leaves the cursor in place. Affects any sequence
+  that creates absorbable doc-level paragraphs near the
+  cursor — F7 above orphan paragraphs, paste that lifts content
+  to doc level, manually-built docs with pre-existing orphans.
+- **Pasting multi-line text into the middle of a card_body that
+  has sibling card_bodies no longer splits the card.** PM's
+  default slice fitting was bubbling the multi-paragraph split
+  up to the card level, producing a phantom empty-tag card
+  carrying the trailing siblings. The paste handler now
+  pre-fits the slice into `card_body` children when the cursor
+  is in a card_body context, so the split stays cleanly inside
+  the card.
+
 ## 0.1.0-alpha.4 — 2026-05-22
 
 ### Added

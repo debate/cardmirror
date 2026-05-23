@@ -254,6 +254,17 @@ export function buildPastePlugin(ctx: PastePluginCtx): Plugin<PluginState> {
           }
         }
 
+        // Multi-paragraph paste into a card_body cursor context:
+        // pre-fit the slice into card_body children so PM doesn't
+        // bubble the split up to the card level (which produces
+        // a phantom empty-tag card sibling).
+        const cardBodyTr = tryPasteAsCardBodies(view.state, slice);
+        if (cardBodyTr) {
+          event.preventDefault();
+          view.dispatch(cardBodyTr.scrollIntoView());
+          return true;
+        }
+
         return false;
       },
     },
@@ -350,6 +361,57 @@ export function tryPasteSplitContainer(
     /* schema rejected the position — selection stays where PM left it */
   }
   return tr;
+}
+
+/**
+ * Pre-fit a multi-paragraph paste into a `card_body` cursor
+ * context: convert each top-level paragraph in the slice into a
+ * `card_body` of the same content, then `replaceSelection`. Lets
+ * PM split WITHIN the card cleanly instead of bubbling the split
+ * up to the card level and producing a phantom-empty-tag sibling
+ * card. Returns null when the cursor isn't in a card_body, the
+ * slice isn't a single-depth multi-paragraph shape, or the
+ * cursor's containing card / analytic_unit isn't a valid target.
+ *
+ * Exported for tests.
+ */
+export function tryPasteAsCardBodies(
+  state: EditorState,
+  slice: Slice,
+): Transaction | null {
+  // Slice must be multi-paragraph at depth 1 (no nested
+  // containers). Anything else falls through to PM's default.
+  if (slice.content.childCount < 2) return null;
+  for (let i = 0; i < slice.content.childCount; i++) {
+    if (slice.content.child(i).type.name !== 'paragraph') return null;
+  }
+
+  // Cursor must be in a card_body inside a card or analytic_unit
+  // (both accept card_body in their content rules).
+  const sel = state.selection;
+  if (!(sel instanceof TextSelection)) return null;
+  const $from = sel.$from;
+  if ($from.parent.type.name !== 'card_body') return null;
+  if ($from.depth < 2) return null;
+  const container = $from.node($from.depth - 1);
+  const containerName = container.type.name;
+  if (containerName !== 'card' && containerName !== 'analytic_unit') return null;
+
+  const cardBodyType = schema.nodes['card_body'];
+  if (!cardBodyType) return null;
+
+  // Convert each paragraph child to a card_body, preserving
+  // content (including any inline marks).
+  const converted: PMNode[] = [];
+  slice.content.forEach((p) => {
+    converted.push(cardBodyType.create(null, p.content));
+  });
+  const newSlice = new Slice(
+    Fragment.fromArray(converted),
+    slice.openStart,
+    slice.openEnd,
+  );
+  return state.tr.replace(sel.from, sel.to, newSlice);
 }
 
 /**
