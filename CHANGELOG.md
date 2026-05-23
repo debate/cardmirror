@@ -30,6 +30,17 @@ see `DETAILED_CHANGELOG.md`.
   pre-fits the slice into `card_body` children when the cursor
   is in a card_body context, so the split stays cleanly inside
   the card.
+- **Copy Last Cite now lands where the cursor visually is when
+  the cursor sits at the start of a paragraph.** Previously, at
+  offset 0 of a body / cite / undertag / doc-level paragraph,
+  the new cite was inserted AFTER that paragraph — so in a
+  multi-paragraph card with no cite, putting the cursor at the
+  start of the first body and copying the last cite sent the
+  cite to the wrong slot (between body 1 and body 2 instead of
+  between the tag and body 1). The command now inserts the cite
+  BEFORE the paragraph in that boundary case. Cursor
+  mid-paragraph or at the end of a paragraph still inserts
+  after, as before.
 
 ## 0.1.0-alpha.4 — 2026-05-22
 

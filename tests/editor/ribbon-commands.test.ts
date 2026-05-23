@@ -1067,7 +1067,7 @@ describe('copyPreviousCite', () => {
     expect(card2Types).toEqual(['tag', 'cite_paragraph']);
   });
 
-  it('non-empty body in a card with no cite: cite inserted in the same card (no new tag)', () => {
+  it('cursor at start of non-empty body in a card with no cite: cite inserted before the body, same card', () => {
     const doc = makeDoc([
       cardWithChildren(tag('T1'), citePara('Source 2024')),
       cardWithChildren(tag('T2'), cardBody('Body text')),
@@ -1078,10 +1078,10 @@ describe('copyPreviousCite', () => {
     const card2 = next!.doc.lastChild!;
     const types: string[] = [];
     card2.forEach((c) => types.push(c.type.name));
-    expect(types).toEqual(['tag', 'card_body', 'cite_paragraph']);
+    expect(types).toEqual(['tag', 'cite_paragraph', 'card_body']);
   });
 
-  it('non-empty body in a card with an existing cite: cite inserted as sibling after the body', () => {
+  it('cursor at start of non-empty body in a card with an existing cite: cite inserted before the body', () => {
     const doc = makeDoc([
       cardWithChildren(tag('T1'), citePara('FromPrev')),
       cardWithChildren(tag('T2'), citePara('AlreadyHere'), cardBody('Body text')),
@@ -1092,7 +1092,7 @@ describe('copyPreviousCite', () => {
     const card2 = next!.doc.lastChild!;
     const types: string[] = [];
     card2.forEach((c) => types.push(c.type.name));
-    expect(types).toEqual(['tag', 'cite_paragraph', 'card_body', 'cite_paragraph']);
+    expect(types).toEqual(['tag', 'cite_paragraph', 'cite_paragraph', 'card_body']);
   });
 
   it('cite in current card above cursor wins over previous-card cite', () => {
@@ -1182,7 +1182,7 @@ describe('copyPreviousCite', () => {
     expect(next!.doc.lastChild!.textContent).toBe('Source 2024');
   });
 
-  it('cursor in a doc-level paragraph (non-empty): cite inserted as a sibling at doc level', () => {
+  it('cursor at start of a doc-level paragraph (non-empty): cite inserted as a sibling at doc level', () => {
     const doc = makeDoc([
       cardWithChildren(tag('T1'), citePara('Source 2024')),
       paragraph('a doc-level note'),
@@ -1190,8 +1190,8 @@ describe('copyPreviousCite', () => {
     const state = setCursorIn(doc, (n) => n.type.name === 'paragraph');
     const next = apply(state, copyPreviousCite());
     const types = next!.doc.content.content.map((c) => c.type.name);
-    expect(types).toEqual(['card', 'paragraph', 'cite_paragraph']);
-    expect(next!.doc.lastChild!.textContent).toBe('Source 2024');
+    expect(types).toEqual(['card', 'cite_paragraph', 'paragraph']);
+    expect(next!.doc.child(1).textContent).toBe('Source 2024');
   });
 
   it('cursor in analytic head: cite inserted as sibling inside the same analytic_unit', () => {
@@ -1211,7 +1211,7 @@ describe('copyPreviousCite', () => {
     expect(types).toEqual(['analytic', 'cite_paragraph', 'card_body']);
   });
 
-  it('cursor in analytic body: cite inserted as sibling after the body, same unit', () => {
+  it('cursor at start of analytic body: cite inserted as sibling before the body, same unit', () => {
     const doc = makeDoc([
       cardWithChildren(tag('T1'), citePara('Source')),
       schema.nodes['analytic_unit']!.createChecked(null, [
@@ -1226,13 +1226,13 @@ describe('copyPreviousCite', () => {
     const unit = next!.doc.lastChild!;
     const types: string[] = [];
     unit.forEach((c) => types.push(c.type.name));
-    expect(types).toEqual(['analytic', 'card_body', 'cite_paragraph', 'card_body']);
-    expect(unit.child(1).textContent).toBe('body1');
-    expect(unit.child(2).textContent).toBe('Source');
+    expect(types).toEqual(['analytic', 'cite_paragraph', 'card_body', 'card_body']);
+    expect(unit.child(1).textContent).toBe('Source');
+    expect(unit.child(2).textContent).toBe('body1');
     expect(unit.child(3).textContent).toBe('body2');
   });
 
-  it('cursor in last child of analytic_unit: cite inserted at the end of the unit', () => {
+  it('cursor at start of last child of analytic_unit: cite inserted before that child', () => {
     const doc = makeDoc([
       cardWithChildren(tag('T1'), citePara('Source')),
       schema.nodes['analytic_unit']!.createChecked(null, [
@@ -1246,7 +1246,7 @@ describe('copyPreviousCite', () => {
     const unit = next!.doc.lastChild!;
     const types: string[] = [];
     unit.forEach((c) => types.push(c.type.name));
-    expect(types).toEqual(['analytic', 'card_body', 'cite_paragraph']);
+    expect(types).toEqual(['analytic', 'cite_paragraph', 'card_body']);
   });
 
   it('cursor lands inside the inserted cite_paragraph', () => {
@@ -1278,12 +1278,12 @@ describe('copyPreviousCite', () => {
       base.tr.setSelection(TextSelection.create(base.doc, bodyStart, bodyStart + 5)),
     );
     const next = apply(state, copyPreviousCite());
-    // card2 has no cite yet → cite inserts as sibling in the same card.
+    // selection.from is at offset 0 in the body → cite inserts before the body.
     expect(next!.doc.childCount).toBe(2);
     const card2 = next!.doc.lastChild!;
     const types: string[] = [];
     card2.forEach((c) => types.push(c.type.name));
-    expect(types).toEqual(['tag', 'card_body', 'cite_paragraph']);
+    expect(types).toEqual(['tag', 'cite_paragraph', 'card_body']);
   });
 });
 

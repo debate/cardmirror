@@ -75,6 +75,32 @@ in each release, see `CHANGELOG.md`.
   head-detection branch), and cursors outside the card_body
   context.
 
+- **Copy Last Cite at offset 0 of a paragraph now inserts the
+  cite BEFORE that paragraph instead of after.** Community
+  report (Cumdog): in a multi-paragraph card with a tag but no
+  cite, putting the cursor at the start of the card and
+  pressing the Copy Last Cite hotkey lands the cite at the
+  start of the SECOND body, not between the tag and the first
+  body. Cursor at the END of the tag worked correctly. Root
+  cause was in `computeCitePasteLocation` in
+  `ribbon-commands.ts`: outside the empty-paragraph branch the
+  code always returned `$from.after(paraDepth)` — the position
+  AFTER the cursor's containing paragraph. For a cursor at
+  offset 0 of the first body, "after the first body" is
+  visually where the second body begins, which is where the
+  cite ended up.
+
+  Added a new branch: when the cursor sits at `parentOffset
+  === 0` of a `REPLACE_IF_EMPTY` paragraph (`card_body`,
+  `cite_paragraph`, `undertag`, `paragraph`) that has content,
+  return `$from.before(paraDepth)` — the position BEFORE the
+  paragraph — so the cite lands at the visual cursor position
+  (above that paragraph in the parent's child list). Cursor
+  mid-paragraph and end-of-paragraph still fall through to the
+  existing `$from.after(paraDepth)` branch. The empty-paragraph
+  branch (replace-the-paragraph-with-the-cite) is unchanged
+  and still runs first.
+
 ## 0.1.0-alpha.4 — 2026-05-22
 
 - **Layer 2 (keyboard navigation keymap) from the Word-selection

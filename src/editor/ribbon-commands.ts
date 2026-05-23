@@ -2854,12 +2854,25 @@ interface CitePasteLocation {
 }
 
 /**
- * Where to drop the cite content. With cite_paragraph now legal in
- * every textblock-holding parent we care about (doc / card /
- * analytic_unit), the rule is uniform:
- *   - If the cursor's paragraph is an empty body-like slot, replace it.
- *   - Otherwise, insert as a sibling immediately after the cursor's
- *     paragraph in whatever container that paragraph lives in.
+ * Where to drop the cite content. Three regimes, in priority
+ * order:
+ *
+ *   1. If the cursor's paragraph is an empty body-like slot,
+ *      replace it (the user explicitly placed the cursor in a
+ *      blank slot — fill it).
+ *   2. If the cursor is at the VERY START (parentOffset === 0)
+ *      of a body-like paragraph (card_body / cite_paragraph /
+ *      undertag / doc-level paragraph), insert the cite right
+ *      BEFORE that paragraph. Without this branch, a cursor at
+ *      offset 0 in the first card_body of a no-cite card sent
+ *      the cite AFTER that body (between body 1 and body 2),
+ *      surprising users who expected it between the tag and
+ *      body 1 (i.e., between the previous sibling and the
+ *      cursor's paragraph — "where the cursor visually is").
+ *   3. Otherwise, insert as a sibling immediately after the
+ *      cursor's paragraph. Covers cursor in a tag (cite
+ *      naturally belongs after the tag), and cursor mid-/end-
+ *      of-body.
  */
 function computeCitePasteLocation($from: ResolvedPos): CitePasteLocation {
   if ($from.depth < 1) return { from: 0, to: 0 };
@@ -2867,6 +2880,10 @@ function computeCitePasteLocation($from: ResolvedPos): CitePasteLocation {
   const paraDepth = $from.depth;
   if (REPLACE_IF_EMPTY.has(para.type.name) && isBlankParagraph(para)) {
     return { from: $from.before(paraDepth), to: $from.after(paraDepth) };
+  }
+  if (REPLACE_IF_EMPTY.has(para.type.name) && $from.parentOffset === 0) {
+    const insertPos = $from.before(paraDepth);
+    return { from: insertPos, to: insertPos };
   }
   const insertPos = $from.after(paraDepth);
   return { from: insertPos, to: insertPos };
