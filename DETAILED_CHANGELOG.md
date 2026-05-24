@@ -7,6 +7,22 @@ in each release, see `CHANGELOG.md`.
 
 ## Unreleased
 
+- **Ribbon resizer reserves a column-gap-sized buffer before the
+  overflow trigger fires.** `initRibbonResizer` in `index.ts`
+  previously used `scrollWidth > clientWidth + 1` as its overflow
+  predicate, hiding a panel only after the ribbon's content had
+  literally exceeded its available width. The visible artifact:
+  just before the next panel hid, the rightmost panel button
+  collided with the right-pinned timer button (no visible gap).
+  Now an `overflowBuffer` is measured from a sample panel's
+  computed `column-gap` (cite-panel / formatting-panel / color-
+  panel — all use 3-4px gaps; fallback 4) and subtracted from
+  `clientWidth` in the predicate, so a panel is hidden one gap-
+  width before the actual overflow point. The un-hide branch
+  uses the same predicate, so the trigger is symmetric — panels
+  also wait one extra gap of growing room before reappearing,
+  preventing flicker right at the threshold.
+
 - **Layer 3 trailing-space trim no longer eats a whitespace-only
   selection.** The `trimRangesForFormatting` in
   `ribbon-commands.ts` used to shave one trailing space from

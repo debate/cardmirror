@@ -28,6 +28,14 @@ see `DETAILED_CHANGELOG.md`.
 
 ### Fixed
 
+- **Ribbon panels now collapse one panel sooner**, so the
+  rightmost visible panel no longer sits flush against the
+  right-pinned buttons (timer / settings / reference). The
+  progressive-hide overflow check reserves a small buffer —
+  matched to the column-gap *inside* a single panel — so the
+  spacing between the rightmost panel and the pinned right
+  elements reads as the same visual unit as the spacing
+  between buttons within a panel.
 - **F9 / F10 / F11 (and the other formatting commands) now
   format a deliberately-selected trailing space instead of
   no-op-ing.** The Layer 3 trim that shaves the absorbed

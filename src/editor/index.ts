@@ -1744,8 +1744,28 @@ function initRibbonResizer(): void {
       if (el) el.style.display = visible ? '' : 'none';
     }
   }
+  // Reserve a small buffer at the right edge so the last visible
+  // panel doesn't sit flush against whatever's pinned to the
+  // ribbon's right side (timer button, etc.). The buffer is sized
+  // to match the column-gap inside a panel — same spacing the
+  // intra-panel buttons get between each other — so the "rightmost
+  // panel ↔ pinned-right element" gap reads as the same visual
+  // unit. Measured from a sample panel's computed `column-gap`;
+  // falls back to 4px if the sample isn't in the DOM yet.
+  function measureIntraPanelGap(): number {
+    for (const id of ['cite-panel', 'formatting-panel', 'color-panel']) {
+      const el = document.getElementById(id);
+      if (!el) continue;
+      const cs = getComputedStyle(el);
+      const raw = cs.columnGap === 'normal' ? cs.gap : cs.columnGap;
+      const n = parseFloat(raw);
+      if (Number.isFinite(n) && n > 0) return n;
+    }
+    return 4;
+  }
+  const overflowBuffer = measureIntraPanelGap();
   const isOverflowing = (): boolean =>
-    ribbon.scrollWidth > ribbon.clientWidth + 1;
+    ribbon.scrollWidth > ribbon.clientWidth - overflowBuffer + 1;
   let reflowing = false;
   function reflow(): void {
     if (reflowing) return;
