@@ -38,6 +38,7 @@ import { promptForText } from './text-prompt.js';
 import { openDocMenu } from './doc-menu-ui.js';
 import { createReference } from './create-reference.js';
 import { showToast } from './toast.js';
+import { openSelectSpeechDocModal } from './select-speech-doc-ui.js';
 import {
   settings,
   condenseWarningCloseFor,
@@ -97,6 +98,7 @@ import {
   adjustFontSize,
   compileShrinkProtections,
   RIBBON_COMMAND_LABELS,
+  RIBBON_COMMAND_IDS,
   type StructuralRibbonCommandId,
   type RibbonContext,
   type RibbonCommandId,
@@ -767,6 +769,9 @@ const ribbonContext: RibbonContext = {
   openSettings: () => settingsBtn.click(),
   toggleParagraphIntegrity: () => {
     settings.set('paragraphIntegrity', !settings.get('paragraphIntegrity'));
+  },
+  selectSpeechDoc: () => {
+    void openSelectSpeechDocModal();
   },
   openHighlightPicker: () => colorPanel?.openPicker('highlight'),
   openShadingPicker: () => colorPanel?.openPicker('shading'),
@@ -1707,6 +1712,7 @@ settings.subscribe((s) => {
   applyBodyFont(s.bodyFont);
   applyUiFont(s.uiFont);
   reapplyAllRibbonTooltips();
+  pushNativeMenuBindings();
   applyLineHeight(s.lineHeight);
   applyFormattingPanel(s.formattingPanelMode, s.formattingPanelPreview, s.showCharacterStyles);
   syncParagraphIntegrityBtn();
@@ -3360,8 +3366,18 @@ export function refreshWindowTitle(): void {
   updateWindowTitle();
 }
 
+function pushSingleDocInfo(): void {
+  const electronHost = getElectronHost();
+  if (!electronHost || multiDocActive) return;
+  // Only push for the single-doc layout's main view. Multi-pane
+  // pushes per-record from its own filename-change hooks.
+  if (registeredSingleDocUid === null) return;
+  void electronHost.docInfoUpdate(registeredSingleDocUid, currentDocFilename);
+}
+
 function updateWindowTitle(): void {
   const focused = activeFile();
+  pushSingleDocInfo();
   if (multiDocActive && multiDocGetAllFilenames) {
     const names = multiDocGetAllFilenames().filter((n): n is string => !!n);
     document.title = names.length > 0
@@ -3718,6 +3734,55 @@ if (autosaveBtn) {
 // fire IPC messages that we route through the same ribbon-command
 // handlers as keyboard shortcuts and ribbon buttons. Single point of
 // truth: ribbonContext.
+
+/** Type-narrow a string to RibbonCommandId. Used by the menu-
+ *  command IPC handler so the fallback `runRibbon(...)` branch is
+ *  type-safe. */
+const RIBBON_COMMAND_ID_SET = new Set<string>(RIBBON_COMMAND_IDS);
+function isRibbonCommandId(s: string): s is RibbonCommandId {
+  return RIBBON_COMMAND_ID_SET.has(s);
+}
+
+/** Menu-bound ribbon commands whose current keybinding the native
+ *  menu shows as an accelerator hint. Keep in sync with the menu
+ *  template in `apps/desktop/src/main.ts`. */
+const NATIVE_MENU_COMMANDS: RibbonCommandId[] = [
+  // File
+  'openFile',
+  'newDocument',
+  'save',
+  'saveAs',
+  'toggleAutosave',
+  'closeDocOrWindow',
+  // Speech
+  'newSpeechDocument',
+  'markActiveAsSpeech',
+  'sendToSpeechAtCursor',
+  'sendToSpeechAtEnd',
+  'selectSpeechDoc',
+  // View
+  'chromeScaleReset',
+  'chromeScaleUp',
+  'chromeScaleDown',
+  // Help
+  'openSettings',
+  'openShortcutsReference',
+];
+
+/** Snapshot the current keybinding for each menu-bound command
+ *  and ship it to main so the native menu's accelerator labels
+ *  stay in sync with user rebinds. No-op outside Electron. */
+function pushNativeMenuBindings(): void {
+  const electronHost = getElectronHost();
+  if (!electronHost) return;
+  const overrides = settings.get('ribbonKeyOverrides');
+  const bindings: Record<string, string | null> = {};
+  for (const id of NATIVE_MENU_COMMANDS) {
+    const key = primaryKeyFor(id, overrides);
+    bindings[id] = key || null;
+  }
+  void electronHost.setMenuBindings(bindings);
+}
 {
   const electronHost = getElectronHost();
   if (electronHost) {
@@ -3748,6 +3813,16 @@ if (autosaveBtn) {
             if (!consumed) await handleUserCloseRequest();
           })();
           break;
+        default:
+          // Fallback for the Speech / View / Help / Toggle Autosave
+          // entries. All of them are valid ribbon command ids; route
+          // each through runRibbon so menu and keyboard paths use a
+          // single implementation. Unknown commands are silently
+          // ignored (no menu item should send something we don't
+          // recognize).
+          if (isRibbonCommandId(command)) {
+            runRibbon(command);
+          }
       }
     });
     // Mode-switch coordination: another window is about to reload

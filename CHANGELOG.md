@@ -9,6 +9,31 @@ see `DETAILED_CHANGELOG.md`.
 
 ### Added
 
+- **Application menu bar overhaul** (desktop app):
+  - **File** is now Open / New / Save / Save As / Toggle
+    Autosave / Close.
+  - **New Speech menu** between File and Edit holds the four
+    speech-cluster actions plus a new **Select Speech Doc…**
+    entry.
+  - **Edit's Redo** is now `Ctrl/Cmd+Y` (was `Shift+Cmd/Ctrl+Z`;
+    both still fire redo via the editor's keymap).
+  - **View's Zoom In / Out / Reset** now point at the editor's
+    `chromeScale*` commands (so the menu accelerators match what
+    the keys actually do, instead of triggering Chromium's
+    separate page-zoom).
+  - **Window menu removed.**
+  - **Help** gains Settings and Keyboard Shortcuts entries at
+    the top.
+  - **Every menu accelerator now tracks your current keybinding.**
+    Rebinding a command in Settings → Keybindings updates the
+    accelerator label shown next to its menu item — including
+    the previously-static File entries.
+- **Select Speech Doc** (Speech menu): new modal that lists
+  every open document across every CardMirror window, marks the
+  current speech doc with a gold accent, and lets you reassign
+  or clear the designation. Picking a doc doesn't switch you to
+  it; you stay where you are. No default keyboard shortcut —
+  rebind via Settings → Keybindings if you want one.
 - **Ribbon tooltips are now configurable** in Settings →
   Appearance → "Ribbon tooltips," with four modes:
   - **Label and shortcut** (default) — `Apply Tag Style (F7)`.

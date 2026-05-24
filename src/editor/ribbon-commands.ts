@@ -3323,6 +3323,7 @@ export type RibbonCommandId =
   | 'applyFontColor'
   | 'openSettings'
   | 'toggleParagraphIntegrity'
+  | 'selectSpeechDoc'
   | 'openHighlightPicker'
   | 'openShadingPicker'
   | 'openFontColorPicker'
@@ -3436,6 +3437,7 @@ export const RIBBON_COMMAND_IDS: RibbonCommandId[] = [
   'applyFontColor',
   'openSettings',
   'toggleParagraphIntegrity',
+  'selectSpeechDoc',
   'openHighlightPicker',
   'openShadingPicker',
   'openFontColorPicker',
@@ -3535,6 +3537,7 @@ export const RIBBON_COMMAND_LABELS: Record<RibbonCommandId, string> = {
   applyFontColor: 'Apply Font Color',
   openSettings: 'Open Settings',
   toggleParagraphIntegrity: 'Toggle Paragraph Integrity',
+  selectSpeechDoc: 'Select Speech Document',
   openHighlightPicker: 'Open Highlight Color Picker',
   openShadingPicker: 'Open Background Color Picker',
   openFontColorPicker: 'Open Font Color Picker',
@@ -3685,6 +3688,7 @@ export const DEFAULT_RIBBON_KEYS: Record<RibbonCommandId, string | string[]> = {
   applyFontColor: '',
   openSettings: '',
   toggleParagraphIntegrity: '',
+  selectSpeechDoc: '',
   openHighlightPicker: '',
   openShadingPicker: '',
   openFontColorPicker: '',
@@ -3826,6 +3830,7 @@ export interface RibbonContext {
    *  tests and headless callers don't have to wire them up. */
   openSettings: () => void;
   toggleParagraphIntegrity: () => void;
+  selectSpeechDoc: () => void;
   openHighlightPicker: () => void;
   openShadingPicker: () => void;
   openFontColorPicker: () => void;
@@ -3884,6 +3889,7 @@ const DEFAULT_RIBBON_CONTEXT: RibbonContext = {
   lastFontColor: () => null,
   openSettings: () => {},
   toggleParagraphIntegrity: () => {},
+  selectSpeechDoc: () => {},
   openHighlightPicker: () => {},
   openShadingPicker: () => {},
   openFontColorPicker: () => {},
@@ -4207,6 +4213,12 @@ function commandFor(id: RibbonCommandId, ctx: RibbonContext): Command {
       return (_state, dispatch) => {
         if (!dispatch) return true;
         ctx.toggleParagraphIntegrity();
+        return true;
+      };
+    case 'selectSpeechDoc':
+      return (_state, dispatch) => {
+        if (!dispatch) return true;
+        ctx.selectSpeechDoc();
         return true;
       };
     case 'openHighlightPicker':

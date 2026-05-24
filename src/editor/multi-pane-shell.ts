@@ -99,6 +99,14 @@ function syncDocPathClaim(prev: unknown, next: unknown): void {
   if (typeof next === 'string' && next) void electron.openPathRegister(next);
 }
 
+/** Push a pane's current filename to main so the Select-Speech-Doc
+ *  modal can label it. No-op on web. */
+function pushPaneDocInfo(uid: string, filename: string | null): void {
+  const electron = getElectronHost();
+  if (!electron) return;
+  void electron.docInfoUpdate(uid, filename);
+}
+
 /** Debounce window for per-DocRecord journal writes. */
 const RECORD_JOURNAL_DELAY_MS = 3000;
 
@@ -1492,6 +1500,7 @@ class MultiPaneShell {
     if (!rec) return;
     rec.filename = name;
     slot.refreshChipFilename();
+    pushPaneDocInfo(rec.uid, rec.filename);
   }
 
   /** Update the focused pane's filename + handle + format together —
@@ -1511,6 +1520,7 @@ class MultiPaneShell {
     rec.handle = file.handle;
     rec.format = file.format;
     slot.refreshChipFilename();
+    pushPaneDocInfo(rec.uid, rec.filename);
   }
 
   /** Clear the journal entry for the focused pane's visible doc.
@@ -2148,6 +2158,11 @@ function buildDocRecord(
   getSpeechDocResolver().registerView(record.uid, record.view, {
     onSliceLanded: () => record.navPanel.applyMaxLevelToNewHeadings(),
   });
+  // Seed main's per-uid filename map for this record so the
+  // Select-Speech-Doc modal can label it immediately. Subsequent
+  // filename changes (setFocusedFilename / setFocusedFile) push
+  // their own updates.
+  pushPaneDocInfo(record.uid, record.filename);
 
   // Hydrate comments plugin state from the parser's threads. MUST
   // run AFTER `record` is initialized — `dispatchTransaction`

@@ -39,6 +39,100 @@ in each release, see `CHANGELOG.md`.
   buffer (which measures `column-gap` from a sample panel)
   picks up the new value automatically.
 
+- **Application menu bar restructured + accelerators tracked
+  to live keybindings.** `buildMenu()` in `apps/desktop/src/main.ts`
+  used to emit a static template with hardcoded `CmdOrCtrl+O`,
+  `CmdOrCtrl+S`, etc. The Help menu had three diagnostics-only
+  entries; the Window menu was Electron's default `role:
+  'windowMenu'`; the View menu's Zoom In / Out / Reset used
+  Electron's native `role: 'zoomIn'` etc., which triggered
+  Chromium's page-zoom rather than CardMirror's `chromeScale*`
+  ribbon commands. The File menu's New Document carried a
+  hardcoded `CmdOrCtrl+Alt+N` even though the ribbon command's
+  default key is `Mod-n` on Electron.
+
+  Restructure:
+  - File → Open, New, Save, Save As, separator, Toggle
+    Autosave, separator, Close, Quit (Linux / Windows only).
+  - New **Speech** submenu between File and Edit: New Speech
+    Document, Mark / Unmark Active as Speech Doc, separator,
+    Send to Speech (At Cursor), Send to Speech (At End),
+    separator, Select Speech Doc….
+  - Edit: explicit submenu instead of `role: 'editMenu'` so we
+    can override Redo's accelerator to `CmdOrCtrl+Y` (Electron's
+    default is `CmdOrCtrl+Shift+Z`). Both chords still fire
+    redo via the renderer's `keymap({ 'Mod-y': redo, 'Mod-Shift-z':
+    redo })`.
+  - View: reload / forceReload / toggleDevTools kept; the three
+    Zoom items now dispatch our `chromeScaleReset / Up / Down`
+    ribbon commands with accelerators sourced from the
+    renderer-pushed binding map; togglefullscreen kept.
+  - Window: removed entirely.
+  - Help: Settings, Keyboard Shortcuts, separator, Check for
+    Updates, Open Crash Dumps Folder, Copy GPU Info.
+
+  Accelerator sync: new `host:set-menu-bindings` IPC. Renderer
+  collects `primaryKeyFor(id, ribbonKeyOverrides)` for every
+  menu-bound command in a `NATIVE_MENU_COMMANDS` array and pushes
+  the map after every settings change (alongside applyBodyFont /
+  applyUiFont in applyAll). Main stores the map in a
+  `menuBindings: Record<string, string | null>` module variable
+  and re-runs `Menu.setApplicationMenu(buildMenu())`. The
+  template helper `menuAccelerator(commandId)` converts the
+  PM-keymap string ("Mod-o", "Shift-Mod-s", "Ctrl-ArrowLeft")
+  to Electron's accelerator form ("CmdOrCtrl+O",
+  "Shift+CmdOrCtrl+S", "Ctrl+Left") via the new
+  `pmKeyToAccelerator(key)` translator.
+
+  Menu-command routing: the renderer's `onMenuCommand` switch
+  in `index.ts` learned a default branch that runs any
+  recognized `RibbonCommandId` through `runRibbon(...)`. Means
+  the Speech / View / Help / Toggle-Autosave menu items don't
+  need bespoke cases — they all flow through the same single
+  implementation as ribbon-button clicks and keyboard shortcuts.
+
+- **Select Speech Doc modal.** New
+  `src/editor/select-speech-doc-ui.ts` opens a centered overlay
+  that lists every open document across every CardMirror
+  window. Each row shows the filename (or "Untitled"), the
+  owning window's title (or "this window" when in the caller's
+  own window), and a "current speech doc" tag with a microphone
+  glyph when applicable. Clicking a row that's NOT the current
+  speech doc calls `host.speechSet(uid)`; clicking the current
+  speech doc clears it (`speechSet(null)`). Both paths close
+  the modal. A dedicated "Clear speech doc designation" footer
+  button surfaces the unset path more discoverably (greyed out
+  when no speech doc is set). Esc and click-outside close.
+
+  Cross-window data path:
+  - New `host:doc-info-update(uid, info)` IPC — renderer pushes
+    `{ filename }` for a registered uid. Called from
+    `updateWindowTitle` (single-doc) and from
+    `setFocusedFilename` / `setFocusedFile` plus the
+    `registerView` site (multi-pane shell), so the map stays
+    fresh as docs mount, save, save-as, rename.
+  - New `host:list-docs()` IPC — returns every entry in the
+    main-process `docOwners` map, enriched with the cached
+    filename, the owning window's id + title, whether it's the
+    current speech doc, and convenience flags for "is this the
+    caller's own window" / "is its window focused."
+  - Existing `host:speech-set` / `speech:changed` infrastructure
+    drives the actual designation flip. The modal doesn't
+    refocus the picked doc's window — picking is a designation-
+    only operation per the user spec.
+
+  Theming: `--pmd-c-speech-bg / -border / -text` tokens drive
+  the header and the current-speech-doc row so the gold theming
+  stays consistent with the speech banner and other speech-
+  flavored UI elements.
+
+  Command wiring: new `selectSpeechDoc` ribbon command (added
+  to RibbonCommandId, RIBBON_COMMAND_IDS, RIBBON_COMMAND_LABELS,
+  DEFAULT_RIBBON_KEYS with empty default, RibbonContext, and
+  the ribbon-groups Speech section). `commandFor` routes it
+  through `ctx.selectSpeechDoc()`; `index.ts` binds that to
+  `openSelectSpeechDocModal()`.
+
 - **Ribbon tooltip system unified behind a controller +
   `ribbonTooltipMode` setting.** Previously, ribbon button
   tooltips were a patchwork: the formatting / cite panel buttons

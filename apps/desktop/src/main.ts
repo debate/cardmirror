@@ -689,6 +689,13 @@ function broadcastSpeechState(): void {
   }
 }
 
+/** Per-uid display info pushed by renderers. Lets the
+ *  Select-Speech-Doc modal (and any future cross-window doc
+ *  picker) show meaningful labels for each open doc without
+ *  having to query each window individually. Filename can be
+ *  null for unsaved docs. */
+const docInfo: Map<string, { filename: string | null }> = new Map();
+
 ipcMain.handle('host:doc-register', async (event, uid: string) => {
   const win = BrowserWindow.fromWebContents(event.sender);
   if (!win || typeof uid !== 'string' || !uid) return;
@@ -705,6 +712,7 @@ ipcMain.handle('host:doc-unregister', async (event, uid: string) => {
   const win = BrowserWindow.fromWebContents(event.sender);
   if (!win || typeof uid !== 'string' || !uid) return;
   docOwners.delete(uid);
+  docInfo.delete(uid);
   windowDocs.get(win.id)?.delete(uid);
   // If the speech doc just got unregistered, clear the global flag
   // and notify everyone.
@@ -712,6 +720,57 @@ ipcMain.handle('host:doc-unregister', async (event, uid: string) => {
     speechRegistration = null;
     broadcastSpeechState();
   }
+});
+
+/** Renderer pushes a uid's display info (currently just filename;
+ *  the type is open for future fields). Called on doc mount and
+ *  whenever the filename changes (save, save-as, rename). */
+ipcMain.handle(
+  'host:doc-info-update',
+  async (
+    _event,
+    payload: { uid: string; filename: string | null },
+  ) => {
+    if (!payload || typeof payload.uid !== 'string' || !payload.uid) return;
+    docInfo.set(payload.uid, {
+      filename: typeof payload.filename === 'string' ? payload.filename : null,
+    });
+  },
+);
+
+/** List every open doc across every window. The Select Speech Doc
+ *  modal calls this to populate its row list. Stale entries
+ *  (windowless uids) are filtered out so the modal never offers
+ *  a target that no longer has a home. */
+ipcMain.handle('host:list-docs', async (event) => {
+  const senderWin = BrowserWindow.fromWebContents(event.sender);
+  const senderId = senderWin ? senderWin.id : -1;
+  const focusedWin = BrowserWindow.getFocusedWindow();
+  const focusedId = focusedWin ? focusedWin.id : -1;
+  const out: Array<{
+    uid: string;
+    filename: string | null;
+    windowId: number;
+    windowTitle: string;
+    isSpeech: boolean;
+    isOwnWindow: boolean;
+    isFocusedWindow: boolean;
+  }> = [];
+  for (const [uid, windowId] of docOwners.entries()) {
+    const win = BrowserWindow.fromId(windowId);
+    if (!win || win.isDestroyed()) continue;
+    const info = docInfo.get(uid);
+    out.push({
+      uid,
+      filename: info?.filename ?? null,
+      windowId,
+      windowTitle: win.getTitle(),
+      isSpeech: speechRegistration?.uid === uid,
+      isOwnWindow: windowId === senderId,
+      isFocusedWindow: windowId === focusedId,
+    });
+  }
+  return out;
 });
 
 // Pre-load duplicate-open check. Renderer calls this BEFORE
@@ -858,6 +917,43 @@ function dispatchMenuCommand(command: string): void {
   win.webContents.send('menu-command', command);
 }
 
+/** Current renderer-reported keybinding for each menu-bound ribbon
+ *  command, in PM keymap form (`Mod-o`, `CmdOrCtrl+Alt+N`, etc.).
+ *  Renderer pushes this map via `host:set-menu-bindings` whenever
+ *  `ribbonKeyOverrides` changes; main rebuilds the application
+ *  menu so accelerators stay in sync with the user's overrides. */
+let menuBindings: Record<string, string | null> = {};
+
+/** PM-keymap string ("Mod-o", "Shift-Mod-s", "Ctrl-ArrowLeft") to
+ *  Electron accelerator ("CmdOrCtrl+O", "Shift+CmdOrCtrl+S",
+ *  "Ctrl+Left"). Returns undefined when `key` is empty or null. */
+function pmKeyToAccelerator(key: string | null | undefined): string | undefined {
+  if (!key) return undefined;
+  const parts = key.split('-');
+  const out: string[] = [];
+  for (const part of parts) {
+    if (!part) continue;
+    switch (part) {
+      case 'Mod': out.push('CmdOrCtrl'); break;
+      case 'ArrowLeft': out.push('Left'); break;
+      case 'ArrowRight': out.push('Right'); break;
+      case 'ArrowUp': out.push('Up'); break;
+      case 'ArrowDown': out.push('Down'); break;
+      default:
+        out.push(part.length === 1 ? part.toUpperCase() : part);
+    }
+  }
+  return out.join('+');
+}
+
+/** Look up the current keybinding for a menu-bound command and
+ *  format it as an Electron accelerator. Returns undefined when no
+ *  binding is set — the menu item still appears, just without an
+ *  accelerator hint on the right side. */
+function menuAccelerator(commandId: string): string | undefined {
+  return pmKeyToAccelerator(menuBindings[commandId]);
+}
+
 function buildMenu(): Menu {
   const isMac = process.platform === 'darwin';
 
@@ -865,42 +961,174 @@ function buildMenu(): Menu {
     label: 'File',
     submenu: [
       {
-        label: 'New Document',
-        accelerator: 'CmdOrCtrl+Alt+N',
-        click: () => dispatchMenuCommand('newDocument'),
+        label: 'Open…',
+        accelerator: menuAccelerator('openFile'),
+        click: () => dispatchMenuCommand('openFile'),
       },
       {
-        label: 'Open…',
-        accelerator: 'CmdOrCtrl+O',
-        click: () => dispatchMenuCommand('openFile'),
+        label: 'New Document',
+        accelerator: menuAccelerator('newDocument'),
+        click: () => dispatchMenuCommand('newDocument'),
       },
       { type: 'separator' },
       {
         label: 'Save',
-        accelerator: 'CmdOrCtrl+S',
+        accelerator: menuAccelerator('save'),
         click: () => dispatchMenuCommand('save'),
       },
       {
         label: 'Save As…',
-        accelerator: 'Shift+CmdOrCtrl+S',
+        accelerator: menuAccelerator('saveAs'),
         click: () => dispatchMenuCommand('saveAs'),
+      },
+      { type: 'separator' },
+      {
+        label: 'Toggle Autosave',
+        accelerator: menuAccelerator('toggleAutosave'),
+        click: () => dispatchMenuCommand('toggleAutosave'),
       },
       { type: 'separator' },
       {
         // Smart close: in multi-pane mode, closes the visible doc in
         // the focused slot rather than the entire window. Falls
         // through to closing the window when there's no visible
-        // doc to close (last doc in the focused slot already
-        // closed, or single-pane mode). Renderer side decides
-        // which path to take; we just dispatch the menu command.
-        // Cmd+W on macOS, Ctrl+W on Windows/Linux — captured as
-        // an explicit menu accelerator so it overrides Chromium's
-        // default close-window behavior.
+        // doc to close. Cmd+W on macOS, Ctrl+W on Windows/Linux —
+        // captured as an explicit menu accelerator so it overrides
+        // Chromium's default close-window behavior.
         label: 'Close',
-        accelerator: 'CmdOrCtrl+W',
+        accelerator: menuAccelerator('closeDocOrWindow') ?? 'CmdOrCtrl+W',
         click: () => dispatchMenuCommand('closeDocOrWindow'),
       },
       ...(!isMac ? [{ role: 'quit' as const }] : []),
+    ],
+  };
+
+  const speechMenu: MenuItemConstructorOptions = {
+    label: 'Speech',
+    submenu: [
+      {
+        label: 'New Speech Document',
+        accelerator: menuAccelerator('newSpeechDocument'),
+        click: () => dispatchMenuCommand('newSpeechDocument'),
+      },
+      {
+        label: 'Mark / Unmark Active as Speech Doc',
+        accelerator: menuAccelerator('markActiveAsSpeech'),
+        click: () => dispatchMenuCommand('markActiveAsSpeech'),
+      },
+      { type: 'separator' },
+      {
+        label: 'Send to Speech (At Cursor)',
+        accelerator: menuAccelerator('sendToSpeechAtCursor'),
+        click: () => dispatchMenuCommand('sendToSpeechAtCursor'),
+      },
+      {
+        label: 'Send to Speech (At End)',
+        accelerator: menuAccelerator('sendToSpeechAtEnd'),
+        click: () => dispatchMenuCommand('sendToSpeechAtEnd'),
+      },
+      { type: 'separator' },
+      {
+        label: 'Select Speech Doc…',
+        accelerator: menuAccelerator('selectSpeechDoc'),
+        click: () => dispatchMenuCommand('selectSpeechDoc'),
+      },
+    ],
+  };
+
+  const viewMenu: MenuItemConstructorOptions = {
+    label: 'View',
+    submenu: [
+      { role: 'reload' },
+      { role: 'forceReload' },
+      { role: 'toggleDevTools' },
+      { type: 'separator' },
+      // Zoom items route through OUR ribbon commands (chromeScale)
+      // rather than Electron's native zoomIn/zoomOut roles, so the
+      // accelerator labels match the user's actual bindings and
+      // re-using the chord doesn't hit Chromium's own zoom.
+      {
+        label: 'Reset Zoom',
+        accelerator: menuAccelerator('chromeScaleReset'),
+        click: () => dispatchMenuCommand('chromeScaleReset'),
+      },
+      {
+        label: 'Zoom In',
+        accelerator: menuAccelerator('chromeScaleUp'),
+        click: () => dispatchMenuCommand('chromeScaleUp'),
+      },
+      {
+        label: 'Zoom Out',
+        accelerator: menuAccelerator('chromeScaleDown'),
+        click: () => dispatchMenuCommand('chromeScaleDown'),
+      },
+      { type: 'separator' },
+      { role: 'togglefullscreen' },
+    ],
+  };
+
+  const helpMenu: MenuItemConstructorOptions = {
+    label: 'Help',
+    submenu: [
+      {
+        label: 'Settings…',
+        accelerator: menuAccelerator('openSettings'),
+        click: () => dispatchMenuCommand('openSettings'),
+      },
+      {
+        label: 'Keyboard Shortcuts…',
+        accelerator: menuAccelerator('openShortcutsReference'),
+        click: () => dispatchMenuCommand('openShortcutsReference'),
+      },
+      { type: 'separator' },
+      {
+        label: 'Check for Updates…',
+        click: runManualUpdateCheck,
+      },
+      {
+        label: 'Open Crash Dumps Folder',
+        click: () => {
+          void shell.openPath(app.getPath('crashDumps'));
+        },
+      },
+      {
+        // GPU diagnostics for bug reports. `chrome://gpu` is
+        // blocked in Electron renderers; this exposes the same
+        // data via `app.getGPUFeatureStatus()` + `app.getGPUInfo()`
+        // and copies it to the clipboard so users can paste it
+        // into an issue.
+        label: 'Copy GPU Info',
+        click: () => {
+          void (async () => {
+            const feature = app.getGPUFeatureStatus();
+            let info: unknown = null;
+            try {
+              info = await app.getGPUInfo('complete');
+            } catch (err) {
+              info = { error: String(err) };
+            }
+            const payload = JSON.stringify(
+              {
+                versions: process.versions,
+                commandLineSwitches: process.argv.slice(1),
+                gpuFeatureStatus: feature,
+                gpuInfo: info,
+              },
+              null,
+              2,
+            );
+            clipboard.writeText(payload);
+            const win = BrowserWindow.getFocusedWindow();
+            if (win) {
+              void dialog.showMessageBox(win, {
+                type: 'info',
+                message: 'GPU info copied to clipboard.',
+                detail: 'Paste it into the conversation.',
+              });
+            }
+          })();
+        },
+      },
     ],
   };
 
@@ -924,93 +1152,47 @@ function buildMenu(): Menu {
         ]
       : []),
     fileMenu,
-    { role: 'editMenu' },
+    speechMenu,
+    // Custom Edit menu — Electron's `role: 'editMenu'` defaults
+    // Redo to Cmd/Ctrl+Shift+Z; we prefer the traditional Cmd/Ctrl+Y
+    // and let the renderer's keymap accept both chords so muscle
+    // memory keeps working either way.
     {
-      label: 'View',
+      label: 'Edit',
       submenu: [
-        { role: 'reload' },
-        { role: 'forceReload' },
-        { role: 'toggleDevTools' },
-        { type: 'separator' },
-        { role: 'resetZoom' },
-        { role: 'zoomIn' },
-        { role: 'zoomOut' },
-        { type: 'separator' },
-        { role: 'togglefullscreen' },
+        { role: 'undo' as const, accelerator: 'CmdOrCtrl+Z' },
+        { role: 'redo' as const, accelerator: 'CmdOrCtrl+Y' },
+        { type: 'separator' as const },
+        { role: 'cut' as const },
+        { role: 'copy' as const },
+        { role: 'paste' as const },
+        ...(isMac
+          ? [{ role: 'pasteAndMatchStyle' as const }, { role: 'delete' as const }]
+          : [{ role: 'delete' as const }]),
+        { type: 'separator' as const },
+        { role: 'selectAll' as const },
       ],
     },
-    { role: 'windowMenu' },
-    {
-      label: 'Help',
-      submenu: [
-        {
-          label: 'Check for Updates…',
-          // Manual update check. Every click resolves to exactly one
-          // of three dialogs — no silent paths. The persistent
-          // `startAutoUpdate` handlers still run too (they own the
-          // background download + "update ready, restart now?"
-          // dialog after the download completes); our `.once`
-          // handlers here are user-driven feedback for the check
-          // *itself*.
-          click: runManualUpdateCheck,
-        },
-        {
-          label: 'Open Crash Dumps Folder',
-          // Crash minidumps land in `app.getPath('crashDumps')`. We
-          // don't upload them anywhere — users who hit a crash can
-          // grab the dump from this folder and attach it to a bug
-          // report manually.
-          click: () => {
-            void shell.openPath(app.getPath('crashDumps'));
-          },
-        },
-        {
-          // GPU diagnostics for bug reports. `chrome://gpu` is
-          // blocked in Electron renderers; this exposes the same
-          // data via `app.getGPUFeatureStatus()` + `app.getGPUInfo()`
-          // and copies it to the clipboard so users can paste it
-          // into an issue. Originally added for the alpha.2 →
-          // alpha.3 macOS scroll-perf investigation; kept because
-          // it's a one-click bug-report aid with effectively zero
-          // runtime cost.
-          label: 'Copy GPU Info',
-          click: () => {
-            void (async () => {
-              const feature = app.getGPUFeatureStatus();
-              let info: unknown = null;
-              try {
-                info = await app.getGPUInfo('complete');
-              } catch (err) {
-                info = { error: String(err) };
-              }
-              const payload = JSON.stringify(
-                {
-                  versions: process.versions,
-                  commandLineSwitches: process.argv.slice(1),
-                  gpuFeatureStatus: feature,
-                  gpuInfo: info,
-                },
-                null,
-                2,
-              );
-              clipboard.writeText(payload);
-              const win = BrowserWindow.getFocusedWindow();
-              if (win) {
-                void dialog.showMessageBox(win, {
-                  type: 'info',
-                  message: 'GPU info copied to clipboard.',
-                  detail: 'Paste it into the conversation.',
-                });
-              }
-            })();
-          },
-        },
-      ],
-    },
+    viewMenu,
+    helpMenu,
   ];
 
   return Menu.buildFromTemplate(template);
 }
+
+/** Renderer-driven menu rebuild. Stores the new bindings map and
+ *  re-installs the application menu so the user's current
+ *  keybindings (after rebinds via Settings → Keybindings) show
+ *  next to each menu item. Idempotent — safe to call on every
+ *  settings change. */
+ipcMain.handle(
+  'host:set-menu-bindings',
+  async (_event, bindings: Record<string, string | null>) => {
+    if (!bindings || typeof bindings !== 'object') return;
+    menuBindings = { ...bindings };
+    Menu.setApplicationMenu(buildMenu());
+  },
+);
 
 // ─── Auto-update ───────────────────────────────────────────────────
 //

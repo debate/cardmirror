@@ -166,6 +166,31 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('host:speech-set', uid),
   speechGet: () => ipcRenderer.invoke('host:speech-get'),
 
+  /** Push the active filename for a registered uid so the
+   *  Select-Speech-Doc modal can label every doc across every
+   *  window. Call on mount and whenever the filename changes
+   *  (save, save-as). Pass `null` for unsaved docs. */
+  docInfoUpdate: (uid: string, filename: string | null) =>
+    ipcRenderer.invoke('host:doc-info-update', { uid, filename }),
+
+  /** List every open doc across every window. Each entry carries
+   *  the uid, filename (or null), its owning window's id + title,
+   *  whether it's the current speech doc, whether it lives in the
+   *  caller's own window, and whether its window is currently
+   *  focused. */
+  listDocs: () =>
+    ipcRenderer.invoke('host:list-docs') as Promise<
+      Array<{
+        uid: string;
+        filename: string | null;
+        windowId: number;
+        windowTitle: string;
+        isSpeech: boolean;
+        isOwnWindow: boolean;
+        isFocusedWindow: boolean;
+      }>
+    >,
+
   /** Subscribe to speech-state broadcasts. The handler receives the
    *  current `{ uid }` (uid is null when no speech doc is flagged). */
   onSpeechChanged(handler: (state: { uid: string | null }) => void): () => void {
@@ -195,6 +220,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return () =>
       ipcRenderer.removeListener('speech:incoming-slice', listener);
   },
+
+  /** Push the renderer's current keybinding map to main so the
+   *  application menu's accelerator labels track user rebinds.
+   *  Values are PM-keymap strings (`Mod-o`, `Shift-Mod-s`,
+   *  `Ctrl-ArrowLeft`); main translates each to Electron's
+   *  accelerator form. Pass `null` for commands with no current
+   *  binding so the accelerator hint is omitted. */
+  setMenuBindings: (bindings: Record<string, string | null>) =>
+    ipcRenderer.invoke('host:set-menu-bindings', bindings),
 
   /** Subscribe to native-menu commands. Main process broadcasts
    *  `'menu-command'` events to the focused window's webContents

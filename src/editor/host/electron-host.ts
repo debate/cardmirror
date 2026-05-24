@@ -52,6 +52,22 @@ interface ElectronAPI {
   onCloseRequest(handler: () => void): () => void;
   docRegister(uid: string): Promise<void>;
   docUnregister(uid: string): Promise<void>;
+  /** Push the current filename for a uid so the Select-Speech-Doc
+   *  modal can show meaningful row labels across every window. */
+  docInfoUpdate(uid: string, filename: string | null): Promise<void>;
+  /** Return every open doc across every window with its current
+   *  filename, owning window, and speech-doc status. */
+  listDocs(): Promise<
+    Array<{
+      uid: string;
+      filename: string | null;
+      windowId: number;
+      windowTitle: string;
+      isSpeech: boolean;
+      isOwnWindow: boolean;
+      isFocusedWindow: boolean;
+    }>
+  >;
   openPathCheck(path: string): Promise<{ takenByOther: boolean }>;
   openPathRegister(path: string): Promise<void>;
   openPathRelease(path: string): Promise<void>;
@@ -68,6 +84,11 @@ interface ElectronAPI {
   /** Subscribe to menu-driven commands from the native menu bar.
    *  Returns an unsubscribe handle. */
   onMenuCommand(handler: (command: string) => void): () => void;
+  /** Push the current keybinding map to main so the native menu's
+   *  accelerator hints stay in sync with user rebinds. Values are
+   *  PM-keymap strings; pass `null` for commands with no current
+   *  binding so the accelerator slot is left blank. */
+  setMenuBindings(bindings: Record<string, string | null>): Promise<void>;
   /** Run a manual auto-update check (mirrors Help → Check for
    *  Updates…). Resolves with a status the UI can render. */
   checkForUpdates(): Promise<{
@@ -226,6 +247,24 @@ export class ElectronHost implements Host {
     await api().docUnregister(uid);
   }
 
+  async docInfoUpdate(uid: string, filename: string | null): Promise<void> {
+    await api().docInfoUpdate(uid, filename);
+  }
+
+  async listDocs(): Promise<
+    Array<{
+      uid: string;
+      filename: string | null;
+      windowId: number;
+      windowTitle: string;
+      isSpeech: boolean;
+      isOwnWindow: boolean;
+      isFocusedWindow: boolean;
+    }>
+  > {
+    return api().listDocs();
+  }
+
   /** Cross-window duplicate-open guard. `openPathCheck` is the
    *  read-only pre-load probe — if another window owns the
    *  path, main focuses it for the user and returns
@@ -283,6 +322,13 @@ export class ElectronHost implements Host {
    *  the desktop shell exposes a menu, so this is ElectronHost-only. */
   onMenuCommand(handler: (command: string) => void): () => void {
     return api().onMenuCommand(handler);
+  }
+
+  /** Push the current keybinding map to main so menu accelerators
+   *  follow user rebinds. Callers send a fresh map on every
+   *  settings change; main de-dups by reassigning its store. */
+  async setMenuBindings(bindings: Record<string, string | null>): Promise<void> {
+    await api().setMenuBindings(bindings);
   }
 
   async checkForUpdates(): Promise<{
