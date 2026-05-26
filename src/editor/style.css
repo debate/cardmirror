@@ -2434,6 +2434,13 @@ html.pmd-home-active #speech-doc-banner {
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: 0.75rem;
 }
+/* The standalone Manage / Review cards have no tall sibling to stretch
+   against (the primary actions row stretches all three to the
+   3-line "New speech" card). Reserve 3 sub-lines here so these cards
+   are at least as tall as the New document button. */
+.pmd-home-qc-actions .pmd-home-action-sub {
+  min-height: 4.05em;
+}
 /* Placeholder card (e.g. the forthcoming Learn section) — looks like
    an action card but muted and non-interactive. */
 .pmd-home-action-placeholder {
