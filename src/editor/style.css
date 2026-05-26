@@ -2386,31 +2386,10 @@ html.pmd-home-active #speech-doc-banner {
   border-radius: 10px;
   padding: 1rem 1.1rem;
   display: flex;
-  align-items: flex-start;
-  gap: 0.65rem;
-  color: var(--pmd-c-text);
-  transition: background-color 0.12s ease, border-color 0.12s ease;
-}
-.pmd-home-action-key {
-  flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.4rem;
-  height: 1.4rem;
-  border-radius: 6px;
-  background: var(--pmd-c-bg-soft);
-  border: 1px solid var(--pmd-c-border-soft);
-  color: var(--pmd-c-text-muted);
-  font-size: 0.8rem;
-  font-weight: 600;
-  line-height: 1;
-}
-.pmd-home-action-text {
-  display: flex;
   flex-direction: column;
   gap: 0.25rem;
-  min-width: 0;
+  color: var(--pmd-c-text);
+  transition: background-color 0.12s ease, border-color 0.12s ease;
 }
 .pmd-home-action:hover {
   background: var(--pmd-c-hover);

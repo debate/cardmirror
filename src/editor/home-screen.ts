@@ -91,18 +91,17 @@ class HomeScreen {
     const actions = document.createElement('div');
     actions.className = 'pmd-home-actions';
     actions.appendChild(
-      this.actionCard('1', 'New document', 'Create a new document.', this.actionRunners[0]!),
+      this.actionCard('New document', 'Create a new document.', this.actionRunners[0]!),
     );
     actions.appendChild(
       this.actionCard(
-        '2',
         'New speech document',
         'Create a new document and designate it as the speech doc.',
         this.actionRunners[1]!,
       ),
     );
     actions.appendChild(
-      this.actionCard('3', 'Open…', 'Browse for a .cmir or .docx file.', this.actionRunners[2]!),
+      this.actionCard('Open…', 'Browse for a .cmir or .docx file.', this.actionRunners[2]!),
     );
     inner.appendChild(actions);
 
@@ -190,31 +189,18 @@ class HomeScreen {
 
   // ---- Rendering ----------------------------------------------------
 
-  private actionCard(
-    key: string,
-    title: string,
-    sub: string,
-    onClick: () => void,
-  ): HTMLButtonElement {
+  private actionCard(title: string, sub: string, onClick: () => void): HTMLButtonElement {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'pmd-home-action';
-    const kbd = document.createElement('span');
-    kbd.className = 'pmd-home-action-key';
-    kbd.setAttribute('aria-hidden', 'true');
-    kbd.textContent = key;
-    btn.appendChild(kbd);
-    const text = document.createElement('span');
-    text.className = 'pmd-home-action-text';
     const t = document.createElement('span');
     t.className = 'pmd-home-action-title';
     t.textContent = title;
-    text.appendChild(t);
+    btn.appendChild(t);
     const s = document.createElement('span');
     s.className = 'pmd-home-action-sub';
     s.textContent = sub;
-    text.appendChild(s);
-    btn.appendChild(text);
+    btn.appendChild(s);
     btn.addEventListener('click', onClick);
     return btn;
   }
