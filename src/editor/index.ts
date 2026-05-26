@@ -833,9 +833,11 @@ if (newBtn) {
 }
 if (homeBtn) {
   homeBtn.addEventListener('mousedown', (e) => e.preventDefault());
-  // Route through the ribbon command so the button + any
-  // user-assigned keybinding share one path.
-  homeBtn.addEventListener('click', () => runRibbon('goHome'));
+  // goHome is view-less (pure UI) — call the ctx side effect
+  // directly rather than via runRibbon, which gates on a live
+  // `view` (null in multi-pane with no panes open). The keybinding
+  // path reaches the same ctx.goHome via runViewlessRibbon.
+  homeBtn.addEventListener('click', () => ribbonContext.goHome());
 }
 
 
@@ -2114,6 +2116,9 @@ const VIEWLESS_RIBBON_COMMANDS = new Set<RibbonCommandId>([
   // Toggling the nav-pane visibility only flips a transient
   // setting + body class; works without an active doc.
   'toggleNavPane',
+  // Home screen overlay — pure UI, no doc needed. Must be view-
+  // less so it works in multi-pane with zero panes open.
+  'goHome',
   // Multi-pane workspace commands — fire on the shell, not a
   // doc. View-less so they work even when no slot has a doc.
   'focusSlot1',
@@ -2139,6 +2144,7 @@ function runViewlessRibbon(id: RibbonCommandId): void {
     case 'zoomOut': ribbonContext.zoomOut(); return;
     case 'zoomReset': ribbonContext.zoomReset(); return;
     case 'toggleNavPane': ribbonContext.toggleNavPane(); return;
+    case 'goHome': ribbonContext.goHome(); return;
     // Multi-pane workspace navigation. Each dispatches into the
     // shell via dynamic import — keeps single-doc bundles free
     // of the shell's deps. All no-op in single-doc mode (the
