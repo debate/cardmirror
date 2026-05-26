@@ -2409,6 +2409,11 @@ html.pmd-home-active #speech-doc-banner {
 .pmd-home-action-sub {
   font-size: 0.82rem;
   color: var(--pmd-c-text-muted);
+  /* Reserve two lines so every action card is the same height —
+     including the standalone Quick Cards button, which lives in its
+     own grid and so can't stretch to match the actions row. */
+  line-height: 1.35;
+  min-height: 2.7em;
 }
 /* Quick Cards section — its single Manage button matches one primary
    action card's dimensions. `auto-fill` (vs the actions row's
@@ -2416,6 +2421,11 @@ html.pmd-home-active #speech-doc-banner {
    column wide instead of stretching across the row. */
 .pmd-home-qc-section {
   margin-top: 1.5rem;
+}
+/* Match the Recent heading's gap to its first row (its header's
+   margin-bottom). */
+.pmd-home-qc-section .pmd-home-section-title {
+  margin-bottom: 0.5rem;
 }
 .pmd-home-qc-actions {
   display: grid;
