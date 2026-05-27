@@ -885,7 +885,7 @@ const ribbonContext: RibbonContext = {
     // (single-doc); opens browse-only when there's no active view.
     const paneEl =
       (view?.dom.closest('.pmd-pane') as HTMLElement | null) ?? editorEl ?? null;
-    quickCardSearchUI.open({ view, paneEl });
+    quickCardSearchUI.open({ view, paneEl, runCommand: runRibbonCommandById });
   },
   insertImage: () => {
     if (!view) return;
@@ -2315,6 +2315,18 @@ function runViewlessRibbon(id: RibbonCommandId): void {
       })();
       return;
   }
+}
+
+/** Dispatch a ribbon command by id, the way the keyboard does:
+ *  view-less commands run regardless of focus; the rest go through
+ *  `runRibbon` (which no-ops when there's no active view). Used by the
+ *  search palette's command source. */
+function runRibbonCommandById(id: RibbonCommandId): void {
+  if (VIEWLESS_RIBBON_COMMANDS.has(id)) {
+    runViewlessRibbon(id);
+    return;
+  }
+  runRibbon(id);
 }
 
 /** Dispatch a multi-pane action by name. Single-doc returns

@@ -30,34 +30,47 @@ import { insertSpeechSlice } from './speech-doc-send.js';
 import { quickCardsStore, distinctTags, normalizeTag } from './quick-cards-store.js';
 import { dropzoneStore } from './dropzone-store.js';
 import { searchQuickCards } from './quick-cards-match.js';
+import {
+  RIBBON_COMMAND_IDS,
+  RIBBON_COMMAND_LABELS,
+  DEFAULT_RIBBON_KEYS,
+  formatKeyForDisplay,
+  type RibbonCommandId,
+} from './ribbon-commands.js';
 
 export interface QuickCardSearchOptions {
   view: EditorView | null;
   paneEl: HTMLElement | null;
+  /** Trigger a ribbon command by id (the palette's command source). */
+  runCommand: (id: RibbonCommandId) => void;
 }
 
-/** A unified palette row — a quick card or a dropzone item. */
+/** A unified palette row — a quick card, dropzone item, or command. */
 interface PaletteResult {
-  source: 'quickcard' | 'dropzone';
+  source: 'quickcard' | 'dropzone' | 'command';
   name: string;
-  tags: string[];
+  /** Right-aligned secondary text: card tags / command keybinding. */
+  meta: string;
   matchedName: boolean;
   snippet: string | null;
-  sliceJson: unknown;
+  /** Insert payload (quickcard / dropzone). */
+  sliceJson?: unknown;
+  /** Command to run (command source). */
+  commandId?: RibbonCommandId;
 }
 
-type Prefix = 'q' | 'd' | null;
+type Prefix = 'q' | 'd' | 'c' | null;
 
 function activeTagSet(): Set<string> {
   return new Set(settings.get('quickCardActiveTags').map(normalizeTag));
 }
 
-/** Split a leading single-letter prefix (`q `/`d `) off the query. */
+/** Split a leading single-letter prefix (`q `/`d `/`c `) off the query. */
 function parsePrefix(raw: string): { prefix: Prefix; query: string } {
   const m = raw.match(/^([a-zA-Z])\s+(.*)$/);
   if (m) {
     const p = m[1]!.toLowerCase();
-    if (p === 'q' || p === 'd') return { prefix: p, query: m[2]! };
+    if (p === 'q' || p === 'd' || p === 'c') return { prefix: p, query: m[2]! };
   }
   return { prefix: null, query: raw };
 }
@@ -66,7 +79,7 @@ function searchQuickCardSource(query: string): PaletteResult[] {
   return searchQuickCards(quickCardsStore.list(), query, activeTagSet()).map((r) => ({
     source: 'quickcard' as const,
     name: r.card.name,
-    tags: r.card.tags,
+    meta: r.card.tags.join(', '),
     matchedName: r.matchedName,
     snippet: r.snippet,
     sliceJson: r.card.contentJson,
@@ -85,11 +98,49 @@ function searchDropzoneSource(query: string): PaletteResult[] {
     .map((it) => ({
       source: 'dropzone' as const,
       name: it.label,
-      tags: [],
+      meta: '',
       matchedName: true,
       snippet: null,
       sliceJson: it.sliceJson,
     }));
+}
+
+/** The current display keybinding for a command (first binding), or ''. */
+function commandKeyDisplay(id: RibbonCommandId): string {
+  const spec = settings.get('ribbonKeyOverrides')[id] ?? DEFAULT_RIBBON_KEYS[id];
+  const first = Array.isArray(spec) ? spec[0] : spec;
+  return first ? formatKeyForDisplay(first) : '';
+}
+
+/** Command source — any ribbon command (everything bindable), matched
+ *  on its label; triggers the command on Enter. */
+function searchCommandSource(query: string): PaletteResult[] {
+  const tokens = query.toLowerCase().split(/\s+/).filter(Boolean);
+  const matched =
+    tokens.length === 0
+      ? [...RIBBON_COMMAND_IDS]
+      : RIBBON_COMMAND_IDS.filter((id) => {
+          const label = RIBBON_COMMAND_LABELS[id].toLowerCase();
+          return tokens.every((t) => label.includes(t));
+        });
+  const t0 = tokens[0];
+  matched.sort((a, b) => {
+    const la = RIBBON_COMMAND_LABELS[a].toLowerCase();
+    const lb = RIBBON_COMMAND_LABELS[b].toLowerCase();
+    if (t0) {
+      const d = la.indexOf(t0) - lb.indexOf(t0);
+      if (d !== 0) return d;
+    }
+    return la.localeCompare(lb);
+  });
+  return matched.map((id) => ({
+    source: 'command' as const,
+    name: RIBBON_COMMAND_LABELS[id],
+    meta: commandKeyDisplay(id),
+    matchedName: true,
+    snippet: null,
+    commandId: id,
+  }));
 }
 
 class QuickCardSearchUI {
@@ -100,6 +151,7 @@ class QuickCardSearchUI {
   private unsubscribe: (() => void) | null = null;
   private view: EditorView | null = null;
   private paneEl: HTMLElement | null = null;
+  private runCommand: (id: RibbonCommandId) => void = () => {};
 
   private results: PaletteResult[] = [];
   private selected = 0;
@@ -113,6 +165,7 @@ class QuickCardSearchUI {
     }
     this.view = opts.view;
     this.paneEl = opts.paneEl;
+    this.runCommand = opts.runCommand;
 
     const root = document.createElement('div');
     root.className = 'pmd-qcs';
@@ -120,7 +173,7 @@ class QuickCardSearchUI {
       <div class="pmd-qcs-results" role="listbox"></div>
       <div class="pmd-qcs-tagfilter" hidden></div>
       <input class="pmd-qcs-input" type="text" spellcheck="false" autocomplete="off"
-             placeholder="Search…  (q quick cards · d dropzone)" aria-label="Search" />
+             placeholder="Search…  (q cards · d dropzone · c commands)" aria-label="Search" />
       <div class="pmd-qcs-hints">
         <span>↑↓ navigate</span><span>↵ insert</span><span>⌥↵ at end</span><span>⇥ tags</span><span>esc</span>
       </div>`;
@@ -196,7 +249,7 @@ class QuickCardSearchUI {
         break;
       case 'Enter':
         e.preventDefault();
-        this.insertSelected(e.altKey);
+        this.activateSelected(e.altKey);
         break;
       case 'Tab':
         e.preventDefault();
@@ -219,13 +272,20 @@ class QuickCardSearchUI {
       this.emptyText = dropzoneStore.list().length
         ? 'No matching dropzone items.'
         : 'The dropzone is empty.';
+    } else if (prefix === 'c') {
+      this.results = searchCommandSource(query);
+      this.emptyText = 'No matching commands.';
     } else if (query.trim() === '') {
       // No prefix, nothing typed — don't preview anything.
       this.results = [];
-      this.emptyText = 'Type to search everything · q quick cards · d dropzone';
+      this.emptyText = 'Type to search everything · q cards · d dropzone · c commands';
     } else {
-      // No prefix — search everything (quick cards, then dropzone).
-      this.results = [...searchQuickCardSource(query), ...searchDropzoneSource(query)];
+      // No prefix — search everything (cards, dropzone, then commands).
+      this.results = [
+        ...searchQuickCardSource(query),
+        ...searchDropzoneSource(query),
+        ...searchCommandSource(query),
+      ];
       this.emptyText = 'No matches.';
     }
     this.results = this.results.slice(0, 50);
@@ -260,17 +320,18 @@ class QuickCardSearchUI {
       top.className = 'pmd-qcs-row-top';
       const badge = document.createElement('span');
       badge.className = `pmd-qcs-row-badge pmd-qcs-badge-${r.source}`;
-      badge.textContent = r.source === 'quickcard' ? 'QC' : 'DZ';
+      badge.textContent =
+        r.source === 'quickcard' ? 'QC' : r.source === 'dropzone' ? 'DZ' : 'CMD';
       top.appendChild(badge);
       const name = document.createElement('span');
       name.className = 'pmd-qcs-row-name';
       name.textContent = r.name;
       top.appendChild(name);
-      if (r.tags.length) {
-        const tags = document.createElement('span');
-        tags.className = 'pmd-qcs-row-tags';
-        tags.textContent = r.tags.join(', ');
-        top.appendChild(tags);
+      if (r.meta) {
+        const meta = document.createElement('span');
+        meta.className = 'pmd-qcs-row-tags';
+        meta.textContent = r.meta;
+        top.appendChild(meta);
       }
       row.appendChild(top);
       if (!r.matchedName && r.snippet) {
@@ -287,7 +348,7 @@ class QuickCardSearchUI {
       });
       row.addEventListener('click', () => {
         this.selected = i;
-        this.insertSelected(false);
+        this.activateSelected(false);
       });
       this.resultsEl.appendChild(row);
     });
@@ -296,9 +357,17 @@ class QuickCardSearchUI {
 
   // ── Insert ────────────────────────────────────────────────────────
 
-  private insertSelected(atEnd: boolean): void {
+  private activateSelected(atEnd: boolean): void {
     const result = this.results[this.selected];
     if (!result) return;
+    // Commands: close the palette, then run the command (it acts on the
+    // editor with focus restored). atEnd is irrelevant for commands.
+    if (result.source === 'command') {
+      const id = result.commandId!;
+      this.close();
+      this.runCommand(id);
+      return;
+    }
     const view = this.view;
     if (!view || !view.editable) {
       showToast('No editable document to insert into.');

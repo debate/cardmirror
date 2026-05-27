@@ -153,12 +153,15 @@ in each release, see `CHANGELOG.md`.
     the Tag Picker, not a settings row) and
     `quickCardSkipMidTextInsertConfirm` (Editing tab, default off).
   - Prefix system (first slice of the eventual full set): `parsePrefix`
-    splits a leading `q `/`d ` off the query. `q ` searches quick
-    cards, `d ` the dropzone (`searchDropzoneSource` — multi-token
-    substring over item labels, newest first), no prefix searches
-    EVERYTHING (quick cards + dropzone) but shows nothing until the
-    user types. Results are a unified `PaletteResult` (source badge
-    QC/DZ); both insert their `sliceJson` through the same path.
+    splits a leading `q `/`d `/`c ` off the query. `q ` searches quick
+    cards, `d ` the dropzone, `c ` **commands** (`searchCommandSource`
+    — multi-token substring over `RIBBON_COMMAND_LABELS`, showing the
+    command's current keybinding; activating runs it via the new
+    `runRibbonCommandById` passed in as `opts.runCommand`, which is
+    view-less-aware). No prefix searches EVERYTHING (cards + dropzone +
+    commands) but shows nothing until the user types. Results are a
+    unified `PaletteResult` (source badge QC/DZ/CMD); quickcard/dropzone
+    insert their `sliceJson`, commands run their `commandId`.
   - Re-triggering the open hotkey while open toggles the palette
     closed. The bar sits higher (`bottom: 6rem`) and its width clamps
     to the target pane (`min(540, paneWidth − 24)`, floor 240) so it

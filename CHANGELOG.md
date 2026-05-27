@@ -30,10 +30,13 @@ see `DETAILED_CHANGELOG.md`.
   - **Search** (**Ctrl/Cmd+Shift+Space**, or the 🔍 button; press again
     to close): a floating palette over the current document. Type to
     search everything, or scope with a prefix — `q ` for quick cards,
-    `d ` for the dropzone. Matches on name first, then contents; ↑/↓ to
-    move, **Enter** to insert at the cursor, **Alt+Enter** to insert at
-    the end of the doc, Esc to close. **Tab** jumps to an inline tag
-    filter (type to filter, ↑/↓ + Enter to toggle, Tab to return).
+    `d ` for the dropzone, `c ` for **commands** (anything bindable to
+    a keyboard shortcut; the result shows its current binding, and
+    selecting it runs the command). Matches on name first, then
+    contents; ↑/↓ to move, **Enter** to insert (or run a command),
+    **Alt+Enter** to insert at the end of the doc, Esc to close.
+    **Tab** jumps to an inline tag filter (type to filter, ↑/↓ + Enter
+    to toggle, Tab to return).
   - **Tag Picker** (🏷️): choose which tags are in scope for search —
     handy when, say, several aff files each have a "2AC" card. The
     filter is global and persists.
