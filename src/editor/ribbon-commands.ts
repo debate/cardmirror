@@ -4493,6 +4493,12 @@ export function ribbonKeyStringFor(e: KeyboardEvent): string {
   // for shifted symbol keys like `=` / `+`.
   if (/^Digit[0-9]$/.test(e.code)) {
     parts.push(e.code.slice(5));
+  } else if (e.code === 'Space' || e.key === ' ') {
+    // The space key's `e.key` is a literal " ", which would join into
+    // "Mod-Shift- " and never match the canonical "Mod-Shift-Space"
+    // binding. Normalize to PM's "Space" name so the global key
+    // handler matches space bindings even when the editor is unfocused.
+    parts.push('Space');
   } else {
     parts.push(e.key);
   }
