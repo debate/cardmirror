@@ -37,3 +37,5 @@ export type {
 } from './native/index.js';
 
 export { Docx } from './ooxml/docx.js';
+
+export { readDocIdFromBytes, stampDocId } from './docid.js';

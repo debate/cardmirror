@@ -1572,9 +1572,12 @@ returns `retryInSession`). Days are local-day buckets.
 card to the selection on create, or edit an existing card's content),
 `learn-session-ui.ts` (the review overlay, driven by
 `learnStore.queue(scope, today)`), `learn-manage-ui.ts` (browse cards
-grouped by file with edit / suspend / delete + a New-card action for an
-unanchored card, via the `manageFlashcards` command or the Home button),
-and the Home screen's Learn section
+grouped by file with edit / suspend / delete, a New-card action for an
+unanchored card, and a link-to-file action that attaches an unanchored
+card to a document — stamping a docId into an id-less file via
+`readDocIdFromBytes` / `stampDocId` in `src/docid.ts`, lossless for both
+formats — via the `manageFlashcards` command or the Home button), and
+the Home screen's Learn section
 (`home-screen.ts`, rebuilt from the store: review-all + manage +
 per-file / per-deck due breakdown).
 

@@ -8352,6 +8352,14 @@ textarea.pmd-text-prompt-input {
   color: var(--pmd-c-text);
 }
 .pmd-learn-manage-delete:hover { color: var(--pmd-c-error); border-color: var(--pmd-c-error); }
+/* Link (icon-only) action on unanchored cards. */
+.pmd-learn-manage-link {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.95rem;
+  padding: 0.2rem 0.4rem;
+}
+.pmd-learn-manage-link:hover { color: var(--pmd-c-accent); border-color: var(--pmd-c-accent); }
 .pmd-learn-manage-delete.is-armed {
   color: var(--pmd-c-text-on-accent);
   background: var(--pmd-c-error);

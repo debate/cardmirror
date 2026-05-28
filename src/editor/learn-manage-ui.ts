@@ -15,6 +15,10 @@ import { openCardEditor } from './learn-create-ui.js';
 import { openLearnSession } from './learn-session-ui.js';
 import { isDue } from './learn-scheduler.js';
 import type { CardDef } from './learn-store.js';
+import { getHost } from './host/index.js';
+import { icon } from './icons.js';
+import { showToast } from './toast.js';
+import { readDocIdFromBytes, stampDocId } from '../index.js';
 
 let openOverlay: HTMLElement | null = null;
 
@@ -183,7 +187,7 @@ export function openLearnManage(): void {
       );
       for (const id of ids) {
         const c = cardById.get(id)!;
-        listEl.appendChild(cardRow(c, today, (docCount.get(id) ?? 1) > 1));
+        listEl.appendChild(cardRow(c, today, (docCount.get(id) ?? 1) > 1, false));
       }
     }
 
@@ -193,7 +197,7 @@ export function openLearnManage(): void {
     if (orphans.length > 0) {
       anyShown = true;
       listEl.appendChild(groupHeader('Unanchored', orphans.length, 0, null));
-      for (const c of orphans) listEl.appendChild(cardRow(c, today, false));
+      for (const c of orphans) listEl.appendChild(cardRow(c, today, false, true));
     }
 
     if (!anyShown) {
@@ -235,7 +239,7 @@ export function openLearnManage(): void {
     return row;
   }
 
-  function cardRow(card: CardDef, today: string, shared: boolean): HTMLElement {
+  function cardRow(card: CardDef, today: string, shared: boolean, canLink: boolean): HTMLElement {
     const row = document.createElement('div');
     row.className = 'pmd-learn-manage-card';
 
@@ -285,6 +289,18 @@ export function openLearnManage(): void {
     const actions = document.createElement('div');
     actions.className = 'pmd-learn-manage-actions';
 
+    if (canLink) {
+      // Link this unanchored card to a file (file-level association; the
+      // user can ground it to specific text later from inside that file).
+      const link = document.createElement('button');
+      link.type = 'button';
+      link.className = 'pmd-learn-manage-action pmd-learn-manage-link';
+      link.title = 'Link to a file';
+      link.appendChild(icon('link', { label: 'Link to a file' }));
+      link.addEventListener('click', () => void linkCardToFile(card.id));
+      actions.appendChild(link);
+    }
+
     const edit = mkAction('Edit', () => {
       void (async () => {
         const def = await openCardEditor({
@@ -329,6 +345,58 @@ export function openLearnManage(): void {
   renderList();
   document.body.appendChild(overlay);
   filterInput.focus();
+}
+
+/** Link an unanchored card to a file the user picks. Reads the file's
+ *  docId (minting + stamping one in if it has none, so a future open
+ *  re-associates), then records a file-level CardAnchor (null text
+ *  anchor — the user grounds it to specific text later from inside the
+ *  file). The manage list re-renders via the store subscription. */
+async function linkCardToFile(cardId: string): Promise<void> {
+  const host = getHost();
+  const opened = await host.openFile({
+    filters: [
+      { name: 'CardMirror & Word documents', extensions: ['cmir', 'docx'] },
+      { name: 'CardMirror', extensions: ['cmir'] },
+      { name: 'Word', extensions: ['docx'] },
+    ],
+  });
+  if (!opened) return;
+  const lower = opened.name.toLowerCase();
+  const format: 'cmir' | 'docx' | null = lower.endsWith('.cmir')
+    ? 'cmir'
+    : lower.endsWith('.docx')
+      ? 'docx'
+      : null;
+  if (!format) {
+    showToast('Pick a .cmir or .docx file to link.');
+    return;
+  }
+  try {
+    let docId = await readDocIdFromBytes(opened.bytes, format);
+    if (!docId) {
+      // No identity yet — mint one and stamp it into the file so a future
+      // open re-associates with this card. Needs a writable handle.
+      if (opened.handle == null) {
+        showToast(`Can’t link “${opened.name}” — its location isn’t writable here.`);
+        return;
+      }
+      docId = crypto.randomUUID();
+      const stamped = await stampDocId(opened.bytes, format, docId);
+      await host.saveExisting(opened.handle, stamped);
+    }
+    learnStore.registerDoc({
+      docId,
+      path: typeof opened.handle === 'string' ? opened.handle : null,
+      name: opened.name,
+      format,
+    });
+    learnStore.setAnchor(cardId, docId, null); // file-level; text anchor TBD
+    showToast(`Linked to “${opened.name}”.`);
+  } catch (err) {
+    console.error('Link to file failed:', err);
+    showToast(`Couldn’t link to “${opened.name}”.`);
+  }
 }
 
 function mkAction(label: string, onClick: () => void): HTMLButtonElement {

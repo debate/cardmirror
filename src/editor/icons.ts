@@ -43,7 +43,8 @@ export type IconName =
   | 'nav-toggle'
   | 'comments'
   | 'shortcuts'
-  | 'timer';
+  | 'timer'
+  | 'link';
 
 /** Create an icon span. Decorative by default (`aria-hidden`); pass a
  *  `label` for standalone icon buttons whose accessible name should be

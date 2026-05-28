@@ -60,6 +60,7 @@ const MAP = {
   comments: { svg: 'message-square-01', glyph: '💬' },
   shortcuts: { svg: 'keyboard-01', glyph: '📖' },
   timer: { svg: 'clock-stopwatch', glyph: '⏱' },
+  link: { svg: 'link-01', glyph: '🔗' },
 };
 
 /** SVG → CSS-safe data-URL. Force opaque #000 (mask uses alpha, the

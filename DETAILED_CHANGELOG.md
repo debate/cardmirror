@@ -57,7 +57,15 @@ in each release, see `CHANGELOG.md`.
     card** action creates a standalone card with no `CardAnchor` (still
     scheduled + reviewable under the 'all' scope). Cards shared across
     files are flagged; an "Unanchored" group collects standalone cards
-    and any whose anchor is gone. `openCreateFlashcard` was generalized to
+    and any whose anchor is gone. Each unanchored card has a **link**
+    button (new `link` icon): pick a file, and the card gets a
+    file-level `CardAnchor` (null text anchor — grounded to text later
+    from inside the file). Reading/assigning the file's identity uses
+    new package helpers `readDocIdFromBytes` / `stampDocId`
+    (`src/docid.ts`) — for a file with no id, one is minted and stamped
+    in losslessly (`.docx` via `Docx.load → writeDocId → toBuffer`, no
+    content re-render; `.cmir` via a minimal JSON field edit) and written
+    back with `saveExisting`, so a future open re-associates. `openCreateFlashcard` was generalized to
     `openCardEditor({ selectedText? , initial? })` to serve both create
     and edit.
   - Deferred to later steps: rendering anchored cards in the comments

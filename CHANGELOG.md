@@ -27,7 +27,10 @@ see `DETAILED_CHANGELOG.md`.
     question/answer, suspend/resume it, or delete it. **New card** makes
     a standalone card not tied to any document. Cards shared across files
     (via Save As) are marked, and an "Unanchored" group collects
-    standalone cards and any whose text reference is gone.
+    standalone cards and any whose text reference is gone. An unanchored
+    card has a **link** button: pick a file to attach it to (CardMirror
+    quietly tags the file with a hidden id if it doesn't have one), then
+    ground it to specific text later from inside that file.
   - Flashcards live in a **private, per-user layer on your machine** —
     they are never written into the document and never travel in
     comments, so sharing a `.docx`/`.cmir` never leaks your cards.
