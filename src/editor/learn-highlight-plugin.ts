@@ -37,6 +37,11 @@ interface HighlightState {
    *  column — emphasized in the doc so you can see which one is selected.
    *  Null when nothing is active. */
   active: Range | null;
+  /** Monotonic count of flashcard ranges that collapsed under an edit
+   *  (a whole-span delete, or — crucially — a card *move*, which PM
+   *  position-mapping can't follow). The column watches this and
+   *  re-resolves from the stored descriptors to re-ground moved cards. */
+  dropCount: number;
   decos: DecorationSet;
 }
 
@@ -78,20 +83,16 @@ export const learnHighlightPlugin = new Plugin<HighlightState>({
   key: learnHighlightKey,
   state: {
     init() {
-      return { ranges: [], active: null, decos: DecorationSet.empty };
+      return { ranges: [], active: null, dropCount: 0, decos: DecorationSet.empty };
     },
     apply(tr, prev, _old, newState) {
       const meta = tr.getMeta(learnHighlightKey) as Meta | undefined;
       if (meta?.type === 'set') {
         const ranges = meta.ranges.filter((r) => r.to > r.from).map((r) => ({ ...r }));
-        return { ranges, active: prev.active, decos: buildDecos(newState.doc, ranges, prev.active) };
+        return { ...prev, ranges, decos: buildDecos(newState.doc, ranges, prev.active) };
       }
       if (meta?.type === 'active') {
-        return {
-          ranges: prev.ranges,
-          active: meta.active,
-          decos: buildDecos(newState.doc, prev.ranges, meta.active),
-        };
+        return { ...prev, active: meta.active, decos: buildDecos(newState.doc, prev.ranges, meta.active) };
       }
       if (!tr.docChanged) return prev;
       // Track edits: bias from→right, to→left so edits at the exact
@@ -99,12 +100,19 @@ export const learnHighlightPlugin = new Plugin<HighlightState>({
       // inclusive:false), and a fully-deleted span collapses and is
       // dropped.
       const mapped: FlashcardRange[] = [];
+      let dropped = 0;
       for (const r of prev.ranges) {
         const m = mapRange(r, tr);
         if (m) mapped.push({ cardId: r.cardId, from: m.from, to: m.to });
+        else dropped += 1;
       }
       const active = prev.active ? mapRange(prev.active, tr) : null;
-      return { ranges: mapped, active, decos: buildDecos(newState.doc, mapped, active) };
+      return {
+        ranges: mapped,
+        active,
+        dropCount: prev.dropCount + dropped,
+        decos: buildDecos(newState.doc, mapped, active),
+      };
     },
   },
   props: {
@@ -124,6 +132,12 @@ export function flashcardRangeMap(state: EditorState): Map<string, { from: numbe
   const out = new Map<string, { from: number; to: number }>();
   for (const r of flashcardRanges(state)) out.set(r.cardId, { from: r.from, to: r.to });
   return out;
+}
+
+/** Monotonic count of flashcard ranges collapsed by edits (move/delete).
+ *  The column re-resolves when this advances, recovering moved cards. */
+export function flashcardDropCount(state: EditorState): number {
+  return learnHighlightKey.getState(state)?.dropCount ?? 0;
 }
 
 /** Replace the resolved-anchor set (called after re-resolution). The

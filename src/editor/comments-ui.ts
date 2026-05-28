@@ -47,6 +47,7 @@ import {
   setFlashcardRangesTr,
   setActiveAnnotationRangeTr,
   flashcardRangeMap,
+  flashcardDropCount,
   type FlashcardRange,
 } from './learn-highlight-plugin.js';
 import type { CardAnchor } from './learn-store.js';
@@ -210,6 +211,10 @@ export class CommentsColumn {
    *  the highlight plugin (or '' for none), so render only re-dispatches
    *  the doc emphasis when the active selection actually changes. */
   private lastActiveRangeKey = '';
+  /** Last-seen flashcard `dropCount` from the highlight plugin. When it
+   *  advances (a card was moved/deleted, collapsing its range), render
+   *  re-resolves from the stored descriptors to re-ground it. */
+  private lastDropCount = 0;
   /** Whether the Unanchored section is collapsed (persists across
    *  renders within a session). */
   private unanchoredCollapsed = false;
@@ -424,6 +429,9 @@ export class CommentsColumn {
       }
     }
     view.dispatch(setFlashcardRangesTr(view.state, resolved));
+    // Baseline the drop counter to the just-resolved state so render's
+    // re-resolve trigger only fires on drops that happen AFTER this.
+    this.lastDropCount = flashcardDropCount(view.state);
     // The range-set transaction is doc-neutral, so it doesn't trip the
     // editor's render trigger — render explicitly so the flashcard
     // cards (which read the new resolved ranges) appear/update.
@@ -508,6 +516,17 @@ export class CommentsColumn {
       return;
     }
     this.root.classList.remove('pmd-comments-empty-state');
+
+    // If a flashcard range collapsed under an edit (a card *move* —
+    // which position-mapping can't follow — or a delete), re-resolve
+    // from the stored descriptors: the text usually still exists
+    // (relocated), so the card re-grounds rather than going unanchored.
+    // refreshFlashcardAnchors re-renders, so bail out of this pass.
+    if (flashcardDropCount(view.state) !== this.lastDropCount) {
+      this.refreshFlashcardAnchors();
+      return;
+    }
+
     // Drop any leftover empty-state placeholder before reconciling.
     const placeholder = this.content.querySelector('.pmd-comments-empty');
     if (placeholder) placeholder.remove();
@@ -695,6 +714,7 @@ export class CommentsColumn {
     this.cardSigs.clear();
     this.lastRanges = new Map();
     this.lastActiveRangeKey = '';
+    this.lastDropCount = 0;
     if (this.unanchoredEl) {
       this.unanchoredEl.remove();
       this.unanchoredEl = null;
