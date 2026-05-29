@@ -222,3 +222,58 @@ describe('AI threads (local annotation layer)', () => {
     expect(t?.comments[0]?.text).toBe('q');
   });
 });
+
+describe('export / import cards', () => {
+  it('exports content + schedule + anchors', () => {
+    const s = store();
+    s.upsertCard(card('c1'), TODAY);
+    s.setAnchor('c1', 'docA', desc('hello'));
+    const out = s.exportCards();
+    expect(out).toHaveLength(1);
+    expect(out[0]!.front).toBe('Qc1');
+    expect(out[0]!.schedule?.state).toBe('new');
+    expect(out[0]!.anchors).toEqual([{ docId: 'docA', anchor: desc('hello') }]);
+  });
+
+  it('importCards ADDs with fresh ids (never overwrites; re-import duplicates)', () => {
+    const s = store();
+    s.upsertCard(card('c1'), TODAY);
+    const exported = s.exportCards();
+    expect(s.importCards(exported, TODAY)).toBe(1);
+    expect(s.listCards()).toHaveLength(2);
+    s.importCards(exported, TODAY);
+    expect(s.listCards()).toHaveLength(3);
+    expect(new Set(s.listCards().map((c) => c.id)).size).toBe(3);
+  });
+
+  it('carries the schedule, or starts fresh when null', () => {
+    const s = store();
+    s.importCards(
+      [
+        {
+          type: 'qa', front: 'Q', back: 'A', anchors: [],
+          schedule: { state: 'review', dueOn: '2030-01-01', intervalDays: 10, reps: 3, lapses: 1, lastReviewed: '2026-01-01T00:00:00.000Z' },
+        },
+        { type: 'qa', front: 'Q2', back: 'A2', schedule: null, anchors: [] },
+      ],
+      TODAY,
+    );
+    const withSched = s.listCards().find((c) => c.front === 'Q')!;
+    const fresh = s.listCards().find((c) => c.front === 'Q2')!;
+    expect(s.getSchedule(withSched.id)?.state).toBe('review');
+    expect(s.getSchedule(withSched.id)?.dueOn).toBe('2030-01-01');
+    expect(s.getSchedule(withSched.id)?.cardId).toBe(withSched.id); // reassigned to the fresh id
+    expect(s.getSchedule(fresh.id)?.state).toBe('new');
+    expect(s.getSchedule(fresh.id)?.dueOn).toBe(TODAY);
+  });
+
+  it('grounds imported anchors to their doc', () => {
+    const s = store();
+    s.importCards(
+      [{ type: 'qa', front: 'Q', back: 'A', schedule: null, anchors: [{ docId: 'docX', anchor: desc('z') }] }],
+      TODAY,
+    );
+    const id = s.listCards()[0]!.id;
+    expect(s.anchorsForDoc('docX').map((a) => a.cardId)).toEqual([id]);
+  });
+});

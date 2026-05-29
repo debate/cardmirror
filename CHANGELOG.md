@@ -41,7 +41,11 @@ see `DETAILED_CHANGELOG.md`.
     standalone cards and any whose text reference is gone. An unanchored
     card has a **link** button: pick a file to attach it to (CardMirror
     quietly tags the file with a hidden id if it doesn't have one), then
-    ground it to specific text later from inside that file.
+    ground it to specific text later from inside that file. **Export** and
+    **Import** buttons save all your flashcards to a file / load them
+    back: import **adds** cards (it never overwrites or replaces what you
+    have), carrying each card's review schedule and its text groundings,
+    and tolerates older export files.
   - Flashcards live in a **private, per-user layer on your machine** —
     they are never written into the document and never travel in
     comments, so sharing a `.docx`/`.cmir` never leaks your cards.

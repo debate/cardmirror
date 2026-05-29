@@ -14,13 +14,123 @@ import { learnStore, localToday } from './learn-store-host.js';
 import { openCardEditor } from './learn-create-ui.js';
 import { openLearnSession } from './learn-session-ui.js';
 import { isDue } from './learn-scheduler.js';
-import type { CardDef } from './learn-store.js';
+import type { CardState } from './learn-scheduler.js';
+import type { CardDef, ExportedCard } from './learn-store.js';
+import type { AnchorDescriptor } from './learn-anchor.js';
 import { getHost } from './host/index.js';
 import { icon } from './icons.js';
 import { showToast } from './toast.js';
 import { readDocIdFromBytes, stampDocId } from '../index.js';
 
 let openOverlay: HTMLElement | null = null;
+
+// ── Export / Import (plain JSON via the host file pickers) ────────────
+
+async function doExportCards(): Promise<void> {
+  const cards = learnStore.exportCards();
+  if (cards.length === 0) {
+    showToast('No flashcards to export.');
+    return;
+  }
+  const payload = JSON.stringify({ version: 1, cards }, null, 2);
+  const bytes = new TextEncoder().encode(payload);
+  await getHost().saveAs('cardmirror-flashcards.json', bytes, {
+    filters: [{ name: 'JSON', extensions: ['json'] }],
+  });
+}
+
+async function doImportCards(): Promise<void> {
+  const opened = await getHost().openFile({
+    filters: [{ name: 'JSON', extensions: ['json'] }],
+  });
+  if (!opened) return;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(new TextDecoder().decode(opened.bytes));
+  } catch {
+    showToast(`Couldn't read “${opened.name}” as JSON.`);
+    return;
+  }
+  const rawCards = Array.isArray(parsed)
+    ? parsed
+    : Array.isArray((parsed as { cards?: unknown }).cards)
+      ? (parsed as { cards: unknown[] }).cards
+      : null;
+  if (!rawCards) {
+    showToast(`“${opened.name}” doesn't look like a flashcard export.`);
+    return;
+  }
+  const entries = rawCards
+    .map(parseImportedCard)
+    .filter((e): e is ExportedCard => e !== null);
+  if (entries.length === 0) {
+    showToast('No importable flashcards found in that file.');
+    return;
+  }
+  // ADD, never overwrite — importCards mints fresh ids; the open list
+  // re-renders via the store subscription.
+  const added = learnStore.importCards(entries, localToday());
+  showToast(`Added ${added} flashcard${added === 1 ? '' : 's'}.`);
+}
+
+/** Defensively coerce one entry from an (untrusted) import file into an
+ *  `ExportedCard`, or null if it isn't a usable card. */
+function parseImportedCard(raw: unknown): ExportedCard | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const r = raw as Record<string, unknown>;
+  const type = r['type'] === 'cloze' ? 'cloze' : r['type'] === 'qa' ? 'qa' : null;
+  if (!type) return null;
+  const front = typeof r['front'] === 'string' ? r['front'] : '';
+  const back = typeof r['back'] === 'string' ? r['back'] : '';
+  if (!front) return null;
+
+  // Schedule — only carried if well-formed; otherwise the card starts
+  // fresh (due now) on import.
+  let schedule: ExportedCard['schedule'] = null;
+  const s = r['schedule'];
+  if (s && typeof s === 'object') {
+    const so = s as Record<string, unknown>;
+    const state = so['state'];
+    const stateOk =
+      state === 'new' || state === 'learning' || state === 'review' || state === 'suspended';
+    if (stateOk && typeof so['dueOn'] === 'string') {
+      schedule = {
+        state: state as CardState,
+        dueOn: so['dueOn'],
+        intervalDays: typeof so['intervalDays'] === 'number' ? so['intervalDays'] : 0,
+        reps: typeof so['reps'] === 'number' ? so['reps'] : 0,
+        lapses: typeof so['lapses'] === 'number' ? so['lapses'] : 0,
+        lastReviewed: typeof so['lastReviewed'] === 'string' ? so['lastReviewed'] : null,
+      };
+    }
+  }
+
+  const anchors: ExportedCard['anchors'] = [];
+  if (Array.isArray(r['anchors'])) {
+    for (const a of r['anchors']) {
+      if (!a || typeof a !== 'object') continue;
+      const ao = a as Record<string, unknown>;
+      if (typeof ao['docId'] !== 'string') continue;
+      anchors.push({ docId: ao['docId'], anchor: parseImportedAnchor(ao['anchor']) });
+    }
+  }
+
+  return { type, front, back, schedule, anchors };
+}
+
+/** Coerce an import file's anchor blob into a valid `AnchorDescriptor`,
+ *  or null (unanchored / malformed). */
+function parseImportedAnchor(raw: unknown): AnchorDescriptor | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const o = raw as Record<string, unknown>;
+  if (typeof o['quote'] !== 'string') return null;
+  return {
+    quote: o['quote'],
+    prefix: typeof o['prefix'] === 'string' ? o['prefix'] : '',
+    suffix: typeof o['suffix'] === 'string' ? o['suffix'] : '',
+    approxPos: typeof o['approxPos'] === 'number' ? o['approxPos'] : 0,
+  };
+}
 
 export function openLearnManage(): void {
   if (openOverlay) return; // already open — single instance
@@ -60,6 +170,18 @@ export function openLearnManage(): void {
       );
     })();
   });
+  const importBtn = document.createElement('button');
+  importBtn.type = 'button';
+  importBtn.className = 'pmd-learn-manage-new';
+  importBtn.textContent = 'Import';
+  importBtn.title = 'Add flashcards from a file (never overwrites existing cards)';
+  importBtn.addEventListener('click', () => void doImportCards());
+  const exportBtn = document.createElement('button');
+  exportBtn.type = 'button';
+  exportBtn.className = 'pmd-learn-manage-new';
+  exportBtn.textContent = 'Export';
+  exportBtn.title = 'Save all flashcards to a file';
+  exportBtn.addEventListener('click', () => void doExportCards());
   const reviewAll = document.createElement('button');
   reviewAll.type = 'button';
   reviewAll.className = 'pmd-learn-manage-review';
@@ -71,7 +193,7 @@ export function openLearnManage(): void {
   close.setAttribute('aria-label', 'Close');
   close.textContent = '✕';
   close.addEventListener('click', cleanup);
-  bar.append(title, count, newCard, reviewAll, close);
+  bar.append(title, count, newCard, importBtn, exportBtn, reviewAll, close);
 
   const toolbar = document.createElement('div');
   toolbar.className = 'pmd-learn-manage-toolbar';

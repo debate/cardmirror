@@ -31,6 +31,18 @@ export interface CardAnchor {
   anchor: AnchorDescriptor | null; // null ⇒ currently unanchored
 }
 
+/** A flashcard in a portable export: content + its review schedule + its
+ *  doc groundings. No `cardId` — import always mints a fresh one so it
+ *  ADDs (never overwrites). */
+export interface ExportedCard {
+  type: 'qa' | 'cloze';
+  front: string;
+  back: string;
+  /** Review progress, or null to start fresh on import. */
+  schedule: Omit<ScheduleEntry, 'cardId'> | null;
+  anchors: { docId: string; anchor: AnchorDescriptor | null }[];
+}
+
 export interface LocalComment {
   author: string;
   text: string;
@@ -170,6 +182,35 @@ export class LearnStore {
   listAnchors(): CardAnchor[] {
     return [...this.anchors];
   }
+
+  /** Portable snapshot of every card: content + schedule + anchors. */
+  exportCards(): ExportedCard[] {
+    const byCard = new Map<string, { docId: string; anchor: AnchorDescriptor | null }[]>();
+    for (const a of this.anchors) {
+      const list = byCard.get(a.cardId) ?? [];
+      list.push({ docId: a.docId, anchor: a.anchor });
+      byCard.set(a.cardId, list);
+    }
+    return [...this.cards.values()].map((c) => {
+      const s = this.schedules.get(c.id);
+      return {
+        type: c.type,
+        front: c.front,
+        back: c.back,
+        schedule: s
+          ? {
+              state: s.state,
+              dueOn: s.dueOn,
+              intervalDays: s.intervalDays,
+              reps: s.reps,
+              lapses: s.lapses,
+              lastReviewed: s.lastReviewed,
+            }
+          : null,
+        anchors: byCard.get(c.id) ?? [],
+      };
+    });
+  }
   /** Anchors (card↔file grounding) for a doc. */
   anchorsForDoc(docId: string): CardAnchor[] {
     return this.anchors.filter((a) => a.docId === docId);
@@ -211,6 +252,23 @@ export class LearnStore {
     this.cards.set(card.id, card);
     if (!this.schedules.has(card.id)) this.schedules.set(card.id, newSchedule(card.id, today));
     this.changed();
+  }
+
+  /** ADD imported cards — each gets a FRESH cardId so importing never
+   *  overwrites an existing card (re-importing the same file duplicates,
+   *  by design). Carries each card's schedule (or a fresh one) + anchors.
+   *  Returns how many were added. */
+  importCards(entries: ExportedCard[], today: string): number {
+    let added = 0;
+    for (const e of entries) {
+      const id = crypto.randomUUID();
+      this.cards.set(id, { id, type: e.type, front: e.front, back: e.back });
+      this.schedules.set(id, e.schedule ? { ...e.schedule, cardId: id } : newSchedule(id, today));
+      for (const a of e.anchors) this.anchors.push({ cardId: id, docId: a.docId, anchor: a.anchor });
+      added += 1;
+    }
+    if (added > 0) this.changed();
+    return added;
   }
 
   /** Set/replace a card's grounding in a file (one per cardId × docId). */

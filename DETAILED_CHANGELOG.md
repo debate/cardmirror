@@ -7,6 +7,20 @@ in each release, see `CHANGELOG.md`.
 
 ## Unreleased
 
+- **Flashcard export / import (Manage flashcards).** `learn-store.ts`
+  gains `exportCards()` → `ExportedCard[]` (per card: content + a
+  cardId-less `schedule` + its `{ docId, anchor }[]` groundings) and
+  `importCards(entries, today)`, which mints a **fresh cardId per entry**
+  so import always ADDs (re-importing duplicates, by design; never
+  overwrites), carrying the schedule (cardId reassigned) or a fresh one,
+  plus anchors. The Manage GUI's bar gets **Import** / **Export** buttons
+  over the host `saveAs` / `openFile` JSON pickers (`{ version: 1, cards }`,
+  bare array also accepted). `parseImportedCard` / `parseImportedAnchor`
+  defensively coerce each untrusted entry (type ∈ qa|cloze, non-empty
+  front, well-formed schedule-or-fresh, valid `AnchorDescriptor`-or-null),
+  so older/foreign files import cleanly. The open list refreshes via the
+  store subscription; no overwrite confirm needed (import is additive).
+
 - **Settings export / import.** `SettingsStore.exportObject()` returns all
   values minus the transient per-window keys and `anthropicApiKey`;
   `replaceAll(raw)` overwrites through the same
