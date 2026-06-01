@@ -7,6 +7,8 @@ in each release, see `CHANGELOG.md`.
 
 ## Unreleased
 
+## 0.1.0-alpha.8 — 2026-06-01
+
 - **"Show in context" from a flashcard review.** A third action in the
   review session (`learn-session-ui.ts`, button + key `3`, shown only
   when the card has an anchor whose doc has a known path —

@@ -7,6 +7,8 @@ see `DETAILED_CHANGELOG.md`.
 
 ## Unreleased
 
+## 0.1.0-alpha.8 — 2026-06-01
+
 ### Added
 
 - **"Show in context" in flashcard review.** After you reveal a card's
