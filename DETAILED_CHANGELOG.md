@@ -7,6 +7,23 @@ in each release, see `CHANGELOG.md`.
 
 ## Unreleased
 
+- **Word-style paragraph navigation: cleaner collapse / cross-block
+  targets** (`word-selection-keymap.ts`).
+  - `verticalCommandPair`'s Down (`to-end`) move with a non-empty
+    selection now collapses to the START of the paragraph after the
+    selection-end paragraph (`nextTextblock(corner.end()).start`) instead
+    of `corner.end()` — so a following Ctrl/Alt+Down continues downward
+    rather than stopping at the current paragraph's end first. The
+    `$to.parentOffset === 0` spill case (after Ctrl/Alt+Shift+Down)
+    collapses to that paragraph's own start (it already IS the next
+    paragraph); a selection ending in the last textblock parks at its end.
+    Up (`from-start`) is unchanged (start of the selection's paragraph).
+  - `destPrevUnit`'s cross-block case (Ctrl/Alt+Left at a paragraph start)
+    now returns `prev.end` — the END of the previous textblock, after its
+    trailing word/punctuation — instead of the start of that block's last
+    unit. Mirrors the forward direction (`destNextUnit` → `next.start`):
+    both stop just across the paragraph break.
+
 - **Notes — a private, threaded annotation (fourth comments-bar kind).** A
   `Note` entity in `learn-store.ts` (`{ noteId, docId, comments:
   LocalComment[], anchor, createdAt }`), parallel to `AiThread`: stored in

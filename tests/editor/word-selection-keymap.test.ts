@@ -127,15 +127,16 @@ describe('Ctrl+Up / Ctrl+Down with a non-empty selection', () => {
     ]);
   }
 
-  it('Ctrl+Down with selection inside body 1 → end of body 1, not start of body 2', () => {
+  it('Ctrl+Down with selection inside body 1 → start of body 2 (next paragraph)', () => {
     const doc = buildDoc();
     const b1 = findTextStart(doc, 'first body text');
+    const b2 = findTextStart(doc, 'second body text');
     const state = stateWith(doc, b1 + 3, b1 + 8);
     const next = press(state, 'ArrowDown', { ctrl: true });
     expect(next).not.toBeNull();
     const sel = next!.selection;
     expect(sel.empty).toBe(true);
-    expect(sel.from).toBe(b1 + 'first body text'.length);
+    expect(sel.from).toBe(b2);
   });
 
   it('Ctrl+Up with selection inside body 2 → start of body 2, not end of body 1', () => {
@@ -149,7 +150,27 @@ describe('Ctrl+Up / Ctrl+Down with a non-empty selection', () => {
     expect(sel.from).toBe(b2);
   });
 
-  it('Ctrl+Down with selection spanning body 1 and body 2 → end of body 2', () => {
+  it('Ctrl+Down spanning body 1→2 with a paragraph after → start of that next paragraph', () => {
+    const doc = makeDoc([
+      cardWith(
+        tag('TAG'),
+        cardBody('first body text'),
+        cardBody('second body text'),
+        cardBody('third body text'),
+      ),
+    ]);
+    const b1 = findTextStart(doc, 'first body text');
+    const b2 = findTextStart(doc, 'second body text');
+    const b3 = findTextStart(doc, 'third body text');
+    const state = stateWith(doc, b1 + 3, b2 + 4);
+    const next = press(state, 'ArrowDown', { ctrl: true });
+    expect(next).not.toBeNull();
+    const sel = next!.selection;
+    expect(sel.empty).toBe(true);
+    expect(sel.from).toBe(b3);
+  });
+
+  it('Ctrl+Down spanning into the LAST paragraph → parks at its end (no next paragraph)', () => {
     const doc = buildDoc();
     const b1 = findTextStart(doc, 'first body text');
     const b2 = findTextStart(doc, 'second body text');
@@ -196,13 +217,12 @@ describe('Ctrl+Up / Ctrl+Down with a non-empty selection', () => {
     expect(sel.from).toBe(b2);
   });
 
-  it('Ctrl+Down after Ctrl+Shift+Down → end of last VISIBLY selected paragraph, not the one below it', () => {
-    // Real-world flow: cursor mid body 1, Ctrl+Shift+Down extends
-    // selection to start of body 2 (head at parentOffset 0 of body 2).
-    // Then plain Ctrl+Down. Without the fix, snapping to $to's
-    // paragraph end would land at the end of body 2 — past where the
-    // user could see the selection ending. The fix is to fall back
-    // to the end of the previous textblock (body 1).
+  it('Ctrl+Down after Ctrl+Shift+Down (selection ends at a paragraph start) → that paragraph start', () => {
+    // Real-world flow: cursor mid body 1, Ctrl+Shift+Down extends the
+    // selection to the start of body 2 ($to at parentOffset 0 of body 2 —
+    // the last visibly-selected paragraph is body 1). A plain Ctrl+Down
+    // collapses to body 2's start, which IS the next paragraph after the
+    // last visibly-selected one (not skipping past it).
     const doc = buildDoc();
     const b1 = findTextStart(doc, 'first body text');
     const b2 = findTextStart(doc, 'second body text');
@@ -213,7 +233,7 @@ describe('Ctrl+Up / Ctrl+Down with a non-empty selection', () => {
     expect(next).not.toBeNull();
     const sel = next!.selection;
     expect(sel.empty).toBe(true);
-    expect(sel.from).toBe(b1 + 'first body text'.length);
+    expect(sel.from).toBe(b2);
   });
 
   it('Ctrl+Shift+Down with selection still extends as before (not collapsed)', () => {
@@ -328,5 +348,22 @@ describe('Ctrl+Left / Ctrl+Right with a non-empty selection', () => {
     expect(sel.anchor).toBe(start + 3);
     // Extended head goes to start of "foo" (trailing-space absorbed).
     expect(sel.head).toBe(start + 'Therefore '.length);
+  });
+
+  it('Ctrl+Left at the START of a paragraph → END of the previous paragraph (after its trailing word/punct)', () => {
+    const doc = makeDoc([
+      cardWith(tag('TAG'), cardBody('first body.'), cardBody('second body')),
+    ]);
+    const b1 = findTextStart(doc, 'first body.');
+    const b2 = findTextStart(doc, 'second body');
+    // Empty cursor at the very start of body 2 (offset 0).
+    const state = stateWith(doc, b2);
+    const next = press(state, 'ArrowLeft', { ctrl: true });
+    expect(next).not.toBeNull();
+    const sel = next!.selection;
+    expect(sel.empty).toBe(true);
+    // Lands AFTER the trailing "." of body 1 (its content end), not at
+    // the start of that last unit.
+    expect(sel.from).toBe(b1 + 'first body.'.length);
   });
 });

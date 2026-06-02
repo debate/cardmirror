@@ -226,14 +226,15 @@ function destPrevUnit(state: EditorState): number | null {
     const map = classMapFor($head.parent);
     return $head.start() + prevUnitStart(map, localOffset);
   }
-  // Already at start of textblock — cross-block.
+  // Already at start of textblock — cross-block. Land at the END of the
+  // previous textblock (just AFTER its trailing word / punctuation), not
+  // at the start of that last unit. This mirrors the forward direction,
+  // where crossing into the next paragraph lands at its start
+  // (`destNextUnit` → `next.start`): both stop just across the paragraph
+  // break rather than a full word into the neighbour.
   const prev = prevTextblock(state.doc, $head.start());
   if (!prev) return null;
-  const map = classMapFor(prev.node);
-  // Land at the start of the LAST unit in the previous textblock
-  // (not at its end position) — Ctrl+Left's job is to put the
-  // caret at the start of a word, not at the textblock's end.
-  return prev.start + prevUnitStart(map, prev.node.content.size);
+  return prev.end;
 }
 
 function destNextUnit(state: EditorState): number | null {
@@ -415,24 +416,28 @@ function isInsideWordOrPunctUnit(map: ClassMap, offset: number): boolean {
 }
 
 /** Variant of `commandPair` for the vertical Ctrl+Up / Ctrl+Down
- *  pair: when a non-empty selection is present and Shift is NOT
- *  held, the move command jumps to the start (Up) or end (Down)
- *  of the paragraph CONTAINING the corresponding selection edge,
- *  instead of computing the destination from the head (which can
- *  carry the caret into the adjacent paragraph). Shift-extend
- *  variants are unaffected.
+ *  pair: when a non-empty selection is present and Shift is NOT held,
+ *  the move command collapses the selection relative to a paragraph
+ *  edge instead of computing from the head (which can carry the caret
+ *  into the wrong paragraph). Shift-extend variants are unaffected.
  *
- *  Down-side asymmetry: after Ctrl+Shift+Down, `selection.$to`
- *  lands at `parentOffset === 0` of the paragraph BELOW the last
- *  visually-selected paragraph (because `destNextParaStart` walks
- *  to the next paragraph's START, not the current paragraph's
- *  end). Snapping to `corner.end()` there would carry the cursor
- *  to the end of a paragraph the user didn't see selected. When
- *  that's the case, fall back to the end of the previous
- *  textblock — the actual last visibly-selected paragraph. The
- *  symmetric Up case doesn't arise via Ctrl+Shift+Up because
- *  `destPrevParaStart` lands inside the textblock (at its
- *  content-start), not past it. */
+ *  - Up (`from-start`): collapse to the START of the paragraph holding
+ *    the selection's start. A following Up then walks to the previous
+ *    paragraph.
+ *  - Down (`to-end`): collapse to the START of the paragraph AFTER the
+ *    one holding the selection's end — i.e. just past the paragraph
+ *    break, the same place a Down would continue to. (It used to stop
+ *    at the selection-end paragraph's END, an extra stop before the
+ *    next paragraph.) A following Down then continues to the paragraph
+ *    after that.
+ *
+ *  Down edge cases:
+ *  - `$to.parentOffset === 0`: after Ctrl+Shift+Down, `$to` sits at the
+ *    START of the paragraph BELOW the last visibly-selected one. That
+ *    paragraph's start already IS "the next paragraph", so collapse
+ *    there (don't skip it).
+ *  - Selection ends in the doc's last textblock (no paragraph after):
+ *    park at that paragraph's end — there's nowhere further to go. */
 function verticalCommandPair(
   computeDest: (state: EditorState) => number | null,
   paraEdge: 'from-start' | 'to-end',
@@ -444,11 +449,17 @@ function verticalCommandPair(
         paraEdge === 'from-start' ? state.selection.$from : state.selection.$to;
       if (!corner.parent.isTextblock) return base.move(state, dispatch);
       let dest: number;
-      if (paraEdge === 'to-end' && corner.parentOffset === 0) {
-        const prev = prevTextblock(state.doc, corner.start());
-        dest = prev ? prev.end : corner.end();
+      if (paraEdge === 'from-start') {
+        dest = corner.start();
+      } else if (corner.parentOffset === 0) {
+        // $to already at a paragraph start (Ctrl+Shift+Down spill) — that
+        // paragraph IS the next one; collapse there.
+        dest = corner.start();
       } else {
-        dest = paraEdge === 'from-start' ? corner.start() : corner.end();
+        // Start of the paragraph after the selection-end paragraph; no
+        // next paragraph → park at this paragraph's end.
+        const next = nextTextblock(state.doc, corner.end());
+        dest = next ? next.start : corner.end();
       }
       if (!dispatch) return true;
       dispatch(

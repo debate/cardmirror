@@ -62,6 +62,14 @@ see `DETAILED_CHANGELOG.md`.
 
 ### Changed
 
+- **Paragraph navigation lands on cleaner spots.** With a selection,
+  Ctrl/Alt+Down now collapses to the **start of the next paragraph**
+  (just past the break) instead of stopping at the end of the selected
+  paragraph first — so the next Down continues to the paragraph after
+  that. And Ctrl/Alt+Left at the start of a paragraph now lands at the
+  **end of the previous paragraph** (after its last word/punctuation),
+  matching how Ctrl/Alt+Right lands at the start of the next one.
+
 - **Select Similar / select-all highlighting is easier to read.** The
   "selection" region and the matched instances now use the find bar's
   colors — a faint blue region band with orange match outlines — instead
