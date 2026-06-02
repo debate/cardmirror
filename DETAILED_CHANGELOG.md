@@ -68,6 +68,24 @@ in each release, see `CHANGELOG.md`.
   analytics / other structural blocks, which aren't instances of the
   underline *style*.
 
+- **Cursor-on-style indicator on the ribbon style buttons.** A new
+  `refreshFormattingPanelButtonStates()` (`index.ts`) sets `aria-pressed`
+  on each formatting-panel button to reflect the cursor's current style,
+  wired into `dispatchTransaction` next to the existing font-size / color
+  refreshers (plus the view-chrome re-sync and mount paths). Structural
+  buttons match the cursor's enclosing textblock type
+  (`$from.parent.type.name`); character buttons match its marks via a
+  standard `markActive` helper (`isMarkActiveInSelection`). Two guards
+  worth noting: it skips the refresh when `$from.parent` isn't a
+  textblock — a gap cursor between blocks (or a node selection) otherwise
+  blanks every button even though the visible caret hasn't moved into new
+  text, so the indicator holds the last real run's style; and Underline
+  matches only `underline_mark`, not `underline_direct` (same body-vs-
+  structural reasoning as select-all — direct underline in tags /
+  analytics isn't the underline style). One CSS rule reuses the standard
+  toggle wash: `#ribbon .formatting-panel-btn[aria-pressed="true"]` →
+  `--pmd-c-button-active`.
+
 - **Select Similar / select-all decorations reuse the Find palette.** The
   scope band (`.pmd-similar-scope`) now uses the same faint-blue
   within-selection tint as `.pmd-find-scope` (`--pmd-c-drop-*`), and each

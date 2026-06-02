@@ -33,6 +33,13 @@ see `DETAILED_CHANGELOG.md`.
   the named underline style, not the direct underline that tags and
   analytics use.
 
+- **Ribbon style buttons show what the cursor is on.** When the cursor
+  sits on text carrying a character or structural style, the matching
+  ribbon button (Cite / Underline / Emphasis, or Pocket / Hat / Block /
+  Tag / Analytic / Undertag) lights up in its toggled-on state, the same
+  way other toggle buttons do. Underline only lights for the named
+  underline style, not the direct underline tags and analytics use.
+
 ### Changed
 
 - **Select Similar / select-all highlighting is easier to read.** The

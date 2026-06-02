@@ -758,6 +758,7 @@ export function setActiveView(v: EditorView | null): void {
   // read-mode toggle pressed-state, speech-mark button, etc.).
   refreshFontSizeDisplay();
   refreshCursorColorDisplay();
+  refreshFormattingPanelButtonStates();
   refreshWordCount();
   refreshReadModeBtn();
   refreshSpeechMarkBtn();
@@ -1725,6 +1726,26 @@ const FORMATTING_PANEL_SELECT_ALL: Partial<Record<FormattingPanelId, StyleSelect
   // shouldn't sweep them up.
   applyUnderline: { kind: 'mark', markTypes: ['underline_mark'] },
   applyEmphasis: { kind: 'mark', markTypes: ['emphasis_mark'] },
+};
+// Which style is "active" at the cursor for each style button — drives
+// the toggled-on (aria-pressed) indicator. Structural buttons match the
+// cursor's enclosing textblock type; character buttons match its marks.
+// Underline matches only the named `underline_mark` (a body style), NOT
+// `underline_direct` — the raw underline structural blocks (tags /
+// analytics / …) use isn't an instance of the underline style, same as
+// the select-all rule. Clear has no on-state.
+const FORMATTING_PANEL_ACTIVE_BLOCK: Partial<Record<FormattingPanelId, string>> = {
+  setPocket: 'pocket',
+  setHat: 'hat',
+  setBlock: 'block',
+  setTag: 'tag',
+  setAnalytic: 'analytic',
+  setUndertag: 'undertag',
+};
+const FORMATTING_PANEL_ACTIVE_MARKS: Partial<Record<FormattingPanelId, readonly string[]>> = {
+  applyCite: ['cite_mark'],
+  applyUnderline: ['underline_mark'],
+  applyEmphasis: ['emphasis_mark'],
 };
 const formattingPanelEl = document.getElementById('formatting-panel') as HTMLElement | null;
 const citePanelEl = document.getElementById('cite-panel') as HTMLElement | null;
@@ -2795,6 +2816,47 @@ function refreshCursorColorDisplay(): void {
   cursorColorText.textContent = parts.join(' · ');
 }
 
+/** Is `markName` active across the current selection? Empty selection:
+ *  the stored marks (if any) else the marks at the cursor. Range: the
+ *  mark is present somewhere in the range. Mirrors prosemirror's standard
+ *  `markActive`. */
+function isMarkActiveInSelection(state: EditorState, markName: string): boolean {
+  const type = state.schema.marks[markName];
+  if (!type) return false;
+  const sel = state.selection;
+  if (sel.empty) {
+    return !!type.isInSet(state.storedMarks || sel.$head.marks());
+  }
+  return state.doc.rangeHasMark(sel.from, sel.to, type);
+}
+
+/** Reflect the cursor's current style on the ribbon: each structural /
+ *  character style button shows its toggled-on (aria-pressed) state when
+ *  the cursor sits on text carrying that style. Cheap — reads the
+ *  cursor's block type + marks (O(1)); safe to call on every transaction. */
+function refreshFormattingPanelButtonStates(): void {
+  if (!view) return;
+  const state = view.state;
+  const $from = state.selection.$from;
+  // Clicking between blocks lands a gap cursor (or a node selection) whose
+  // parent is a non-textblock with no marks. The visible caret hasn't
+  // moved into new text, so leave the indicator on the last real run's
+  // style instead of blanking every button.
+  if (!$from.parent.isTextblock) return;
+  const blockType = $from.parent.type.name;
+  for (const { id, btn } of formattingPanelBtnRefs) {
+    let active = false;
+    const wantBlock = FORMATTING_PANEL_ACTIVE_BLOCK[id];
+    if (wantBlock) {
+      active = blockType === wantBlock;
+    } else {
+      const wantMarks = FORMATTING_PANEL_ACTIVE_MARKS[id];
+      if (wantMarks) active = wantMarks.some((m) => isMarkActiveInSelection(state, m));
+    }
+    btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+  }
+}
+
 function refreshFontSizeDisplay(): void {
   if (!fontSizeInput || !fontSizeControlEl) return;
   // Don't clobber the user's in-progress edit — only sync the input
@@ -3380,6 +3442,7 @@ function mountView(doc: PMNode, threads: Thread[] = []): void {
       // so the readout always reflects the cursor's current run.
       refreshFontSizeDisplay();
       refreshCursorColorDisplay();
+      refreshFormattingPanelButtonStates();
       // Doc-walking work (nav rebuild, word count, comments column
       // refresh, comments-plugin orphan GC) is all O(doc) and the
       // dominant per-keystroke cost on big docs. Debounce so it only
@@ -3469,6 +3532,7 @@ function mountView(doc: PMNode, threads: Thread[] = []): void {
   navPanel.update(doc);
   refreshWordCount();
   refreshFontSizeDisplay();
+  refreshFormattingPanelButtonStates();
   // Push the current `settings.readMode` value through the full
   // apply path now that `view` exists — `applyReadMode` ran at
   // module init time before this view was constructed (so its

@@ -1266,6 +1266,15 @@ body.pmd-host-browser #autosave-btn { display: none; }
   font-family: var(--pmd-ui-font);
 }
 
+/* Cursor-on-style indicator: a style button shows the same toggled-on
+   wash as other ribbon toggle buttons when the cursor is on text
+   carrying that character / structural style. The aria-pressed attribute
+   is set per-button on every selection change (refreshFormattingPanel-
+   ButtonStates in index.ts). */
+#ribbon .formatting-panel-btn[aria-pressed="true"] {
+  background: var(--pmd-c-button-active);
+}
+
 /* Style previews — gated on the container's .style-preview class so
    the settings toggle can disable them without removing the buttons. */
 #ribbon .ribbon-formatting-panel.style-preview .formatting-panel-btn {
