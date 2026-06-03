@@ -30,7 +30,7 @@ targets fidelity with both.
 | `PROJECT.md` | This file — orientation and index. |
 | `ARCHITECTURE.md` | The design: schema, round-trip contract, rendering model, editing rules, and the feature roadmap. |
 | `README.md` | User-facing install and usage; build-from-source. |
-| `cardmirror-manual.md` | The full user manual — every feature in plain terms. |
+| `MANUAL.md` | The full user manual — every feature in plain terms. |
 | `CHANGELOG.md` | Release notes for users. |
 | `DETAILED_CHANGELOG.md` | The same releases with implementation notes for contributors. |
 | `src/` | The shared editor core — schema, importer/exporter, plugins, commands. |

@@ -29,7 +29,7 @@ or locked-down school machine.
 > first time you launch. The one-time workaround for each is in the
 > install steps below.
 
-See [`cardmirror-manual.md`](./cardmirror-manual.md) for the full user
+See [`MANUAL.md`](./MANUAL.md) for the full user
 manual; [`CHANGELOG.md`](./CHANGELOG.md) for release notes;
 [`ARCHITECTURE.md`](./ARCHITECTURE.md) for the full design;
 [`PROJECT.md`](./PROJECT.md) for project orientation.

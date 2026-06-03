@@ -11,7 +11,7 @@ see `DETAILED_CHANGELOG.md`.
 
 - **A user manual.** A complete guide to the editor — installing, cutting
   and formatting, the workspace, read mode, flashcards, AI, settings, and
-  shortcuts — now lives at `cardmirror-manual.md`, written in the plain,
+  shortcuts — now lives at `MANUAL.md`, written in the plain,
   task-first style of Verbatim's own manual.
 
 - **Notes — a private, threaded annotation.** A fourth kind of comments-bar
