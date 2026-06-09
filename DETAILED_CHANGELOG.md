@@ -7,6 +7,30 @@ in each release, see `CHANGELOG.md`.
 
 ## Unreleased
 
+- **AI cite creator: off-by-one on whole-document selections + cite
+  sanitization** (`src/editor/ai/cite-creator.ts`). Two fixes:
+  - `buildCiteTransaction` now clamps the incoming range to valid text
+    positions with `TextSelection.between(state.doc.resolve(from),
+    state.doc.resolve(to))` before inserting. The caller passes the raw
+    selection bounds; a whole-document / top-of-doc selection (Ctrl+A) has
+    `from === 0`, which is a block-boundary position, not inline — PM lands
+    the cite at position 1, but the old code computed the cite-mark range
+    AND the "cite is its own paragraph" split from the raw `from`, shifting
+    every position one left. Result: the trailing token lost its last char
+    (`" Cary 2"` instead of `Cary 24`) and the cite's last char was shunted
+    to its own line — together, since both derive from the same anchor.
+    Clamping (e.g. `0 → 1`, or `0 → 2` when the doc starts with a card)
+    makes the inserted run exactly `[from, from + cite.length]` again.
+  - `parseCiteResponse` now runs cite and tokens through `sanitizeCiteText`
+    (strip zero-width / format / control characters, collapse every
+    whitespace run incl. newlines to a single space). Messy source (often
+    PDF-pasted) makes the model echo invisibles or wrap the cite across
+    lines; under `white-space: pre-wrap` a stray `\n` renders as a real
+    line break, and a wrap inside the author block stops the token from
+    substring-matching. Tokens get the same treatment (left-trimmed,
+    trailing space preserved for the two-author `"X & "` convention) so
+    `indexOf` still matches.
+
 - **Gesture zoom — pinch / Ctrl+wheel** (`src/editor/index.ts`,
   `src/editor/settings.ts`). A `window` `wheel` listener (capture,
   non-passive) intercepts events with `ctrlKey` set — Chromium delivers a

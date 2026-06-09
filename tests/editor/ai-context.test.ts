@@ -273,6 +273,48 @@ describe('cite-creator response parsing', () => {
     expect(out.tokens).toEqual(['Smith 24']);
   });
 
+  it('collapses a wrapped (multi-line) cite into a single line', async () => {
+    const { parseCiteResponse } = await import('../../src/editor/ai/cite-creator.js');
+    const text = '[[CITE]]\nSmith 24, "Title,"\nJournal, 1/2/24\n[[TOKENS]]\nSmith 24\n[[END]]';
+    const out = parseCiteResponse(text);
+    expect(out.cite).toBe('Smith 24, "Title," Journal, 1/2/24');
+    expect(out.cite).not.toContain('\n');
+  });
+
+  it('collapses runs of internal whitespace so tokens still match', async () => {
+    const { parseCiteResponse } = await import('../../src/editor/ai/cite-creator.js');
+    const text = '[[CITE]]\nSmith   24,  "Title,"   Source\n[[TOKENS]]\nSmith 24\n[[END]]';
+    const out = parseCiteResponse(text);
+    expect(out.cite).toBe('Smith 24, "Title," Source');
+    expect(out.cite.indexOf(out.tokens[0]!)).toBeGreaterThanOrEqual(0);
+  });
+
+  it('strips invisible / control characters from cite and tokens', async () => {
+    const { parseCiteResponse } = await import('../../src/editor/ai/cite-creator.js');
+    // Zero-width space inside the author block, soft hyphen + BOM elsewhere
+    // (the kind of junk that rides along in PDF-pasted source text). They
+    // must not survive into the cite — they desync the rendered length from
+    // the string used for cite-mark / paragraph-split positions.
+    const zwsp = '​', shy = '­', bom = '﻿';
+    const text = `[[CITE]]\nSmith${zwsp} 24, "Ti${shy}tle," Source${bom}\n[[TOKENS]]\nSmith${zwsp} 24\n[[END]]`;
+    const out = parseCiteResponse(text);
+    expect(out.cite).toBe('Smith 24, "Title," Source');
+    expect(out.tokens).toEqual(['Smith 24']);
+    // No invisible chars survive.
+    expect(/[​­﻿]/.test(out.cite)).toBe(false);
+    expect(out.cite.indexOf(out.tokens[0]!)).toBe(0);
+  });
+
+  it('preserves the two-author first token trailing space after sanitizing', async () => {
+    const { parseCiteResponse } = await import('../../src/editor/ai/cite-creator.js');
+    const text = '[[CITE]]\nWeiss & Bresnahan 3/26, "T," S\n[[TOKENS]]\nWeiss & \nBresnahan 3/26\n[[END]]';
+    const out = parseCiteResponse(text);
+    expect(out.tokens).toEqual(['Weiss & ', 'Bresnahan 3/26']);
+    // Both tokens are verbatim substrings of the cite (contiguous marks).
+    expect(out.cite.indexOf('Weiss & ')).toBe(0);
+    expect(out.cite.indexOf('Bresnahan 3/26')).toBe('Weiss & '.length);
+  });
+
   it('throws when the [[CITE]] marker is missing', async () => {
     const { parseCiteResponse } = await import('../../src/editor/ai/cite-creator.js');
     expect(() => parseCiteResponse('Smith 24')).toThrow(/markers/i);

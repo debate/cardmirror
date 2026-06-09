@@ -20,6 +20,7 @@
  */
 
 import type { EditorView } from 'prosemirror-view';
+import { TextSelection } from 'prosemirror-state';
 import type { EditorState, Transaction } from 'prosemirror-state';
 import { schema } from '../../schema/index.js';
 import { settings } from '../settings.js';
@@ -128,10 +129,26 @@ export function parseCiteResponse(text: string): AiCiteResult {
   if (citeIdx === -1 || tokensIdx === -1 || tokensIdx < citeIdx) {
     throw new Error("Cite response missing the [[CITE]] / [[TOKENS]] markers.");
   }
-  const citeBody = text
-    .slice(citeIdx, tokensIdx)
-    .replace(/^[^\n]*\n/, '') // drop the [[CITE]] header line itself
-    .trim();
+  // Sanitize before anything positional touches the cite. Messy source
+  // text (especially pasted out of PDFs) carries invisible junk —
+  // soft hyphens, zero-width spaces, BOMs, control chars — and the
+  // model echoes it into the cite. These count toward `cite.length` (and
+  // the per-token `indexOf` offsets) here, but the browser's
+  // contenteditable silently drops several of them when ProseMirror
+  // renders the cite paragraph; the DOM observer then reconciles the doc
+  // ONE position shorter than the string we measured. That single
+  // off-by-one lands on BOTH the trailing cite_mark (its last char goes
+  // unmarked) AND the "cite is its own paragraph" split (the now-stray
+  // last char gets shunted to its own line) — together, or not at all,
+  // exactly as observed. `sanitizeCiteText` strips the invisibles and
+  // collapses whitespace so `cite.length` matches what actually renders.
+  // (The whitespace collapse also fixes wrapped / multi-space cites,
+  // which `white-space: pre-wrap` would otherwise show as broken lines.)
+  const citeBody = sanitizeCiteText(
+    text
+      .slice(citeIdx, tokensIdx)
+      .replace(/^[^\n]*\n/, ''), // drop the [[CITE]] header line itself
+  ).trim();
   if (!citeBody) {
     throw new Error('Cite response had an empty cite section.');
   }
@@ -140,15 +157,36 @@ export function parseCiteResponse(text: string): AiCiteResult {
     .slice(tokensIdx, tokensSliceEnd)
     .replace(/^[^\n]*\n/, '') // drop the [[TOKENS]] header line
     .trim();
-  // One token per line. Skip blanks and any stray "[[END]]" line
-  // that snuck into the tokens block. Do NOT trim trailing
-  // whitespace — the two-author convention has the first token
-  // end with "& " (trailing space) and the parser must preserve
-  // it so the substring match in the editor still works.
+  // One token per line. Skip blanks and any stray "[[END]]" line that
+  // snuck into the tokens block. Tokens get the SAME sanitization as the
+  // cite (so `indexOf` still matches) and are left-trimmed (model
+  // indentation shouldn't break the match) but NOT right-trimmed — the
+  // two-author convention has the first token end with "& " (trailing
+  // space), and preserving it keeps the cite mark contiguous across the
+  // firstname gap.
   const tokens = tokensBody
     .split(/\r?\n/)
-    .filter((s) => s.trim().length > 0 && !/\[\[\s*END\s*\]\]/i.test(s));
+    .filter((s) => s.trim().length > 0 && !/\[\[\s*END\s*\]\]/i.test(s))
+    .map((s) => sanitizeCiteText(s).replace(/^ +/, ''));
   return { cite: citeBody, tokens };
+}
+
+/** Invisible / format / control characters that have no place in a cite
+ *  and that browsers' contenteditable may silently drop on render —
+ *  which would desync the rendered text length from the string we use
+ *  for cite-mark and paragraph-split positions. Excludes tab / newline /
+ *  CR (handled by the whitespace collapse). */
+// eslint-disable-next-line no-control-regex
+const INVISIBLE_CHARS =
+  /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F\u00AD\u200B-\u200F\u202A-\u202E\u2060-\u2064\uFEFF\uFFFC]/g;
+
+/** Normalize cite / token text: strip invisible junk, then collapse every
+ *  whitespace run (incl. newlines and NBSP variants — `\s` matches them)
+ *  to a single space. Leaves a single leading/trailing space in place;
+ *  the caller decides whether to trim, since the two-author token
+ *  convention depends on a preserved trailing space. */
+function sanitizeCiteText(s: string): string {
+  return s.replace(INVISIBLE_CHARS, '').replace(/\s+/g, ' ');
 }
 
 /** Locate the FIRST occurrence of a section marker like `[[CITE]]`.
@@ -178,11 +216,22 @@ export function buildCiteTransaction(
   const citeType = schema.marks['cite_mark'];
   if (!citeType) return null;
 
-  // Replace the selection with the cite text. `insertText` keeps
-  // existing block boundaries intact and produces plain text
-  // nodes. The inserted span runs from `from` to `from + cite.length`
-  // — positions inside a single textblock are 1:1 with character
-  // offsets, which is what we use to find token substrings below.
+  // Clamp the range to valid TEXT positions before inserting. The caller
+  // passes the raw selection bounds, which can be block-boundary
+  // positions that ProseMirror won't place inline text at — most commonly
+  // `from === 0` from a whole-document / top-of-doc selection (Ctrl+A),
+  // where the cite actually lands at position 1, not 0. If we trusted the
+  // raw `from`, every position below would be shifted one left: the
+  // trailing token would lose its last char AND the "cite is its own
+  // paragraph" split would shunt that char onto its own line — together,
+  // exactly the reported bug. `TextSelection.between` resolves the bounds
+  // inward to the nearest inline positions (e.g. 0 → 1), so the inserted
+  // run is then exactly `[from, from + cite.length]` with 1:1 character
+  // offsets (which is what the token substring search relies on).
+  const clamped = TextSelection.between(state.doc.resolve(from), state.doc.resolve(to));
+  from = clamped.from;
+  to = clamped.to;
+
   const tr = state.tr;
   tr.insertText(result.cite, from, to);
 

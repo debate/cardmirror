@@ -36,6 +36,15 @@ see `DETAILED_CHANGELOG.md`.
 
 ### Fixed
 
+- **AI cite creator: no more chopped-off last character.** When you ran
+  cite repair over a whole-document selection (e.g. Select All on a page
+  of pasted citation info), the highlight could land one character early
+  — missing the last character of the author tag — and the final
+  character of the cite could get pushed onto its own line. Both are
+  fixed. As a bonus, the cite is now cleaned of stray line breaks, double
+  spaces, and invisible junk that often rides along in text pasted from
+  PDFs or the web.
+
 - **"Show in context" during review now closes the Manage Flashcards
   screen.** When you open Manage Flashcards, start a review, and use Show
   in context on a card that lives in the document you already have open,
