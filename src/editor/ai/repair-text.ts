@@ -37,9 +37,12 @@ Focus exclusively on these types of errors:
 1. Character substitutions and ligature issues (e.g., "fl" appearing as "ff", "fi" appearing as a missing-glyph box)
 2. Number/letter confusions (e.g., "0" for "O", "l" for "1", "rn" for "m"). Note that some numbers should be preserved because they are footnotes.
 3. Random line breaks or hyphenation (e.g., "re-\\nsearch" should be "research")
-4. Extra or missing spaces (e.g., "thisis" should be "this is")
-5. Common punctuation errors (e.g., missing periods, commas appearing as periods)
-6. Other typical OCR errors that are clearly unintentional
+4. A stray space after (or before) a hyphen inside a word — VERY common in PDF extraction. Two sub-cases:
+   - If the word is a genuinely hyphenated compound or prefixed term, KEEP the hyphen and remove only the stray space (e.g., "neo- Gramscian" should be "neo-Gramscian"; "vis-a- vis" should be "vis-a-vis"; "self- determination" should be "self-determination").
+   - If it is an ordinary word that was split across a line, remove the hyphen AND the space (e.g., "re- search" should be "research").
+5. Extra or missing spaces (e.g., "thisis" should be "this is")
+6. Common punctuation errors (e.g., missing periods, commas appearing as periods)
+7. Other typical OCR errors that are clearly unintentional
 
 EXTREMELY IMPORTANT GUIDELINES:
 - Make NO substantive changes to the text's meaning or content.

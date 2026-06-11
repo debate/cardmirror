@@ -17,10 +17,13 @@ see `DETAILED_CHANGELOG.md`.
   quotes/dashes, ligatures like ﬂ, non-breaking spaces, tabs, invisible
   characters, and context that crosses a paragraph break) while
   preserving the document's original punctuation — only the actual
-  correction is applied, never the surrounding context. Long fix lists
-  also no longer fail with a
-  cryptic JSON error: the response limit is raised, and genuinely
-  oversized lists ask you to repair a smaller region instead.
+  correction is applied, never the surrounding context. Repair also
+  now catches the stray-space-after-hyphen artifact ("neo- Gramscian"
+  → "neo-Gramscian", "vis-a- vis" → "vis-a-vis") — keeping the hyphen
+  for real compounds, dropping it for words split across a line. Long
+  fix lists also no longer fail with a cryptic JSON error: the
+  response limit is raised, and genuinely oversized lists ask you to
+  repair a smaller region instead.
 
 - **Anthropic translations no longer cut off silently on long
   selections.** The AI translation path capped its output at roughly

@@ -38,9 +38,16 @@ in each release, see `CHANGELOG.md`.
   console line (per-pass placement summary, classified skips, errors),
   and the Electron main process forwards [repair]/[cardmirror]-tagged
   renderer console lines to stdout so terminal dev sessions can see
-  them. Known remaining gaps (pinned in tests): "--" echoed for an
-  em-dash (two-chars-for-one, not seen live), omitted pilcrows, and
-  the shared-node flatten boundary miss.
+  them. (4) Detection: the prompt now names the
+  stray-space-after-hyphen artifact explicitly with both resolutions —
+  keep the hyphen for genuine compounds ("neo- Gramscian" →
+  "neo-Gramscian"), drop it for ordinary words split across a line
+  ("re- search" → "research"); the old prompt only covered line-break
+  hyphenation, and the strict leave-it-if-uncertain guideline made the
+  model skip mid-line hyphen-space errors entirely. Known remaining
+  gaps (pinned in tests): "--" echoed for an em-dash
+  (two-chars-for-one, not seen live), omitted pilcrows, and the
+  shared-node flatten boundary miss.
 
 - **Anthropic translation output ceiling raised; truncation surfaced**
   (`src/editor/translate.ts`). `translateAnthropic` inherited the
