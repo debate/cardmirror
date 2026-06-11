@@ -10163,3 +10163,80 @@ body.pmd-mobile .pmd-dropzone-runway-spacer {
   color: var(--pmd-c-accent);
   cursor: pointer;
 }
+
+/* ── Mobile Move mode (P3) ── */
+
+/* Tap-selected structural unit — node decoration on every top-level
+   node in the unit (one box for a card; heading line + each subtree
+   node for a section). */
+body.pmd-mobile .pmd-mobile-unit-selected {
+  outline: 2px dashed var(--pmd-c-accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Long-press armed row in the outline: lifted, ready to drag. */
+.pmd-nav-longpress-armed {
+  background: var(--pmd-c-hover);
+  box-shadow: 0 2px 8px var(--pmd-c-shadow-strong);
+  transform: scale(1.02);
+}
+
+/* Destination mode ("Send to…"): banner pinned over the outline. */
+.pmd-nav-destination::before {
+  content: 'Tap a destination';
+  display: block;
+  padding: 0.45rem 0.75rem;
+  background: var(--pmd-c-accent);
+  color: var(--pmd-c-bg);
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+/* Action sheet — persistent while a unit is picked up (unlike the
+   tap-away Aa/menu sheets); sits above the mode bar. */
+.pmd-mobile-movesheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(var(--status-bar-height) + var(--pmd-mobile-modebar-h) + env(safe-area-inset-bottom, 0px));
+  background: var(--pmd-c-surface);
+  border-top: 1px solid var(--pmd-c-border-soft);
+  box-shadow: 0 -4px 16px var(--pmd-c-shadow-strong);
+  z-index: 325;
+  padding: 0.5rem 0.75rem calc(0.6rem);
+  font-family: var(--pmd-ui-font);
+}
+body.pmd-mobile-tablet .pmd-mobile-movesheet {
+  left: 260px;
+}
+.pmd-mobile-movesheet-label {
+  font-size: 0.8rem;
+  color: var(--pmd-c-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 0.45rem;
+}
+.pmd-mobile-movesheet-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+.pmd-mobile-movesheet-btn {
+  flex: 1 1 auto;
+  min-height: 2.4rem;
+  padding: 0 0.7rem;
+  border: 1px solid var(--pmd-c-border-soft);
+  border-radius: 8px;
+  background: none;
+  color: var(--pmd-c-text);
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+.pmd-mobile-movesheet-btn:active {
+  background: var(--pmd-c-hover);
+}
+.pmd-movesheet-danger {
+  color: var(--pmd-c-error);
+}

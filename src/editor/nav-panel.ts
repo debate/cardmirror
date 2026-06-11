@@ -25,6 +25,7 @@ import {
   type HeadingEntry,
 } from './headings.js';
 import { setIcon } from './icons';
+import { isMobileShellActive } from './mobile-plugin.js';
 
 /** Minimum nav-pane width. Has to fit the 4 level-buttons + the
  *  close (×) button + the row padding. With the previous 150px
@@ -36,6 +37,11 @@ const NAV_WIDTH_MAX = 800;
  *  double-click (collapse toggle). Approximates the OS double-click
  *  window; see `handlePlainClickDouble`. */
 const NAV_DOUBLE_CLICK_MS = 500;
+
+/** Mobile long-press window before a row drag arms (movement within
+ *  the window cancels — it's a scroll). Below typical browser
+ *  context-menu timing so our pickup wins the gesture. */
+const NAV_LONG_PRESS_MS = 450;
 
 /**
  * Whether the user is holding the platform's "copy" modifier during
@@ -128,6 +134,21 @@ export class NavigationPanel {
   private boundOnDragUp = (e: PointerEvent) => this.onDragUp(e);
   private boundOnDragKey = (e: KeyboardEvent) => this.onDragKey(e);
   private boundOnDragKeyUp = (e: KeyboardEvent) => this.onDragKey(e);
+
+  // ── Mobile (SPEC-mobile-view.md P3) ──
+  /** Long-press pickup: on touch a plain pan must scroll the list, so
+   *  a row drag arms only after a still-press of this length. */
+  private longPressTimer: number | null = null;
+  private longPressLi: HTMLLIElement | null = null;
+  /** While a long-press drag lives, swallow touch panning so the
+   *  browser can't hijack the gesture into a scroll mid-drag. The
+   *  list's `touch-action: pan-y` governs the pre-arm phase. */
+  private boundTouchBlocker = (e: TouchEvent): void => {
+    if (dragController.isActive()) e.preventDefault();
+  };
+  /** Destination mode ("Send to…" on mobile): row taps call this
+   *  instead of navigating. */
+  private destinationCb: ((entry: HeadingEntry) => void) | null = null;
 
   /** When set (multi-pane sections), the outline-level filter is
    *  per-instance instead of shared via the `navMaxLevel` setting. */
@@ -327,6 +348,7 @@ export class NavigationPanel {
    */
   destroy(): void {
     this.destroyed = true;
+    this.cancelLongPress();
     this.unsubscribeSettings?.();
     this.unsubscribeSettings = null;
     this.unsubscribeDrag?.();
@@ -511,6 +533,19 @@ export class NavigationPanel {
     this.listEl.scrollTop = 0;
   }
 
+  /** "Send to…" (mobile Move mode): while on, a tap on any row calls
+   *  `cb` with that entry instead of navigating; drags don't arm.
+   *  The caller owns exiting the mode (including on cancel). */
+  enterDestinationMode(cb: (entry: HeadingEntry) => void): void {
+    this.destinationCb = cb;
+    this.root.classList.add('pmd-nav-destination');
+  }
+
+  exitDestinationMode(): void {
+    this.destinationCb = null;
+    this.root.classList.remove('pmd-nav-destination');
+  }
+
   /** Receive the current find-bar hit positions. The nav panel
    *  marks each heading whose subtree contains at least one hit
    *  with a "has-hit" indicator — the deepest currently-rendered
@@ -644,6 +679,9 @@ export class NavigationPanel {
       li.addEventListener('pointerdown', (e) => this.onLiPointerDown(e, entry, li));
       li.addEventListener('contextmenu', (e) => {
         e.preventDefault();
+        // On mobile the browser synthesizes contextmenu from the same
+        // long-press that arms row pickup — suppress the menu there.
+        if (isMobileShellActive()) return;
         this.openContextMenu(e.clientX, e.clientY, entry);
       });
 
@@ -783,6 +821,23 @@ export class NavigationPanel {
     this.dragStartLi = li;
     this.dragStartEntry = entry;
 
+    // Mobile: arm the drag by long-press, never by movement (movement
+    // is a scroll). Destination mode is tap-only — no pickup at all,
+    // and read mode locks the doc (same rule as the desktop arm path).
+    if (isMobileShellActive() && !this.destinationCb && !settings.get('readMode')) {
+      this.cancelLongPress();
+      this.longPressLi = li;
+      this.longPressTimer = window.setTimeout(() => {
+        this.longPressTimer = null;
+        li.classList.add('pmd-nav-longpress-armed');
+        if (typeof navigator.vibrate === 'function') navigator.vibrate(15);
+        this.startDrag();
+        document.addEventListener('touchmove', this.boundTouchBlocker, {
+          passive: false,
+        });
+      }, NAV_LONG_PRESS_MS);
+    }
+
     if (!this.dragHandlersAttached) {
       document.addEventListener('pointermove', this.boundOnDragMove);
       document.addEventListener('pointerup', this.boundOnDragUp);
@@ -792,6 +847,16 @@ export class NavigationPanel {
       document.addEventListener('keyup', this.boundOnDragKeyUp);
       this.dragHandlersAttached = true;
     }
+  }
+
+  private cancelLongPress(): void {
+    if (this.longPressTimer !== null) {
+      window.clearTimeout(this.longPressTimer);
+      this.longPressTimer = null;
+    }
+    this.longPressLi?.classList.remove('pmd-nav-longpress-armed');
+    this.longPressLi = null;
+    document.removeEventListener('touchmove', this.boundTouchBlocker);
   }
 
   // ---- Selection helpers ----
@@ -932,6 +997,12 @@ export class NavigationPanel {
     if (!dragController.isActive()) {
       const dx = e.clientX - this.dragStartX;
       const dy = e.clientY - this.dragStartY;
+      // Mobile: movement never arms a drag — it cancels the pending
+      // long-press and lets the browser's pan take the gesture.
+      if (isMobileShellActive()) {
+        if (dx * dx + dy * dy > 64) this.cancelLongPress();
+        return;
+      }
       // 5px threshold — below this, count as a click, not a drag.
       if (dx * dx + dy * dy < 25) return;
       // Read mode disables drag (but lets clicks still navigate).
@@ -967,15 +1038,22 @@ export class NavigationPanel {
       //   updated at pointerdown).
       // - Ctrl/Shift click: selection was already updated; don't navigate.
       if (this.pointerDownModifier === 'none') {
-        if (this.deferredClickFinalize) {
-          this.selectSingle(this.deferredClickFinalize);
+        if (this.destinationCb) {
+          // Destination mode: the tap picks a "Send to…" target
+          // instead of navigating. The callback owns mode exit.
+          this.destinationCb(this.dragStartEntry);
+        } else {
+          if (this.deferredClickFinalize) {
+            this.selectSingle(this.deferredClickFinalize);
+          }
+          this.jumpTo(this.dragStartEntry);
+          this.handlePlainClickDouble(this.dragStartEntry);
         }
-        this.jumpTo(this.dragStartEntry);
-        this.handlePlainClickDouble(this.dragStartEntry);
       }
     }
     this.deferredClickFinalize = null;
     this.pointerDownModifier = 'none';
+    this.cancelLongPress();
     this.cleanupDrag(committed);
   }
 

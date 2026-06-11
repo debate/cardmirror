@@ -25,12 +25,18 @@ see `DETAILED_CHANGELOG.md`.
   sections. A Settings page sized for touch carries the relevant
   settings — appearance, text sizes, readers, AI key — and "Use
   desktop layout" (or the new "Layout on this device" setting)
-  switches back to the full UI any time. Editing stays desktop-only
-  for now: the mobile view never opens the on-screen keyboard, and
-  there is no drag-from-the-document or dropzone on mobile — on
-  touch, a drag is indistinguishable from a scroll. Moving cards
-  (via buttons and the outline) and the AI repairs from the phone
-  are planned next.
+  switches back to the full UI any time. Editing stays desktop-only:
+  the mobile view never opens the on-screen keyboard, and there is no
+  drag-from-the-document or dropzone on mobile — on touch, a drag is
+  indistinguishable from a scroll. Rearranging is its own mode
+  instead: tap **Move**, tap any card or heading to pick it up
+  (dashed outline), and an action strip offers one-step **Up** /
+  **Down** (sections hop whole sibling sections; cards step over
+  neighbors and in/out of sections), **Send to…** (pick a
+  destination straight from the outline), **Copy**, and **Delete** —
+  every move is one undo step. In the outline itself, press and hold
+  a row for a moment to pick it up and drag it (a plain swipe still
+  scrolls). The AI repairs from the phone are planned next.
 
 ### Changed
 

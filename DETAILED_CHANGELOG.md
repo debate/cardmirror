@@ -84,6 +84,38 @@ in each release, see `CHANGELOG.md`.
   uses, so web-only rows can't surface in the desktop app's
   palette).
 
+  Move mode (P3, new `src/editor/structural-move.ts`): tap a card or
+  heading → `unitRangeAtPos` (position-based port of the drag
+  surface's `findContainerAt` hit-test) selects the smallest
+  structural unit, visualized by node decorations held in the mobile
+  plugin's state; an action strip offers Up / Down / Send to… /
+  Copy / Delete. One "step" is subtree-aware (`moveInsertPos`): the
+  outermost heading subtree ending exactly at the unit's start is
+  hopped whole (sibling swap), a bare parent heading line steps the
+  unit out of its section, any other heading line is entered (the
+  unit lands as the section's first child), and loose neighbors are
+  hopped one node at a time. Execution rides the drag system's
+  exported `buildMoveTransaction`, so a button move and a drag-drop
+  produce identical docs and identical single undo steps; after each
+  move the landing selection re-derives the unit so the highlight
+  and sheet follow it. "Send to…" reuses the nav panel via a new
+  destination-mode API (`enterDestinationMode(cb)`): the drawer
+  opens with a banner, a row tap sends the unit AFTER a card target
+  or as the first child of a heading target
+  (`sendToEntryInsertPos`), dismissing the drawer cancels. Move and
+  Read modes are mutually exclusive (read mode locks the doc and
+  owns taps).
+
+  Nav-pane long-press pickup: on mobile, outline row drags arm ONLY
+  after a 450ms still-press (haptic tick where supported, lifted-row
+  styling) — movement within the window cancels the press and the
+  list's `touch-action: pan-y` lets the browser scroll, which is the
+  drag-vs-scroll disambiguation the desktop feedback asked for. While
+  a drag lives, a non-passive `touchmove` blocker keeps the browser
+  from hijacking it into a pan mid-drag; the row context menu is
+  suppressed on mobile (the same long-press would otherwise open
+  it). Read mode disables pickup, matching the desktop arm path.
+
 - **Mode-switch (three-pane ↔ windows) restores exactly the open
   set** (`src/editor/index.ts`, new `src/editor/mode-switch.ts`,
   `multi-pane-shell.ts`, `apps/desktop/src/main.ts`, preload +

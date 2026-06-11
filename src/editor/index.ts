@@ -3297,6 +3297,12 @@ function refreshReadModeBtn(): void {
 
 const navPanel = new NavigationPanel(navEl);
 
+/** The single-doc NavigationPanel instance — the mobile shell drives
+ *  its destination mode ("Send to…") and hosts it in the drawer. */
+export function getNavPanel(): NavigationPanel {
+  return navPanel;
+}
+
 function makeStarterDoc(): PMNode {
   const n = schema.nodes;
   const m = schema.marks;

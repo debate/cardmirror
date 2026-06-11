@@ -18,15 +18,31 @@
  * click-to-jump keep working unchanged.
  */
 
+import { TextSelection } from 'prosemirror-state';
 import { settings } from './settings.js';
-import { getActiveView, runRibbon } from './index.js';
+import { getActiveView, getNavPanel, runRibbon } from './index.js';
 import { readModeAwareUndo, readModeAwareRedo } from './read-mode-plugin.js';
 import { mobileDensity } from './mobile-layout.js';
+import {
+  setMobileMoveMode,
+  onMobileUnitTapped,
+  setMobileUnitSelection,
+} from './mobile-plugin.js';
+import {
+  moveInsertPos,
+  sendToEntryInsertPos,
+  unitRangeAtPos,
+  executeUnitMove,
+  type UnitRange,
+} from './structural-move.js';
+import { preciseScrollIntoView } from './precise-scroll.js';
+import { showToast } from './toast.js';
 
 const ZOOM_MIN = 50;
 const ZOOM_MAX = 200;
 
 let mounted = false;
+let drawerApi: { open: () => void; close: () => void } | null = null;
 
 export function mountMobileShell(): void {
   if (mounted) return;
@@ -36,9 +52,12 @@ export function mountMobileShell(): void {
   const appBar = buildAppBar();
   document.body.insertBefore(appBar, document.body.firstChild);
   const { drawer, scrim, openDrawer, closeDrawer } = buildDrawer();
+  drawerApi = { open: openDrawer, close: closeDrawer };
   document.body.appendChild(scrim);
   document.body.appendChild(drawer);
   document.body.appendChild(buildModeBar());
+  document.body.appendChild(buildMoveSheet());
+  onMobileUnitTapped(handleUnitTapped);
   installPinchZoom();
   installEdgeSwipe(openDrawer);
 
@@ -141,12 +160,18 @@ function buildDrawer(): {
   };
   const closeDrawer = (): void => {
     document.body.classList.remove('pmd-mobile-drawer-open');
+    // Dismissing the drawer always cancels a pending "Send to…" —
+    // idempotent when none is active.
+    destModeActive = false;
+    getNavPanel().exitDestinationMode();
   };
   scrim.addEventListener('click', closeDrawer);
   // Jumping somewhere is the end of a navigation — dismiss (overlay
   // densities only; the tablet rail stays put via CSS, where this
-  // class toggle has no effect).
+  // class toggle has no effect). In destination mode the Send-to
+  // callback owns the drawer: an invalid target keeps it open.
   drawer.addEventListener('click', (e) => {
+    if (destModeActive) return;
     if ((e.target as HTMLElement).closest('.pmd-nav-item')) {
       window.setTimeout(closeDrawer, 120);
     }
@@ -195,11 +220,204 @@ function buildModeBar(): HTMLElement {
   };
   syncRead();
   settings.subscribe(syncRead);
-  readBtn.addEventListener('click', () => runRibbon('toggleReadMode'));
+  readBtn.addEventListener('click', () => {
+    // Read and Move are mutually exclusive — both claim the tap.
+    if (!settings.get('readMode') && moveMode) setMoveMode(false);
+    runRibbon('toggleReadMode');
+  });
   bar.appendChild(readBtn);
 
-  // Move / Repair modes land in later phases (SPEC P3/P4).
+  moveBtn = document.createElement('button');
+  moveBtn.type = 'button';
+  moveBtn.className = 'pmd-mobile-mode-btn pmd-mobile-mode-move';
+  moveBtn.textContent = '✥ Move';
+  moveBtn.title = 'Move mode — tap a card or heading to pick it up';
+  moveBtn.addEventListener('click', () => setMoveMode(!moveMode));
+  bar.appendChild(moveBtn);
+
+  // Repair mode lands in P4 (SPEC-mobile-view.md).
   return bar;
+}
+
+// ─── Move mode ─────────────────────────────────────────────────────
+
+let moveMode = false;
+let moveBtn: HTMLButtonElement | null = null;
+let moveSheet: HTMLElement | null = null;
+let moveSheetLabel: HTMLElement | null = null;
+let currentUnit: UnitRange | null = null;
+let destModeActive = false;
+
+function setMoveMode(on: boolean): void {
+  const view = getActiveView();
+  if (!view) return;
+  moveMode = on;
+  moveBtn?.classList.toggle('pmd-mode-active', on);
+  setMobileMoveMode(view, on);
+  if (on) {
+    // Move needs doc edits; read mode locks them (and owns taps).
+    if (settings.get('readMode')) runRibbon('toggleReadMode');
+    showToast('Tap a card or heading to pick it up');
+  } else {
+    currentUnit = null;
+    hideMoveSheet();
+    cancelDestinationMode();
+  }
+}
+
+function handleUnitTapped(unit: UnitRange | null): void {
+  currentUnit = unit;
+  if (!unit) {
+    hideMoveSheet();
+    return;
+  }
+  showMoveSheet(unit);
+}
+
+function buildMoveSheet(): HTMLElement {
+  const sheet = document.createElement('div');
+  sheet.className = 'pmd-mobile-movesheet';
+  sheet.hidden = true;
+  moveSheet = sheet;
+
+  moveSheetLabel = document.createElement('div');
+  moveSheetLabel.className = 'pmd-mobile-movesheet-label';
+  sheet.appendChild(moveSheetLabel);
+
+  const row = document.createElement('div');
+  row.className = 'pmd-mobile-movesheet-actions';
+  const action = (
+    label: string,
+    title: string,
+    run: () => void,
+    cls = '',
+  ): HTMLButtonElement => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = `pmd-mobile-movesheet-btn ${cls}`;
+    btn.textContent = label;
+    btn.title = title;
+    btn.addEventListener('click', run);
+    row.appendChild(btn);
+    return btn;
+  };
+  action('▲ Up', 'Move one step up', () => moveStep(-1));
+  action('▼ Down', 'Move one step down', () => moveStep(1));
+  action('⇪ Send to…', 'Pick a destination in the outline', startSendTo);
+  action('⧉ Copy', 'Copy to the clipboard', copyUnit);
+  action('⌫ Delete', 'Delete', deleteUnit, 'pmd-movesheet-danger');
+  action('✕', 'Put down (stay in Move mode)', () => {
+    const view = getActiveView();
+    if (view) setMobileUnitSelection(view, null);
+    currentUnit = null;
+    hideMoveSheet();
+  });
+  sheet.appendChild(row);
+  return sheet;
+}
+
+function showMoveSheet(unit: UnitRange): void {
+  if (!moveSheet || !moveSheetLabel) return;
+  const label = unit.label.trim() || '(untitled)';
+  moveSheetLabel.textContent = `${unit.type === 'card' || unit.type === 'analytic_unit' ? 'Card' : unit.type[0]!.toUpperCase() + unit.type.slice(1)} — ${label}`;
+  moveSheet.hidden = false;
+}
+
+function hideMoveSheet(): void {
+  if (moveSheet) moveSheet.hidden = true;
+}
+
+/** After a successful move the transaction parks the selection at the
+ *  top of the landed content — re-derive the unit there so the
+ *  highlight and the sheet follow it. */
+function reselectMovedUnit(view: NonNullable<ReturnType<typeof getActiveView>>): void {
+  const unit = unitRangeAtPos(view.state.doc, view.state.selection.from);
+  currentUnit = unit;
+  setMobileUnitSelection(view, unit);
+  if (unit) {
+    showMoveSheet(unit);
+    const dom = view.nodeDOM(unit.from);
+    if (dom instanceof HTMLElement) preciseScrollIntoView(view, dom);
+  } else {
+    hideMoveSheet();
+  }
+}
+
+function moveStep(dir: -1 | 1): void {
+  const view = getActiveView();
+  if (!view || !currentUnit) return;
+  const insertPos = moveInsertPos(view.state.doc, currentUnit, dir);
+  if (insertPos === null) {
+    showToast(dir === -1 ? 'Already at the top' : 'Already at the bottom');
+    return;
+  }
+  if (!executeUnitMove(view, currentUnit, insertPos)) {
+    showToast("Can't move there");
+    return;
+  }
+  reselectMovedUnit(view);
+}
+
+function startSendTo(): void {
+  if (!currentUnit) return;
+  destModeActive = true;
+  getNavPanel().enterDestinationMode((entry) => {
+    const view = getActiveView();
+    if (!view || !currentUnit) {
+      cancelDestinationMode();
+      drawerApi?.close();
+      return;
+    }
+    const insertPos = sendToEntryInsertPos(view.state.doc, entry);
+    if (insertPos === null) {
+      showToast("Can't drop there — pick another heading");
+      return; // stay in destination mode
+    }
+    if (insertPos > currentUnit.from && insertPos < currentUnit.to) {
+      showToast("Can't move a section into itself");
+      return;
+    }
+    if (!executeUnitMove(view, currentUnit, insertPos)) {
+      showToast("Can't move there");
+      return;
+    }
+    destModeActive = false;
+    drawerApi?.close(); // also exits destination mode
+    reselectMovedUnit(view);
+    showToast('Moved — ↶ to undo');
+  });
+  drawerApi?.open();
+  showToast('Tap a destination in the outline');
+}
+
+function cancelDestinationMode(): void {
+  destModeActive = false;
+  getNavPanel().exitDestinationMode();
+}
+
+function copyUnit(): void {
+  const view = getActiveView();
+  if (!view || !currentUnit) return;
+  // Park the caret inside the unit's head; the existing command
+  // copies the heading + subtree at the cursor.
+  view.dispatch(
+    view.state.tr.setSelection(
+      TextSelection.near(view.state.doc.resolve(currentUnit.from + 1)),
+    ),
+  );
+  runRibbon('copyCurrentHeading');
+  showToast('Copied');
+}
+
+function deleteUnit(): void {
+  const view = getActiveView();
+  if (!view || !currentUnit) return;
+  const label = currentUnit.label.trim() || 'this';
+  if (!window.confirm(`Delete "${label}"?`)) return;
+  view.dispatch(view.state.tr.delete(currentUnit.from, currentUnit.to));
+  currentUnit = null;
+  hideMoveSheet();
+  showToast('Deleted — ↶ to undo');
 }
 
 // ─── Bottom sheets (display options, overflow menu) ────────────────
