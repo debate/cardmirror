@@ -15,6 +15,7 @@ import {
   condenseMerge,
   uncondense,
   toggleCase,
+  makePilcrowText,
   PILCROW_CHAR,
   PILCROW_HALF_POINTS,
 } from '../../src/editor/condense.js';
@@ -439,6 +440,33 @@ describe("condenseMerge — selection, headingMode: 'strict'", () => {
 // ---- Uncondense ----
 
 describe('uncondense', () => {
+  it('skips an invalid split (pilcrow in a tag) instead of throwing', () => {
+    // A pilcrow can end up in a tag (a demolish merge, or pasting condensed
+    // body into a tag). Splitting there would make two tags in one card —
+    // schema-invalid, so tr.split used to throw and crash the editor.
+    const tag = schema.nodes['tag']!.create({ id: 'tg' }, [
+      schema.text('Heading '),
+      makePilcrowText(),
+      schema.text('tail'),
+    ]);
+    const doc = makeDoc([card(tag, cardBody('body'))]);
+    const state = setSelectionRange(doc, 'Heading', 0, 'Heading', 0); // cursor in the tag
+    let result: EditorState | null = null;
+    expect(() => {
+      result = apply(state, uncondense());
+    }).not.toThrow();
+    // Degrades to delete-marker-only: marker gone, card still has one tag.
+    const out = result!.doc;
+    let tagCount = 0;
+    let hasPilcrow = false;
+    out.descendants((n) => {
+      if (n.type.name === 'tag') tagCount += 1;
+      if (n.isText && (n.text ?? '').includes(PILCROW_CHAR)) hasPilcrow = true;
+    });
+    expect(tagCount).toBe(1);
+    expect(hasPilcrow).toBe(false);
+  });
+
   it('splits a paragraph at every 6-pt ¶ marker (new pilcrow_marker format)', () => {
     const pilcrowText = schema.text(PILCROW_CHAR, [
       schema.marks['pilcrow_marker']!.create(),

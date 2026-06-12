@@ -22,6 +22,7 @@
 
 import { Fragment, type Node as PMNode, type Mark, type NodeType } from 'prosemirror-model';
 import { TextSelection, type Command, type EditorState, type Transaction } from 'prosemirror-state';
+import { canSplit } from 'prosemirror-transform';
 import { schema } from '../schema/index.js';
 
 // ---------- Pilcrow primitives ----------
@@ -918,7 +919,14 @@ export function uncondense(): Command {
       const charPos = split.tbPos + 1 + split.charIndex;
       // Delete the pilcrow char and split the textblock at that position.
       tr.delete(charPos, charPos + 1);
-      tr.split(charPos);
+      // A pilcrow can land in a container head (e.g. a tag — demolish-mode
+      // merge, or pasting condensed body into a tag): splitting there would
+      // make two tags in one card, which the schema forbids, and `tr.split`
+      // throws. Guard with canSplit and fall back to delete-marker-only so
+      // the operation degrades instead of crashing the editor.
+      if (canSplit(tr.doc, charPos)) {
+        tr.split(charPos);
+      }
     }
     dispatch(tr);
     return true;

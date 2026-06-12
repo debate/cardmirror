@@ -197,17 +197,35 @@ function collectLiveThreadIds(doc: PMNode): Set<string> {
 
 // ----------------------- helpers / commands ----------------------
 
-/** Generate a fresh comment id. Stringified integers keep
- *  round-trip with Word's `w:id` (a non-negative integer) trivial. */
-let commentIdCounter = Date.now();
+/** Generate a fresh comment id. Stringified integers keep round-trip with
+ *  Word's `w:id` (a non-negative 32-bit integer) trivial — so the counter
+ *  starts small and is advanced past any loaded ids (see
+ *  `seedCommentIdCounter`). The old `Date.now()` seed (~1.7e12) overflowed
+ *  int32, producing ids Word can't represent. */
+let commentIdCounter = 0;
 export function newCommentId(): string {
   commentIdCounter += 1;
   return String(commentIdCounter);
 }
 
+/** Advance the id counter past every id already in `threads` so a
+ *  freshly-created comment never collides with an imported/loaded one.
+ *  Called whenever threads are loaded into a view. */
+function seedCommentIdCounter(threads: Thread[]): void {
+  for (const t of threads) {
+    bumpCommentIdCounter(t.id);
+    for (const c of t.comments) bumpCommentIdCounter(c.id);
+  }
+}
+function bumpCommentIdCounter(id: string): void {
+  const n = Number.parseInt(id, 10);
+  if (Number.isFinite(n) && n > commentIdCounter) commentIdCounter = n;
+}
+
 /** Apply a `load` transaction. Used right after importing a docx to
  *  populate plugin state with the parsed threads. */
 export function loadThreads(state: EditorState, threads: Thread[]): Transaction {
+  seedCommentIdCounter(threads);
   return state.tr.setMeta(commentsKey, { type: 'load', threads }).setMeta('addToHistory', false);
 }
 

@@ -114,7 +114,10 @@ function computeDecos(view: EditorView): DecorationSet {
     WORD_RE.lastIndex = 0;
     let m: RegExpExecArray | null;
     while ((m = WORD_RE.exec(text)) !== null) {
-      const w = m[0];
+      // Trim a trailing possessive apostrophe ("dogs'", "James'") so the
+      // base word is what gets checked — and underlined — not the
+      // apostrophe-suffixed form the dictionary never contains.
+      const w = m[0].replace(/'+$/, '');
       if (w.length < 3) continue; // skip a/an/etc.
       if (w === w.toUpperCase()) continue; // skip ACRONYMS / ALLCAPS
       if (isCorrect(w)) continue;

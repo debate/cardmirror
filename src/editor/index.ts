@@ -1958,7 +1958,7 @@ for (const [id, btnId] of Object.entries(FORMATTING_PANEL_BUTTONS) as [Formattin
   });
   btn.addEventListener('click', () => {
     if (!view) return;
-    const cmd = getRibbonCommand(id);
+    const cmd = getRibbonCommand(id, ribbonContext);
     cmd(view.state, view.dispatch.bind(view));
     view.focus();
   });

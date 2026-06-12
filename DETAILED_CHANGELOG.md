@@ -73,6 +73,31 @@ code (`reference-docs/AUDIT-2026-06-10.md`):
   quit. Added a `will-quit` handler and a synchronous `process.on('exit')`
   backstop so the child (and its Excel COM reference) is always torn down.
 
+- **Uncondense crashed on an invalid split** (`condense.ts`). A pilcrow in
+  a container head (a tag — from a demolish merge, or pasting condensed
+  body into a tag) made `tr.split` throw an uncaught `TransformError`
+  (two tags in one card violates `tag (…)*`). Guarded with `canSplit`;
+  when the split would be invalid the marker is just deleted. Regression
+  test in `tests/editor/condense.test.ts`.
+
+- **Editor comment ids overflowed Word's int32 `w:id`**
+  (`comments-plugin.ts`). The counter seeded from `Date.now()` (~1.7e12),
+  outside the signed-32-bit range OOXML allows. It now starts at 0 and is
+  advanced past every id already present whenever threads load
+  (`seedCommentIdCounter` in `loadThreads`), keeping new ids small and
+  collision-free. Test in `tests/editor/comments-id.test.ts`.
+
+- **Spellcheck flagged possessives** (`viewport-spellcheck.ts`). `WORD_RE`
+  kept a trailing apostrophe, so "dogs'"/"James'" were looked up — and
+  underlined — with the apostrophe attached. The trailing apostrophe is now
+  trimmed before the dictionary check.
+
+- **Floating format panel ignored `ribbonContext`** (`index.ts`). Its
+  buttons called `getRibbonCommand(id)` with no context, so they fell back
+  to `DEFAULT_RIBBON_CONTEXT` — e.g. applying the default highlight color
+  instead of the live one, and ignoring the clear-on-toggle-off setting.
+  They now pass the live `ribbonContext` like the ribbon and keymap.
+
 ## 0.1.0-alpha.12 — 2026-06-12
 
 - **Voice control failed to start in packaged builds.** The recognizer

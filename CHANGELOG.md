@@ -38,6 +38,21 @@ see `DETAILED_CHANGELOG.md`.
   the find bar open over a large match count, moving the cursor or stepping
   between matches no longer re-allocates the entire highlight overlay.
 
+- **Uncondensing no longer crashes when a ¶ marker is inside a heading.**
+  A pilcrow that ended up in a tag (e.g. from a merge) made Uncondense
+  throw; it now removes the marker without trying an invalid split.
+
+- **Comments stay readable in Word.** Editor-created comment ids could
+  exceed Word's numeric limit (they were seeded from the clock); they're
+  now small integers, allocated past any ids already in the document.
+
+- **Possessives are no longer flagged as misspellings.** Words ending in
+  an apostrophe ("dogs'", "James'") are checked on their base form.
+
+- **The floating format panel honors your settings.** Its buttons used
+  default settings (e.g. the wrong highlight color) instead of your current
+  ones.
+
 ## 0.1.0-alpha.12 — 2026-06-12
 
 ### Added
