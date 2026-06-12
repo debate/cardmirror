@@ -14,21 +14,32 @@
 
 import type { EditorView } from 'prosemirror-view';
 import { ThinkingTooltip, type TooltipRange } from './thinking-tooltip.js';
-import { setAiWorking } from './ai-working-plugin.js';
+import { setAiWorking, type AiWorkingScope } from './ai-working-plugin.js';
+import { AiWorkingBox } from './ai-working-box.js';
 
 export class AiActivity {
   private readonly tip = new ThinkingTooltip();
+  /** Selection scope draws a single bounding box (overlay); container
+   *  scope outlines the enclosing card node (PM decoration). */
+  private readonly box: AiWorkingBox | null;
   private range: TooltipRange;
 
+  /** `scope` controls the purple box: `container` outlines the enclosing
+   *  card (card cutting); `selection` draws one box around the exact
+   *  worked-on range (cite/text/formatting repair, image), so it isn't
+   *  expanded to the whole card. */
   constructor(
     private readonly view: EditorView,
     range: TooltipRange,
+    private readonly scope: AiWorkingScope = 'container',
   ) {
     this.range = range;
+    this.box = scope === 'selection' ? new AiWorkingBox() : null;
   }
 
   start(): void {
-    setAiWorking(this.view, this.range);
+    if (this.box) this.box.show(this.view, this.range);
+    else setAiWorking(this.view, this.range, this.scope);
     this.tip.show(this.view, this.range);
   }
 
@@ -36,7 +47,8 @@ export class AiActivity {
    *  pass that already edited the doc). */
   setRange(range: TooltipRange): void {
     this.range = range;
-    setAiWorking(this.view, range);
+    if (this.box) this.box.setRange(range);
+    else setAiWorking(this.view, range, this.scope);
     this.tip.setRange(range);
   }
 
@@ -47,6 +59,7 @@ export class AiActivity {
 
   stop(): void {
     this.tip.hide();
-    setAiWorking(this.view, null);
+    if (this.box) this.box.hide();
+    else setAiWorking(this.view, null);
   }
 }

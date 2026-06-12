@@ -2178,6 +2178,13 @@ function applyReduceMotion(pref: 'auto' | 'on' | 'off'): void {
   }
 }
 
+/** Steady text cursor: a body class that hides the native blinking
+ *  caret; the italic-caret plugin then draws a steady caret in its
+ *  place (CSS consumes the class). */
+function applyCursorBlink(disabled: boolean): void {
+  document.body.classList.toggle('pmd-steady-cursor', disabled);
+}
+
 /** Flip the app's icon set by setting `data-icons` on the document
  *  root; `icons.css` masks the modern SVGs under `"modern"` and
  *  falls back to the original emoji glyphs under `"classic"`. */
@@ -2332,6 +2339,7 @@ settings.subscribe((s) => {
   applyShowDocNameChip(s.showDocNameChip);
   applyIconSet(s.iconSet);
   applyReduceMotion(s.reduceMotion);
+  applyCursorBlink(s.disableCursorBlink);
   if (s.readMode !== lastReadMode || s.hideEmphasisBordersInReadMode !== lastReadModeBorders) {
     lastReadMode = s.readMode;
     lastReadModeBorders = s.hideEmphasisBordersInReadMode;

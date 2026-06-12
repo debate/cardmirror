@@ -7,6 +7,32 @@ in each release, see `CHANGELOG.md`.
 
 ## Unreleased
 
+- **Revamped "AI is working" affordance** (new `src/editor/ai/
+  ai-activity.ts`, `ai-working-plugin.ts`; rebuilt `thinking-tooltip.ts`;
+  used by cite-creator, repair-text, repair-formatting, image alt-text).
+  A single `AiActivity` handle now pairs the floating "Thinking…" pill
+  with a purple box over the worked-on region, kept in sync. The pill is
+  anchored to the editor's left edge and clamps into the visible band —
+  pinning to the top or bottom corner (above the dropzone) when the
+  target scrolls off-screen, instead of spawning off-view as it did
+  before. The box is a view-only decoration in two scopes: `container`
+  outlines the enclosing card/unit (mirrors the blue drag-pickup box, in
+  the pill's purple), while `selection` marks exactly the worked-on range
+  — so selection-based actions (Format Cite, repair) box only the
+  selected text rather than the whole containing card.
+
+- **Steady-cursor accessibility setting** (`disableCursorBlink`; new
+  `pmd-steady-cursor` body class via `applyCursorBlink` in `index.ts`;
+  generalizes `italic-caret-plugin.ts`). The native text caret's blink
+  can't be turned off in CSS, so when the setting is on the native caret
+  is hidden in the editor (`caret-color: transparent` on `.ProseMirror`)
+  and the custom-caret plugin — previously only drawn for a pending
+  italic cursor — draws a steady, upright caret (in `--pmd-c-text`) at
+  any collapsed cursor, repositioned on selection / scroll / resize /
+  focus / settings change. Scoped to `.ProseMirror` so other inputs keep
+  their native caret (hiding it there would leave no visible cursor).
+  Off by default, under Accessibility.
+
 - **Verbatim Flow integration — experimental, Windows only** (new
   `src/editor/flow-port.ts`, `apps/desktop/src/flow-bridge.ts`,
   `apps/desktop/resources/flow/verbatim-flow.ps1`; `flow*` host methods).

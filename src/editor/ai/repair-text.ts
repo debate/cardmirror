@@ -720,7 +720,7 @@ export function runRepairText(view: EditorView): void {
   // Pill + purple tint over the range being repaired; re-anchored after
   // each pass as the bounds shift, and pinned to the editor edge when
   // the range scrolls out of view.
-  const activity = new AiActivity(view, { from: selFrom, to: selTo });
+  const activity = new AiActivity(view, { from: selFrom, to: selTo }, 'selection');
   activity.start();
 
   void (async () => {

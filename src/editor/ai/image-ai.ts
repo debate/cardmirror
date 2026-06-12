@@ -284,7 +284,7 @@ function runAiAltTextRequest(
     return;
   }
 
-  const activity = new AiActivity(view, imageRange(view, imagePos));
+  const activity = new AiActivity(view, imageRange(view, imagePos), 'selection');
   activity.start();
 
   const contextText = formatImageContextForPrompt(gatherImageContext(view, imagePos));
@@ -478,7 +478,7 @@ export function runGenerateTable(
     return;
   }
 
-  const activity = new AiActivity(view, imageRange(view, imagePos));
+  const activity = new AiActivity(view, imageRange(view, imagePos), 'selection');
   activity.start();
 
   void (async () => {

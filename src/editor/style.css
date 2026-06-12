@@ -4583,20 +4583,30 @@ html.pmd-nav-flat .pmd-nav-type-analytic:hover .pmd-nav-label {
 .ProseMirror.pmd-italic-caret-active {
   caret-color: transparent;
 }
+/* Steady-cursor accessibility setting: hide the native blinking caret
+   everywhere; the italic-caret plugin draws a steady one in its place. */
+body.pmd-steady-cursor :is(#editor, .pmd-pane-editor) .ProseMirror {
+  caret-color: transparent;
+}
 .pmd-italic-caret {
   position: fixed;
   width: 1px;
   background: var(--pmd-c-text);
   pointer-events: none;
   z-index: 40;
+  animation: pmd-italic-caret-blink 1.06s steps(1, end) infinite;
+}
+/* Slanted only when it represents a pending-italic cursor. */
+.pmd-italic-caret.pmd-caret-slant {
   transform: skewX(-13deg);
   transform-origin: bottom center;
-  animation: pmd-italic-caret-blink 1.06s steps(1, end) infinite;
 }
 @keyframes pmd-italic-caret-blink {
   0%, 50% { opacity: 1; }
   50.01%, 100% { opacity: 0; }
 }
+/* Steady (no blink): the accessibility setting, or reduced motion. */
+body.pmd-steady-cursor .pmd-italic-caret,
 :root[data-motion="reduce"] .pmd-italic-caret {
   animation: none;
   opacity: 1;
@@ -6029,9 +6039,23 @@ body:has(#comments-column:not([hidden])) :is(#editor, .pmd-pane-editor) .pmd-com
   border-radius: 4px;
 }
 /* Fallback when the range has no enclosing card container. */
+/* Selection-scope box — ONE outline box around the bounding rectangle of
+   the worked-on range (cite/text/format repair), drawn as a `position:
+   fixed` overlay (see ai-working-box.ts). Same purple as the container
+   box; outline-dominant with a faint fill so it reads as a box, not a
+   selection layer painted over the text. */
+.pmd-ai-working-box {
+  position: fixed;
+  pointer-events: none;
+  z-index: 40;
+  outline: 2px solid var(--pmd-c-comment-thread);
+  background: color-mix(in srgb, var(--pmd-c-comment-thread) 7%, transparent);
+  border-radius: 4px;
+}
+/* Rare fallback (container scope with no enclosing card): a subtle tint. */
 :is(#editor, .pmd-pane-editor) .pmd-ai-working-inline {
-  background-color: color-mix(in srgb, var(--pmd-c-comment-thread-toast) 24%, transparent);
-  border-radius: 2px;
+  background: color-mix(in srgb, var(--pmd-c-comment-thread) 12%, transparent);
+  border-radius: 3px;
 }
 
 /* Active annotation — the comment/flashcard whose card is selected in

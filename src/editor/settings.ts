@@ -293,6 +293,10 @@ export interface Settings {
    *  reduced. Resolved into a `data-motion` attribute on the
    *  document root; CSS rules in `style.css` consume it. */
   reduceMotion: 'auto' | 'on' | 'off';
+  /** Accessibility: when true, the text cursor doesn't blink — the
+   *  native blinking caret is hidden and a steady custom caret is drawn
+   *  in its place. */
+  disableCursorBlink: boolean;
   /** Per-token UI color overrides. Keyed by CSS-variable name
    *  WITHOUT the `--` prefix (e.g. `"pmd-c-accent"`); values are
    *  CSS color strings the user picked in the accessibility
@@ -914,6 +918,7 @@ const DEFAULTS: Settings = {
   checkForUpdatesOnLaunch: false,
   commentsColumnWidth: 320,
   reduceMotion: 'auto',
+  disableCursorBlink: false,
   overrideHighlightColor: false,
   overrideHighlightSlots: ['#ffff00'],
   overrideShadingColor: false,
@@ -1517,6 +1522,15 @@ export const SETTING_METADATA: SettingMeta[] = [
     aliases: ['animations', 'disable animations'],
   },
   {
+    key: 'disableCursorBlink',
+    label: 'Steady text cursor (no blinking)',
+    description:
+      'Stop the text cursor from blinking — the caret stays solid (in the usual cursor color) instead of flashing on and off while you type.',
+    kind: 'toggle',
+    category: 'accessibility',
+    aliases: ['caret', 'cursor blink', 'blinking cursor', 'non-blinking'],
+  },
+  {
     key: 'overrideHighlightColor',
     label: 'Override highlight color in display',
     description:
@@ -2074,6 +2088,7 @@ function sanitize(s: Settings): Settings {
         : 320,
     reduceMotion:
       s.reduceMotion === 'on' || s.reduceMotion === 'off' ? s.reduceMotion : 'auto',
+    disableCursorBlink: s.disableCursorBlink === true,
     overrideHighlightColor: !!s.overrideHighlightColor,
     overrideHighlightSlots: sanitizeColorSlots(
       s.overrideHighlightSlots,

@@ -9,6 +9,11 @@ see `DETAILED_CHANGELOG.md`.
 
 ### Added
 
+- **A steady (non-blinking) text cursor.** A new accessibility setting
+  (Settings → Accessibility → "Steady text cursor") stops the document's
+  text cursor from blinking — the caret stays solid in the usual cursor
+  color while you type, instead of flashing on and off. Off by default.
+
 - **Send to Verbatim Flow (experimental, Windows only).** A set of
   commands connects CardMirror to Verbatim Flow — the Excel flowing
   template — exactly the way the Verbatim Word add-in does, with no
@@ -69,6 +74,15 @@ see `DETAILED_CHANGELOG.md`.
   up on the device; the Clod toggle is in mobile Settings too).
 
 ### Changed
+
+- **A revamped "AI is working" indicator.** While an AI action runs —
+  formatting a cite, repairing OCR/PDF text or formatting, generating
+  image alt text — CardMirror now boxes the exact part of the document
+  it's working on in purple and floats a "Thinking…" label at the
+  editor's left edge, so you can tell what's happening even after your
+  selection clears and even when that spot has scrolled out of view (the
+  label pins to the top or bottom edge then). The box hugs just the text
+  you selected for selection-based actions like Format Cite.
 
 - **Repair Text applies each pass in one step.** Corrections used to
   land one at a time in an animated walk; they now apply all at once

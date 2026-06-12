@@ -1,23 +1,28 @@
 /**
- * Italic-caret plugin.
+ * Custom-caret plugin (italic slant + steady-cursor accessibility).
  *
- * When the next typed character would be italic — a collapsed cursor whose
- * effective marks (stored marks, or the marks at the cursor) include the
- * `italic` mark — the native caret can't convey that (browsers don't slant
- * the caret). So we hide the native caret (`caret-color: transparent` via a
- * class on `.ProseMirror`) and draw our own thin, slanted, blinking caret
- * at the cursor's screen position. The moment typing wouldn't be italic, the
- * native caret comes back and ours is hidden.
+ * Two cases need a custom caret drawn over the cursor's screen position,
+ * with the native caret hidden:
+ *  - ITALIC PENDING: the next typed character would be italic (a collapsed
+ *    cursor whose effective marks include `italic`). The native caret can't
+ *    slant, so we draw a thin slanted caret. The native caret returns the
+ *    moment typing wouldn't be italic.
+ *  - STEADY CURSOR (accessibility `disableCursorBlink`): the native caret
+ *    blinks and that can't be turned off in CSS, so when the setting is on
+ *    we hide it (a `body.pmd-steady-cursor` class) and draw a steady,
+ *    upright caret at any collapsed cursor.
  *
- * The custom caret is a single `position: fixed` element positioned from
+ * The caret is a single `position: fixed` element positioned from
  * `view.coordsAtPos` (viewport coordinates), repositioned on every
- * selection change, scroll, resize, and focus change.
+ * selection change, scroll, resize, focus change, and settings change.
+ * Blink (or not) and slant (or not) are driven entirely by CSS classes.
  */
 
 import { Plugin } from 'prosemirror-state';
 import type { EditorState } from 'prosemirror-state';
 import type { EditorView } from 'prosemirror-view';
 import { schema } from '../schema/index.js';
+import { settings } from './settings.js';
 
 /** True when a collapsed cursor would type italic text. */
 function italicPending(state: EditorState): boolean {
@@ -29,10 +34,17 @@ function italicPending(state: EditorState): boolean {
   return marks.some((m) => m.type === italic);
 }
 
+/** Whether the custom caret should be drawn (and the native one hidden). */
+function caretActive(state: EditorState): boolean {
+  if (italicPending(state)) return true;
+  return settings.get('disableCursorBlink') && state.selection.empty;
+}
+
 export const italicCaretPlugin = new Plugin({
   props: {
     attributes(state): { [name: string]: string } {
-      // Hide the native caret only while ours is showing.
+      // Hide the native caret for the italic case. The steady-cursor
+      // case hides it globally via the `body.pmd-steady-cursor` class.
       return italicPending(state) ? { class: 'pmd-italic-caret-active' } : {};
     },
   },
@@ -47,7 +59,7 @@ export const italicCaretPlugin = new Plugin({
 
     const reposition = (): void => {
       raf = 0;
-      if (!view.editable || !view.hasFocus() || !italicPending(view.state)) {
+      if (!view.editable || !view.hasFocus() || !caretActive(view.state)) {
         caret.style.display = 'none';
         return;
       }
@@ -58,6 +70,7 @@ export const italicCaretPlugin = new Plugin({
         caret.style.display = 'none';
         return;
       }
+      caret.classList.toggle('pmd-caret-slant', italicPending(view.state));
       caret.style.display = 'block';
       caret.style.left = `${coords.left}px`;
       caret.style.top = `${coords.top}px`;
@@ -70,11 +83,13 @@ export const italicCaretPlugin = new Plugin({
     };
 
     // Scroll (capture, to catch the inner editor scrollers), resize, and
-    // focus changes don't fire plugin `update`, so listen explicitly.
+    // focus changes don't fire plugin `update`, so listen explicitly. A
+    // settings change can flip the steady-cursor mode without a transaction.
     window.addEventListener('scroll', schedule, true);
     window.addEventListener('resize', schedule);
     view.dom.addEventListener('focus', schedule);
     view.dom.addEventListener('blur', schedule);
+    const unsubscribe = settings.subscribe(() => schedule());
     reposition();
 
     return {
@@ -85,6 +100,7 @@ export const italicCaretPlugin = new Plugin({
         window.removeEventListener('resize', schedule);
         view.dom.removeEventListener('focus', schedule);
         view.dom.removeEventListener('blur', schedule);
+        unsubscribe();
         caret.remove();
       },
     };

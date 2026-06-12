@@ -349,7 +349,7 @@ export function runAiCreateCite(view: EditorView): void {
 
   // Pill + purple tint over the selection being formatted.
   if (activeActivity) activeActivity.stop();
-  activeActivity = new AiActivity(view, { from: sel.from, to: sel.to });
+  activeActivity = new AiActivity(view, { from: sel.from, to: sel.to }, 'selection');
   activeActivity.start();
 
   // Capture the bounds NOW; if the user edits during the request

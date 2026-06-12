@@ -543,7 +543,7 @@ export function runRepairFormatting(view: EditorView): void {
   const groups = groupBlocksByCard(view.state.doc, blocks);
   const startDoc = view.state.doc;
 
-  const activity = new AiActivity(view, { from: sel.from, to: sel.to });
+  const activity = new AiActivity(view, { from: sel.from, to: sel.to }, 'selection');
   activity.start();
 
   void (async () => {
