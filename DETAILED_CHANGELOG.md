@@ -38,6 +38,21 @@ in each release, see `CHANGELOG.md`.
   positions, a single `delta` re-anchors them all (valid because in-region
   edits are blocked, so the whole region moves uniformly).
 
+  Making concurrency routine surfaced the single-slot AI cues
+  (`ai-working-plugin.ts`, `ai-activity.ts`, `cite-creator.ts`,
+  `thinking-tooltip.ts`): the ai-working plugin held one decoration and
+  cite-creator kept a module-level `activeActivity` singleton, so a newly
+  started op tore down a still-running op's box/pill. The plugin now keys its
+  decorations by an `AiActivity` token (one box per op, each remapped
+  independently through edits); cite-creator drops the singleton and gives
+  each call its own activity, cleaned up in its own `finally`. The pinned
+  "Thinking…" pills also queued onto the same spot when several targets
+  scrolled off an edge; `ThinkingTooltip` now keeps a static registry and
+  lays every pill out together — targets in view anchor above themselves,
+  off-top targets stack downward from the top edge and off-bottom targets
+  upward from the bottom edge in creation order, advancing as each finishes,
+  grouped by editor so multi-pane panes stay independent.
+
 - **Per-style paragraph spacing** (`settings.ts`, `settings-ui.ts`,
   `index.ts`, `style.css`). New `displayParagraphSpacing` setting — a
   `Record<'<style>Before' | '<style>After', number>` in points — defaulting

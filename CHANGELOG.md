@@ -17,7 +17,10 @@ see `DETAILED_CHANGELOG.md`.
   While an AI action is working on a stretch of text, edits to *that* stretch
   are held and the locked region flashes if you try; the rest of the document
   stays fully editable. Two AI actions on the same text won't run at once —
-  the second asks you to try again in a moment.
+  the second asks you to try again in a moment. Each running action keeps its
+  own purple region box and "Thinking…" pill; when their targets scroll off
+  the top or bottom of the editor, the pills line up in a queue along that
+  edge instead of stacking on one spot, and advance as each action finishes.
 
 - **Paragraph spacing controls.** Settings → Appearance → Paragraph spacing
   (just under Line spacing) sets the blank space *before* and *after* each

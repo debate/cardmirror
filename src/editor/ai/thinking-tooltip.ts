@@ -34,6 +34,8 @@ const ACTIVITY_TICK_MS = 4000;
 /** Gap (px) between the pill and the editor edges / the selection. */
 const EDGE = 8;
 const SEL_GAP = 6;
+/** Vertical gap (px) between two pills queued at the same editor edge. */
+const PILL_STACK_GAP = 6;
 
 export interface TooltipRange {
   from: number;
@@ -67,6 +69,11 @@ function topChromeBottom(): number {
  *  mounts and starts tracking; `setRange()` re-anchors (e.g. between
  *  repair passes); `hide()` cleans up. */
 export class ThinkingTooltip {
+  /** Every mounted pill, in creation order — the queue order when several
+   *  pin to the same editor edge. A new pill takes the back of the queue;
+   *  when one finishes the rest advance toward the edge. */
+  private static readonly active = new Set<ThinkingTooltip>();
+
   private el: HTMLDivElement | null = null;
   private ticker: number | null = null;
   private view: EditorView | null = null;
@@ -100,7 +107,8 @@ export class ThinkingTooltip {
     el.appendChild(makeActivityStage(this.currentText()));
     document.body.appendChild(el);
     this.el = el;
-    this.reposition();
+    ThinkingTooltip.active.add(this);
+    ThinkingTooltip.relayout();
 
     // Capture-phase scroll catches the editor's inner scroller too
     // (scroll events don't bubble); resize handles window changes.
@@ -133,59 +141,92 @@ export class ThinkingTooltip {
       this.el = null;
     }
     this.view = null;
+    // Drop out of the queue and let the remaining pills advance.
+    ThinkingTooltip.active.delete(this);
+    ThinkingTooltip.relayout();
   }
 
-  /** Place the pill at the editor's left edge, vertically tracking the
-   *  selection but clamped into the editor's visible band. */
+  /** Re-anchoring is a shared concern: a pill pinned to an editor edge has
+   *  to know about the other pinned pills so they queue instead of stacking.
+   *  So any one pill's reposition triggers a layout of all of them. */
   private reposition(): void {
-    if (!this.el || !this.view) return;
-    const box = editorBox(this.view).getBoundingClientRect();
-    // Visible editor band = editor box ∩ viewport, kept clear of the
-    // fixed ribbon/banner at the top.
-    const bandTop = Math.max(box.top, topChromeBottom(), 0) + EDGE;
-    const bandBottom = Math.min(box.bottom, window.innerHeight) - EDGE;
-    const pillH = this.el.offsetHeight || 28;
+    ThinkingTooltip.relayout();
+  }
 
-    // Where the target sits in the viewport (may be off-screen). Use the
-    // range's DOM bounding rect so an image (an inline atom) anchors to
-    // its real box — `coordsAtPos` returns only a degenerate caret rect
-    // for an atom, which pinned the pill to the top-left corner.
-    let selTop: number;
-    let selBottom: number;
+  /** The target's viewport top/bottom (may be off-screen), or null if it
+   *  can't be resolved. Uses the range's DOM rect so an image (an inline
+   *  atom) anchors to its real box — `coordsAtPos` returns only a
+   *  degenerate caret rect for an atom. */
+  private targetSpan(): { top: number; bottom: number } | null {
+    if (!this.view) return null;
     const rect = rangeRect(this.view, this.range);
-    if (rect) {
-      selTop = rect.top;
-      selBottom = rect.bottom;
-    } else {
-      // Collapsed range (no width): a point anchor.
-      try {
-        const a = this.view.coordsAtPos(this.range.from);
-        selTop = a.top;
-        selBottom = a.bottom;
-      } catch {
-        selTop = bandTop;
-        selBottom = bandTop;
+    if (rect) return { top: rect.top, bottom: rect.bottom };
+    try {
+      const a = this.view.coordsAtPos(this.range.from);
+      return { top: a.top, bottom: a.bottom };
+    } catch {
+      return null;
+    }
+  }
+
+  /** Lay out every mounted pill. Pills whose target is visible anchor just
+   *  above it; pills whose target has scrolled past an editor edge queue
+   *  along that edge — stacking DOWN from the top edge and UP from the
+   *  bottom edge, in creation order — so they line up instead of piling on
+   *  the same spot. Grouped by editor so multi-pane panes stay independent. */
+  private static relayout(): void {
+    const groups = new Map<HTMLElement, ThinkingTooltip[]>();
+    for (const p of ThinkingTooltip.active) {
+      if (!p.el || !p.view) continue;
+      const box = editorBox(p.view);
+      const arr = groups.get(box);
+      if (arr) arr.push(p);
+      else groups.set(box, [p]);
+    }
+
+    for (const [box, pills] of groups) {
+      const rect = box.getBoundingClientRect();
+      const bandTop = Math.max(rect.top, topChromeBottom(), 0) + EDGE;
+      const bandBottom = Math.min(rect.bottom, window.innerHeight) - EDGE;
+      const dz = document.querySelector('.pmd-dropzone-root');
+      const dropFloor = dz
+        ? Math.min(dz.getBoundingClientRect().top - SEL_GAP, bandBottom)
+        : bandBottom;
+      const left = rect.left + EDGE;
+
+      const topQueue: ThinkingTooltip[] = [];
+      const bottomQueue: ThinkingTooltip[] = [];
+
+      for (const p of pills) {
+        const el = p.el!;
+        el.style.left = `${left}px`;
+        const pillH = el.offsetHeight || 28;
+        const span = p.targetSpan();
+        if (!span || span.bottom < bandTop) {
+          topQueue.push(p); // scrolled off the top (or unresolved) → top edge
+        } else if (span.top > bandBottom) {
+          bottomQueue.push(p); // scrolled off the bottom → bottom edge
+        } else {
+          // Target visible: anchor just above it, clamped into the band.
+          const top = Math.max(bandTop, Math.min(span.top - pillH - SEL_GAP, dropFloor - pillH));
+          el.style.top = `${top}px`;
+        }
+      }
+
+      // Top edge: first pill at the top, the rest stacking downward.
+      let y = bandTop;
+      for (const p of topQueue) {
+        p.el!.style.top = `${y}px`;
+        y += (p.el!.offsetHeight || 28) + PILL_STACK_GAP;
+      }
+      // Bottom edge: first pill at the bottom, the rest stacking upward.
+      let yb = dropFloor;
+      for (const p of bottomQueue) {
+        const h = p.el!.offsetHeight || 28;
+        p.el!.style.top = `${yb - h}px`;
+        yb -= h + PILL_STACK_GAP;
       }
     }
-
-    // The pill's own bottom must clear the dropzone when it sits low.
-    const dz = document.querySelector('.pmd-dropzone-root');
-    const dropFloor = dz
-      ? Math.min(dz.getBoundingClientRect().top - SEL_GAP, bandBottom)
-      : bandBottom;
-
-    let top: number;
-    if (selBottom < bandTop) {
-      top = bandTop; // target scrolled off the top → editor top-left
-    } else if (selTop > bandBottom) {
-      top = dropFloor - pillH; // target scrolled off the bottom → bottom-left
-    } else {
-      top = selTop - pillH - SEL_GAP; // just above the target
-    }
-    top = Math.max(bandTop, Math.min(top, dropFloor - pillH));
-
-    this.el.style.left = `${box.left + EDGE}px`;
-    this.el.style.top = `${top}px`;
   }
 
   private currentText(): string {
