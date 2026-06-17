@@ -5,6 +5,18 @@ changes in each release, written for users of the editor. For
 in-depth rationale and implementation context behind each entry,
 see `DETAILED_CHANGELOG.md`.
 
+## Unreleased
+
+### Added
+
+- **Visible paragraph-break cue in selections.** When a selection reaches to
+  the very start of the next paragraph — for example after Ctrl-Shift-Down, or
+  Shift-Down past the end of a line — a highlighted `¶` now appears at the end
+  of the line you're on, showing that the paragraph break itself is part of the
+  selection. This makes it clear up front that deleting or typing over the
+  selection would merge the two paragraphs, instead of that happening as a
+  surprise.
+
 ## 0.1.0-alpha.14 — 2026-06-13
 
 ### Changed

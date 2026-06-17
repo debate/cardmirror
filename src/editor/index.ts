@@ -135,6 +135,7 @@ import {
 } from './similar-selection-plugin.js';
 import { findReplacePlugin } from './find-replace-plugin.js';
 import { frozenSelectionPlugin } from './frozen-selection-plugin.js';
+import { pilcrowSelectionPlugin } from './pilcrow-selection-plugin.js';
 import { buildMacroKeymap } from './keyboard-macros.js';
 import { FindReplaceBar } from './find-replace-ui.js';
 import { tableEditing, columnResizing } from 'prosemirror-tables';
@@ -3685,6 +3686,7 @@ export function buildEditorPlugins(): Plugin[] {
     cardCutterPreviewPlugin,
     italicCaretPlugin,
     frozenSelectionPlugin,
+    pilcrowSelectionPlugin,
     absorbPlugin,
     citeClassifierPlugin,
     namedStyleNormalizerPlugin,

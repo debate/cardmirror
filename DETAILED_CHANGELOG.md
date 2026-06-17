@@ -5,6 +5,29 @@ behavior, rationale, and (where useful) the implementation context
 behind a change. For a shorter, jargon-free summary of what's new
 in each release, see `CHANGELOG.md`.
 
+## Unreleased
+
+- **Trailing-pilcrow selection cue** (`editor/pilcrow-selection-plugin.ts`,
+  `editor/index.ts`, `editor/style.css`). A selection's end can land at offset
+  0 of a later textblock — the shape Ctrl/Alt-Shift-Down produces (and native
+  Shift-Down past a block's end). The paragraph break between the last
+  visibly-selected block and that block is then *inside* the selection with no
+  glyph marking it, so deleting or replacing the range merges the two blocks —
+  surprising, because the grabbed break is invisible. A display-only plugin now
+  makes it visible the way Word's end-of-paragraph selection decoration does:
+  its `decorations(state)` checks the same predicate as `type-over-boundary.ts`
+  (selection end at `parentOffset === 0` of a textblock, selection start before
+  that block), finds the leading block's content-end via
+  `Selection.near(resolve(tailBlockStart), -1).to`, and draws a
+  `Decoration.widget` (`¶`, `side: -1`, `ignoreSelection: true`) there. It
+  changes no behavior — it's recomputed from the live selection and is never a
+  mark. The cue is styled to read as a flush continuation of the selection: it
+  inherits the line's font metrics and uses `display: inline-block` so its
+  highlight box matches the full line-box height of the native `::selection`
+  rectangle around it (an inline span would paint only the glyph's
+  ascent/descent and pinch in where line-height exceeds the glyph). Covers the
+  trailing/downward case only.
+
 ## 0.1.0-alpha.14 — 2026-06-13
 
 - **macOS voice no-audio: microphone permission/entitlement + capture fixes**

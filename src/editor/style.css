@@ -1891,6 +1891,30 @@ code {
   background: color-mix(in srgb, var(--pmd-c-accent) 30%, transparent);
 }
 
+/* Trailing-pilcrow cue (pilcrow-selection-plugin): when a selection's end
+   sits at the start of the next block, the paragraph break is inside the
+   selection (deleting/replacing would merge). Show the grabbed break as a
+   highlighted ¶ at the leading block's end — the same signal Word's
+   end-of-paragraph selection decoration gives. Matches the ::selection tint
+   so it reads as part of the selection. */
+:is(#editor, .pmd-pane-editor) .pmd-pilcrow-grab {
+  background: color-mix(in srgb, var(--pmd-c-accent) 30%, transparent);
+  color: color-mix(in srgb, var(--pmd-c-accent) 70%, var(--pmd-c-text));
+  /* Inherit the line's metrics and use inline-block so the cue's highlight
+     box is exactly as tall as the native ::selection rectangle on the text
+     around it. An inline span only paints its background over the font's
+     ascent/descent, while ::selection covers the full line box (font +
+     leading); when line-height exceeds the glyph height the cue pinches in.
+     inline-block makes the box the full line-height. No padding/radius: the
+     cue must read as a flush continuation of the selection, not a pill. */
+  font: inherit;
+  display: inline-block;
+  line-height: inherit;
+  vertical-align: baseline;
+  user-select: none;
+  pointer-events: none;
+}
+
 /* Frozen selection: while the editor is blurred (e.g. the command /
    search palette took focus), the browser hides the native selection,
    so `frozen-selection-plugin` paints the selected range with the same
