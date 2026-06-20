@@ -5,7 +5,7 @@ behavior, rationale, and (where useful) the implementation context
 behind a change. For a shorter, jargon-free summary of what's new
 in each release, see `CHANGELOG.md`.
 
-## Unreleased
+## 0.1.0-alpha.17 — 2026-06-20
 
 - **Quote-insensitive text matching** (`editor/word-break.ts`,
   `editor/find-replace-plugin.ts`, `editor/repair-paragraph-plugin.ts`). New
