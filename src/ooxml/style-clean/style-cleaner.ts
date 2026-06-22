@@ -17,6 +17,7 @@ import { CANONICAL_STYLES_XML } from '../styles.js';
 import { OoxmlDoc, type Paragraph, type Run } from './ooxml-doc.js';
 import { COMBINED_STYLE_MAP } from './template-styles.js';
 import { fixDanglingStyleRefs } from './style-fixup.js';
+import { remapLegacyStyles } from './legacy-remap.js';
 
 /** Style groups the cleaner requires (matched by name). When a document lacks
  *  any of them it can't classify formatting, so we inject the canonical
@@ -493,10 +494,20 @@ export async function cleanDocumentBytes(
   // If the document is missing the required Verbatim styles, inject the
   // canonical definitions so the cleaner can classify formatting instead of
   // failing. Only fires when a required style is actually absent, so
-  // documents that already have them are untouched.
-  if (requiredStylesMissing(doc)) {
+  // documents that already have them are untouched. Capture the result before
+  // injecting — it also decides the legacy-remap mode below.
+  const missingRequired = requiredStylesMissing(doc);
+  if (missingRequired) {
     doc.injectMissingStyles(CANONICAL_STYLES_XML);
   }
+
+  // Remap legacy debate styles (Tags/Cards/Cites/Block Headings/Author-Date/…)
+  // to canonical Verbatim styles when the document actually uses them, so
+  // pre-Verbatim and partially-migrated files clean correctly instead of
+  // collapsing to Normal. A doc that already has the Verbatim styles is treated
+  // as "mixed" — its legacy headings keep their own outline level; a pure
+  // pre-Verbatim doc has its hierarchy depth inferred.
+  remapLegacyStyles(doc, { mixedMode: !missingRequired, protectedNamesLower });
 
   const protectedIds = computeProtectedClosure(doc, protectedNamesLower);
 
