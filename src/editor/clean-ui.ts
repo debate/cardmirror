@@ -219,7 +219,7 @@ class CleanModal {
     const overlay = document.createElement('div');
     overlay.className = 'pmd-bulk-overlay';
     const dialog = document.createElement('div');
-    dialog.className = 'pmd-bulk-dialog';
+    dialog.className = 'pmd-bulk-dialog pmd-clean-prot-dialog';
     overlay.appendChild(dialog);
     overlay.addEventListener('click', (e) => {
       if (e.target === overlay) this.closeSubOverlay(overlay);

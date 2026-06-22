@@ -7844,15 +7844,21 @@ body.pmd-recovery-active.pmd-multi-doc #app {
 .pmd-clean-prot-addrow {
   flex-wrap: wrap;
 }
+/* Match the primary settings menu's text boxes (.pmd-reader-name). */
 .pmd-clean-prot-input {
   flex: 1 1 12rem;
   min-width: 8rem;
-  font: inherit;
-  padding: 0.35rem 0.5rem;
-  border: 1px solid var(--pmd-c-border, #ccc);
-  border-radius: 6px;
+  font-family: inherit;
+  font-size: 0.85rem;
+  padding: 0.2rem 0.4rem;
+  border: 1px solid var(--pmd-c-border);
+  border-radius: 3px;
   background: var(--pmd-c-surface, #fff);
   color: var(--pmd-c-text, inherit);
+}
+/* Match the primary settings menu's button font (.pmd-settings-btn). */
+.pmd-clean-prot-dialog .pmd-bulk-btn {
+  font-size: 0.85rem;
 }
 .pmd-clean-prot-remove {
   flex: 0 0 auto;
