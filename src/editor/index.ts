@@ -456,6 +456,7 @@ async function runNewSpeechDocumentSingleDoc(): Promise<void> {
     window.alert(
       'New Speech Document requires the desktop edition (multi-window).',
     );
+    getActiveView()?.focus(); // reclaim focus the alert stole (Windows/Linux)
     return;
   }
   // Electron disables window.prompt(); use an in-renderer modal
@@ -1422,6 +1423,7 @@ function openImagePicker(targetView: EditorView): void {
       const node = await buildImageNodeFromBlob(file);
       if (!node) {
         window.alert(`Couldn't read "${file.name}" as an image.`);
+        targetView.focus(); // reclaim focus the alert stole (Windows/Linux)
         return;
       }
       const inserted = insertImageNode(targetView, node);
@@ -1429,6 +1431,7 @@ function openImagePicker(targetView: EditorView): void {
         window.alert(
           'The cursor isn\'t in a position that accepts inline content. Click into a card body, paragraph, or heading first.',
         );
+        targetView.focus(); // reclaim focus the alert stole (Windows/Linux)
       }
     })();
   });

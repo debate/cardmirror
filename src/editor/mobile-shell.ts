@@ -692,7 +692,10 @@ function deleteUnit(): void {
   const view = getActiveView();
   if (!view || !currentUnit) return;
   const label = currentUnit.label.trim() || 'this';
-  if (!window.confirm(`Delete "${label}"?`)) return;
+  if (!window.confirm(`Delete "${label}"?`)) {
+    view.focus(); // reclaim focus the confirm stole (Windows/Linux)
+    return;
+  }
   view.dispatch(view.state.tr.delete(currentUnit.from, currentUnit.to));
   currentUnit = null;
   hideMoveSheet();
