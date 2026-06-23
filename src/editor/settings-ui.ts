@@ -1348,34 +1348,38 @@ function buildInstallInfoSection(): HTMLElement {
  *  dialog first (the editor must be visible — occluded content gets its paints
  *  culled, which would falsify the frame times) and launches the overlay. */
 function buildBenchmarkSection(closeDialog: () => void): HTMLElement {
-  const wrap = document.createElement('section');
-  wrap.className = 'pmd-bench-settings';
+  const section = document.createElement('section');
+  section.className = 'pmd-settings-benchmark';
 
-  const heading = document.createElement('div');
-  heading.className = 'pmd-install-info-heading';
-  heading.textContent = 'Performance benchmark';
-  wrap.appendChild(heading);
+  const title = document.createElement('div');
+  title.className = 'pmd-settings-row-title';
+  title.textContent = 'Performance benchmark';
+  section.appendChild(title);
 
-  const blurb = document.createElement('p');
-  blurb.className = 'pmd-settings-help';
-  blurb.textContent =
-    'Runs a battery of real in-editor operations on the currently open document ' +
-    '— scrolling, jumping between headings, and a full relayout — and reports ' +
-    'frame rate, frame-time percentiles, and latencies. Open your test document ' +
-    'first (a large one tells the most). The editor is driven on screen while it ' +
-    'runs, so leave it visible.';
-  wrap.appendChild(blurb);
+  const desc = document.createElement('div');
+  desc.className = 'pmd-settings-row-desc';
+  desc.textContent =
+    'Runs a battery of real in-editor operations on the currently open document — ' +
+    'scrolling, jumping between headings, a drag-move, and a short editing sequence ' +
+    '— and reports frame rate, frame-time percentiles, and latencies. Open your ' +
+    'test document first (a large one tells the most); it is driven on screen while ' +
+    'it runs and restored exactly afterward.';
+  section.appendChild(desc);
 
+  const actions = document.createElement('div');
+  actions.className = 'pmd-settings-backup-actions';
   const run = document.createElement('button');
-  run.className = 'pmd-settings-btn pmd-bench-run';
+  run.type = 'button';
+  run.className = 'pmd-settings-backup-btn';
   run.textContent = 'Run benchmark';
   run.addEventListener('click', () => {
     closeDialog();
     void launchBenchmarkOverlay();
   });
-  wrap.appendChild(run);
+  actions.appendChild(run);
+  section.appendChild(actions);
 
-  return wrap;
+  return section;
 }
 
 function buildBodyFontEditor(): HTMLElement {

@@ -11213,10 +11213,18 @@ body.pmd-multi-doc .pmd-cardcutter-trim {
   font-size: 0.82rem;
 }
 
-/* ── In-app performance benchmark (Settings → Benchmark) ───────────── */
+/* ── In-app performance benchmark (Settings → General) ─────────────── */
 
-.pmd-bench-run {
-  margin-top: 0.75rem;
+/* The settings-menu section matches the neighbouring action sections
+   (e.g. "Back up settings"): a top divider, then title / description /
+   action button using the shared settings-row classes. */
+.pmd-settings-benchmark {
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--pmd-c-border-soft);
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
 }
 
 /* Small corner chip shown while the benchmark drives the (visible) editor. */
