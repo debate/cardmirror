@@ -21,6 +21,7 @@
 import type { EditorView } from 'prosemirror-view';
 import { collectHeadings, headingInsertPos, TYPE_TO_LEVEL } from './headings.js';
 import { dragController, type DragItem, type DragSurface } from './drag-controller.js';
+import { pointerOverPillTrayColumn } from './pill-tray.js';
 import { settings } from './settings.js';
 import { scheduleIdle, cancelIdle, type IdleHandle } from './idle-scheduler.js';
 
@@ -656,7 +657,7 @@ export class EditorDragSurface implements DragSurface {
     dragController.setPointer(e.clientX, e.clientY);
     this.updatePickupPill(e.clientX, e.clientY);
     dragController.dispatchHit(e.clientX, e.clientY);
-    this.maybeAutoScroll(e.clientY);
+    this.maybeAutoScroll(e.clientX, e.clientY);
   }
 
   private onDocPointerUpDuringDrag(_e: PointerEvent): void {
@@ -665,7 +666,7 @@ export class EditorDragSurface implements DragSurface {
     // The 'end' subscriber detaches drag listeners and clears state.
   }
 
-  private maybeAutoScroll(clientY: number): void {
+  private maybeAutoScroll(clientX: number, clientY: number): void {
     if (!this.host) return;
     // Scroll the actual scroll container, not the host — in single-doc
     // that's `#app`, in multi-pane the pane body; `#editor` /
@@ -675,8 +676,15 @@ export class EditorDragSurface implements DragSurface {
     const margin = 30;
     const gate = this.findScrollGate();
     const rect = gate.getBoundingClientRect();
-    if (clientY < rect.top + margin) gate.scrollBy({ top: -10 });
-    else if (clientY > rect.bottom - margin) gate.scrollBy({ top: 10 });
+    if (clientY < rect.top + margin) {
+      gate.scrollBy({ top: -10 });
+    } else if (clientY > rect.bottom - margin) {
+      // Skip the downward auto-scroll when the pointer is in the bottom-left
+      // column occupied by the dropzone / send / receive pills — dragging a
+      // card toward those shouldn't scroll the doc out from under the drop
+      // target.
+      if (!pointerOverPillTrayColumn(clientX)) gate.scrollBy({ top: 10 });
+    }
   }
 
   // ---- Container detection ----

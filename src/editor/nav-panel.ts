@@ -17,6 +17,7 @@ import { NodeSelection, TextSelection } from 'prosemirror-state';
 import { settings } from './settings.js';
 import { registerOpenContextMenu, clearOpenContextMenu } from './context-menu-registry.js';
 import { dragController, type DragItem, type DragSurface } from './drag-controller.js';
+import { pointerOverPillTrayColumn } from './pill-tray.js';
 import { preciseScrollIntoView } from './precise-scroll.js';
 import {
   collectHeadings,
@@ -1563,7 +1564,8 @@ export class NavigationPanel {
     const scroller = this.findEditorScrollGate(editorEl);
     if (clientY < r.top + margin) {
       scroller.scrollBy({ top: -10, behavior: 'auto' });
-    } else if (clientY > r.bottom - margin) {
+    } else if (clientY > r.bottom - margin && !pointerOverPillTrayColumn(clientX)) {
+      // Don't scroll down over the bottom-left dropzone / send / receive pills.
       scroller.scrollBy({ top: 10, behavior: 'auto' });
     }
   }
