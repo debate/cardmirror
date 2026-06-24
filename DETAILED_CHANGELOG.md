@@ -15,6 +15,15 @@ in each release, see `CHANGELOG.md`.
   diving into the file to search its objects. The star and `Alt-P` still pin;
   the outline rows' right-click (toggle-collapse) is unchanged.
 
+- **Escape steps out of a dived-into file regardless of focus**
+  (`editor/quick-card-search-ui.ts`). The palette's keydown handler was bound
+  only to the search input, so once focus left the box (clicking or scrolling
+  the results) Escape went unheard and the user was stranded in the file view.
+  Added a document-level Escape fallback that fires whenever the palette is
+  open — guarded against double-handling so a focused Escape (owned by the
+  input's handler) doesn't both step back *and* close. Stepping back also
+  re-focuses the search box.
+
 ## 0.1.0-alpha.20 — 2026-06-23
 
 - **No native menu bar on Windows/Linux — Alt-key editor shortcuts now work**

@@ -647,6 +647,7 @@ class QuickCardSearchUI {
 
     this.input.addEventListener('input', () => this.runSearch());
     this.input.addEventListener('keydown', this.onInputKey);
+    document.addEventListener('keydown', this.onDocKey);
     document.addEventListener('pointerdown', this.onDocPointerDown, true);
     window.addEventListener('resize', this.onResize);
     this.unsubscribe = quickCardsStore.subscribe(() => this.runSearch());
@@ -677,6 +678,7 @@ class QuickCardSearchUI {
 
   close(): void {
     if (!this.root) return;
+    document.removeEventListener('keydown', this.onDocKey);
     document.removeEventListener('pointerdown', this.onDocPointerDown, true);
     window.removeEventListener('resize', this.onResize);
     this.unsubscribe?.();
@@ -699,6 +701,25 @@ class QuickCardSearchUI {
   private onDocPointerDown = (e: PointerEvent): void => {
     if (this.root && !this.root.contains(e.target as Node)) this.close();
   };
+
+  /** Document-level Escape fallback. `onInputKey` only fires while the search
+   *  box has focus, but Escape should still step back out of a file / close the
+   *  palette when the user has clicked into the results and the box lost focus. */
+  private onDocKey = (e: KeyboardEvent): void => {
+    if (!this.root || e.key !== 'Escape') return;
+    // The input's own handler already owns Escape while it's focused — skipping
+    // here avoids double-handling (which would step back AND then close).
+    if (e.target === this.input) return;
+    e.preventDefault();
+    this.escapeOut();
+  };
+
+  /** Escape behavior, shared by the input keydown and the document fallback:
+   *  step back out of a dived-into file to the results, else close. */
+  private escapeOut(): void {
+    if (this.inFile) this.exitInFile();
+    else this.close();
+  }
 
   private onInputKey = (e: KeyboardEvent): void => {
     // While diving in a file, route undo/redo to the editor so a just-
@@ -730,8 +751,7 @@ class QuickCardSearchUI {
     switch (e.key) {
       case 'Escape':
         e.preventDefault();
-        if (this.inFile) this.exitInFile();
-        else this.close();
+        this.escapeOut();
         break;
       case 'ArrowDown':
         e.preventDefault();
@@ -1147,6 +1167,9 @@ class QuickCardSearchUI {
     this.input.placeholder = SEARCH_PLACEHOLDER;
     this.input.value = savedQuery;
     this.runSearch();
+    // Re-focus the box — Escape may have come from the results with the box
+    // unfocused, and the user expects to land back in a usable search.
+    this.input.focus();
   }
 
   private move(delta: number): void {

@@ -15,6 +15,14 @@ see `DETAILED_CHANGELOG.md`.
   pinning it. Pinning still has its own ★ star (and **Alt-P**), so the
   right-click is free for the more useful action.
 
+### Fixed
+
+- **Escape leaves a dived-into file even when the search box isn't focused.**
+  In the Search Everything palette, after diving into a file, pressing **Esc**
+  while scrolling the results (with the box unfocused) now steps back to the
+  file list instead of doing nothing — and re-focuses the search box on the
+  way back.
+
 ## 0.1.0-alpha.20 — 2026-06-23
 
 ### Added
