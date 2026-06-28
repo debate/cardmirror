@@ -78,6 +78,30 @@ in each release, see `CHANGELOG.md`.
   tests for each content kind (card → doc gap, cite → inside the card, inline →
   at the caret) plus an end-to-end check versus the raw-caret split.
 
+- **Send commands normalize the selection to whole top-level nodes that lead with
+  a structural unit** (`editor/send-normalize.ts` (new), `editor/speech-doc-send.ts`,
+  `editor/index.ts`, `editor/pairing/send-to-starred.ts`,
+  `tests/editor/send-normalize.test.ts` (new)). All three send pipelines
+  (dropzone, starred recipient, speech doc) funnel through `resolveSendRange`,
+  whose non-empty-selection branch previously returned the raw `{from, to}` — so
+  an arbitrary selection (a partial card, a leading loose paragraph) produced a
+  slice that couldn't be placed cleanly on receipt (it split a card / spawned a
+  phantom). New `normalizeSelectionForSend(doc, from, to)` rounds each endpoint to
+  a top-level boundary off the RAW selection (so rounding one endpoint never
+  erases what another rule needs): the **end** rounds to nearest; the **start**
+  rounds to nearest for a card / analytic_unit, includes-or-skips a heading by
+  which half the caret is in (its intro riding along when included), and for a
+  leading loose paragraph trims forward to the first structural unit UNLESS > 75%
+  of that section's intro text is selected — in which case it grabs the heading +
+  the whole intro so the intro travels under a structural lead. Collapsing
+  endpoints fall back to the most-overlapped structural unit; a result holding no
+  structural unit returns null (nothing sent). This leans on the absorb invariant
+  that loose paragraphs only sit at doc-top or right after a heading, so only a
+  *leading* loose paragraph is ever a problem. New `takeSendSlice` reflects the
+  normalized range back as the source selection (feedback) for an explicit
+  selection, leaving a bare cursor's enclosing-structure send untouched. Covered
+  by 13 tests across cards, headings, the 75% intro carve-out, and loose paragraphs.
+
 ## 0.1.0-beta.2 — 2026-06-25
 
 - **Rebindable single-press doc-cycle commands for three-pane mode**

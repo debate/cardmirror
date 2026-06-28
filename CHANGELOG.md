@@ -32,6 +32,16 @@ see `DETAILED_CHANGELOG.md`.
   as dragging it there would. The mid-text confirmation prompt — and its "Skip
   mid-text confirm" setting — are gone.
 
+- **Sending to the dropzone, a starred recipient, or the speech doc snaps your
+  selection to whole cards and sections.** You could previously send an arbitrary
+  selection — half a card, a stray paragraph — which arrived broken on the other
+  side. Now the selection is rounded to the whole cards/sections it covers and
+  re-highlighted so you see exactly what's sent: a partial card grows to the whole
+  card, a card you only grazed is dropped, an intro paragraph comes along (with
+  its heading) only if you selected most of it, and a selection with nothing
+  structural in it sends nothing. Putting your cursor in a card or heading with no
+  selection still sends that whole card/section, as before.
+
 ## 0.1.0-beta.2 — 2026-06-25
 
 ### Added

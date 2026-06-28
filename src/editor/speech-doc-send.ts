@@ -20,6 +20,7 @@ import { closeHistory } from 'prosemirror-history';
 import { schema } from '../schema/index.js';
 import { rewriteHeadingIds } from './drag-controller.js';
 import { nearestValidInsertPos } from './insert-position.js';
+import { normalizeSelectionForSend } from './send-normalize.js';
 import { getSpeechDocResolver } from './speech-doc-registry.js';
 import { getElectronHost } from './host/index.js';
 
@@ -78,8 +79,13 @@ function enclosingStructureRange(doc: PMNode, $pos: ResolvedPos): SendRange | nu
 export function resolveSendRange(view: EditorView): SendRange | null {
   const sel = view.state.selection;
   if (!sel.empty) {
-    return { from: sel.from, to: sel.to };
+    // Normalize an arbitrary selection to a run of whole top-level nodes that
+    // leads with a structural unit, so whatever is sent can always be placed
+    // cleanly on receipt (never splitting a card). Returns null when nothing
+    // structural is selected.
+    return normalizeSelectionForSend(view.state.doc, sel.from, sel.to);
   }
+  // Empty selection: the cursor's enclosing structure (card / heading + section).
   return enclosingStructureRange(view.state.doc, sel.$from);
 }
 
@@ -122,6 +128,30 @@ export function resolveSendSlice(view: EditorView): Slice | null {
   const range = resolveSendRange(view);
   if (!range) return null;
   return view.state.doc.slice(range.from, range.to);
+}
+
+/** Like `resolveSendSlice`, but for an explicit (non-empty) selection it also
+ *  reflects the normalized range back as the source selection — so the user
+ *  sees exactly which whole cards / sections are being sent. A bare cursor is
+ *  left untouched (its enclosing-structure send is unambiguous). Returns null
+ *  when there's nothing structural to send. */
+export function takeSendSlice(view: EditorView): Slice | null {
+  const hadSelection = !view.state.selection.empty;
+  const range = resolveSendRange(view);
+  if (!range) return null;
+  const slice = view.state.doc.slice(range.from, range.to);
+  if (hadSelection) {
+    try {
+      const sel = TextSelection.between(
+        view.state.doc.resolve(range.from),
+        view.state.doc.resolve(range.to),
+      );
+      view.dispatch(view.state.tr.setSelection(sel));
+    } catch {
+      /* range didn't map to a text selection — leave the selection as-is */
+    }
+  }
+  return slice;
 }
 
 /** Insert a slice into the speech view at-cursor or at-end. Handles
@@ -238,7 +268,7 @@ export function sendToSpeech(
     sourceView.focus();
     return;
   }
-  const slice = resolveSendSlice(sourceView);
+  const slice = takeSendSlice(sourceView);
   if (!slice) return;
 
   const localView = resolver.viewForUid(speechUid);

@@ -7,7 +7,7 @@
 
 import type { EditorView } from 'prosemirror-view';
 import { settings, type PairingPartner, type PairingGroup } from '../settings.js';
-import { resolveSendSlice } from '../speech-doc-send.js';
+import { takeSendSlice } from '../speech-doc-send.js';
 import { deriveDropzoneLabel } from '../dropzone-store.js';
 import { showToast } from '../toast.js';
 import { relayClient, type SendItem } from './relay-client.js';
@@ -53,7 +53,7 @@ export async function sendViewToStarred(view: EditorView): Promise<void> {
     showToast('The starred group has no recipients yet');
     return;
   }
-  const slice = resolveSendSlice(view);
+  const slice = takeSendSlice(view);
   if (!slice) return;
   const type = slice.content.firstChild?.type.name || 'text';
   const item: SendItem = {
