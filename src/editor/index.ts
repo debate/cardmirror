@@ -2475,6 +2475,10 @@ settings.subscribe((s) => {
     'pmd-dropzone-pill-hidden',
     !s.showDropzonePill,
   );
+  document.documentElement.classList.toggle(
+    'pmd-quickcards-hidden',
+    !s.showQuickCardButtons,
+  );
   // Reposition the pill when it's toggled on (toggling doesn't resize
   // #app, so the ResizeObserver won't fire). rAF lets the display change
   // apply first. The editor's scroll runway is pure CSS (the editable's

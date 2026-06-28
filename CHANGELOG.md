@@ -40,6 +40,12 @@ see `DETAILED_CHANGELOG.md`.
   matching the flashcard manager, and replacing a confirmation dialog that didn't
   fire reliably in the desktop app.
 
+- **Quick card buttons are now hidden by default, behind a setting.** The Quick
+  Cards ribbon cluster (command bar, tag picker, manage, add) is off by default —
+  turn on Settings → Editing → "Show quick card buttons" to show it, mirroring
+  the dropzone shelf toggle. Quick cards still work while hidden, and the command
+  bar still opens with its keyboard shortcut.
+
 ### Fixed
 
 - **Pasting over a selection inside a card no longer breaks the card.** Pasting a

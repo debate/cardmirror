@@ -3199,6 +3199,14 @@ html.pmd-dropzone-pill-hidden .pmd-dropzone-root {
   display: none !important;
 }
 
+/* Quick Cards ribbon cluster — hidden behind the (default-off)
+   showQuickCardButtons setting, mirroring the dropzone pill. The store and the
+   commands (incl. the command bar's shortcut) still work; only the four chrome
+   buttons are removed. */
+html.pmd-quickcards-hidden #quickcards-stack {
+  display: none !important;
+}
+
 /* ---- Pill tray ----------------------------------------------------
    The fixed, positioned row that holds the dropzone pill plus the
    cross-machine Send / Receive pills, left → right, anchored to the

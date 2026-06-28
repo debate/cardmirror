@@ -576,6 +576,11 @@ export interface Settings {
    *  works when off (Ctrl+\` sends, content is reachable from the
    *  next window opened); the pill is just hidden from the chrome. */
   showDropzonePill: boolean;
+  /** Whether the Quick Cards ribbon cluster (the 2×2 stack: command bar, tag
+   *  picker, manage, add) is shown in the chrome. Off by default. Quick cards
+   *  still work when hidden — the store and commands stay live, and the command
+   *  bar still opens via its keyboard shortcut. */
+  showQuickCardButtons: boolean;
   /** Folders for the command-palette file search (the `f` prefix). Each is
    *  searched recursively for `.cmir`/`.docx` files on demand; folders that
    *  overlap are fine — a file found under more than one is searched once.
@@ -1080,6 +1085,7 @@ const DEFAULTS: Settings = {
   uiFont: '',
   ribbonTooltipMode: 'both',
   showDropzonePill: false,
+  showQuickCardButtons: false,
   fileSearchRoots: [],
   fileSearchFormats: 'both',
   fileSearchObjectTypes: ['block', 'tag'],
@@ -1899,6 +1905,14 @@ export const SETTING_METADATA: SettingMeta[] = [
     category: 'editing',
   },
   {
+    key: 'showQuickCardButtons',
+    label: 'Show quick card buttons',
+    description:
+      'When on, the Quick Cards cluster — the command bar, tag picker, manage, and add buttons — appears in the ribbon. Off by default. Turning it off hides all four; quick cards still work, and the command bar still opens with its keyboard shortcut.',
+    kind: 'toggle',
+    category: 'editing',
+  },
+  {
     key: 'translationProvider',
     label: 'Translation',
     description:
@@ -2415,6 +2429,7 @@ function sanitize(s: Settings): Settings {
     uiFont: sanitizeUiFont(s.uiFont),
     ribbonTooltipMode: sanitizeRibbonTooltipMode(s.ribbonTooltipMode),
     showDropzonePill: s.showDropzonePill === true,
+    showQuickCardButtons: s.showQuickCardButtons === true,
     // Accept the new list; migrate the old single `fileSearchRoot` string when
     // the list is absent (settings saved before multi-folder search).
     fileSearchRoots: sanitizeFileSearchRoots(s),

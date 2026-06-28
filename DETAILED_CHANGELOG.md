@@ -7,6 +7,16 @@ in each release, see `CHANGELOG.md`.
 
 ## Unreleased
 
+- **Quick-card ribbon cluster gated behind `showQuickCardButtons` (default off)**
+  (`editor/settings.ts`, `editor/index.ts`, `editor/style.css`). New boolean
+  setting (interface + default `false` + sanitize + an Editing-category toggle),
+  mirroring `showDropzonePill`. The settings-apply subscriber toggles
+  `pmd-quickcards-hidden` on `<html>`, and `html.pmd-quickcards-hidden
+  #quickcards-stack { display: none }` hides the whole 2×2 cluster — all four
+  buttons (`qc-search-btn` / command bar, `qc-tagpicker-btn`, `qc-manage-btn`,
+  `qc-add-btn`). Visibility only: the quick-card store, commands, and the command
+  bar's `Mod-Shift-Space` shortcut are unaffected.
+
 - **Quick-card delete: two-click confirm replacing native `confirm()`**
   (`editor/quick-cards-manage-ui.ts`, `editor/style.css`). Added a `confirmButton`
   helper mirroring the learn manager's two-click arm pattern (first click →
