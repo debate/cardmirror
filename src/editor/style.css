@@ -10294,6 +10294,36 @@ html.pmd-emphasis-box .pmd-pane-editor .pmd-emphasis {
   color: var(--pmd-c-text);
   border-color: var(--pmd-c-border);
 }
+/* The prefix-showing modes ('text' / 'both') carry "A:" / "N:" plus the time;
+   with a 4-digit time (10:00) the base 0.3rem padding crowds the prefix against
+   the edge — give those buttons a touch more horizontal room. */
+#ribbon .pmd-timer-panel[data-prep-label="text"] button.pmd-timer-aff,
+#ribbon .pmd-timer-panel[data-prep-label="text"] button.pmd-timer-neg,
+#ribbon .pmd-timer-panel[data-prep-label="both"] button.pmd-timer-aff,
+#ribbon .pmd-timer-panel[data-prep-label="both"] button.pmd-timer-neg {
+  padding: 0 1.7rem;
+}
+
+/* When prep time is loaded, the big display gets the SAME aff/neg color / text
+   treatment as the prep buttons (per `data-prep-label`), so it's clear the time
+   showing is prep — and which side. The `::before` keeps the editable time text
+   node itself clean. */
+#ribbon .pmd-timer-panel[data-prep-label="color"] #timer-display[data-mode="affPrep"],
+#ribbon .pmd-timer-panel[data-prep-label="both"] #timer-display[data-mode="affPrep"] {
+  color: var(--pmd-c-aff, #1e6fcc);
+}
+#ribbon .pmd-timer-panel[data-prep-label="color"] #timer-display[data-mode="negPrep"],
+#ribbon .pmd-timer-panel[data-prep-label="both"] #timer-display[data-mode="negPrep"] {
+  color: var(--pmd-c-neg, #c53030);
+}
+#ribbon .pmd-timer-panel[data-prep-label="text"] #timer-display[data-mode="affPrep"]::before,
+#ribbon .pmd-timer-panel[data-prep-label="both"] #timer-display[data-mode="affPrep"]::before {
+  content: "A: ";
+}
+#ribbon .pmd-timer-panel[data-prep-label="text"] #timer-display[data-mode="negPrep"]::before,
+#ribbon .pmd-timer-panel[data-prep-label="both"] #timer-display[data-mode="negPrep"]::before {
+  content: "N: ";
+}
 
 /* Flash-red animation at the configured remaining thresholds. */
 @keyframes pmd-timer-flash-pulse {

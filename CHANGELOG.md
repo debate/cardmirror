@@ -9,6 +9,15 @@ see `DETAILED_CHANGELOG.md`.
 
 ### Added
 
+- **Edit the timer's prep clocks directly.** When an Aff/Neg prep clock is loaded
+  and paused, click the big display to type a new time — handy if you started or
+  stopped prep a beat late. The edit saves to that side's prep balance, so it
+  sticks when you switch to another clock and back (until you Reset).
+
+- **The timer shows which prep clock is loaded.** The Aff/Neg "differentiate by"
+  setting (color / text / both) now also styles the big display when a prep clock
+  is showing — so it's clear at a glance that the time is prep, and which side.
+
 - **Controls for formatting-gap bridging.** When you format a word next to an
   already-formatted word, the editor bridges the small gap between them so the
   styling is continuous. Two new Editing settings govern this: a toggle to turn
@@ -47,6 +56,9 @@ see `DETAILED_CHANGELOG.md`.
 
 ### Changed
 
+- **Timer durations are capped at 99 minutes** in settings (speech presets and
+  prep), up to which any value is allowed.
+
 - **Saving a quick card now captures whole cards and sections.** Add Quick Card
   used to save exactly your raw selection — which could be half a card or a stray
   fragment. It now snaps the selection to the whole cards/sections it covers
@@ -76,6 +88,15 @@ see `DETAILED_CHANGELOG.md`.
   undertags didn't clear font size, and none cleared font color.
 
 ### Fixed
+
+- **Timer duration fields no longer lose focus while typing.** In the timer
+  durations settings, the field used to deselect after a single digit, so you
+  couldn't type a two-digit value like "10" without it jumping away. It now stays
+  focused as you type.
+
+- **Timer prep buttons no longer crowd the label at 10:00.** In the text / both
+  prep-label modes, the "A:" / "N:" prefix had too little room next to a 4-digit
+  time; the buttons now have a bit more horizontal padding.
 
 - **Open .cmir files on iPhone / iPad (web).** On iOS the file picker greyed out
   `.cmir` / `.cmir-journal` files — the browser can't map their custom extension

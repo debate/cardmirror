@@ -258,11 +258,16 @@ export function selectMode(mode: TimerMode): void {
   setState({ mode, running: false, runningSince: null });
 }
 
-/** Set the speech timer to a specific duration in ms (used by the
- *  editable display). No-op while running. */
-export function setSpeechRemainingMs(ms: number): void {
+/** Set the ACTIVE mode's clock to a specific duration in ms (used by the
+ *  editable display). For a prep mode this writes that side's persisted base, so
+ *  the edit sticks across mode switches until the next Reset — matching the
+ *  speech case, which writes the speech base. No-op while running. */
+export function setActiveRemainingMs(ms: number): void {
   if (state.running) return;
-  setState({ speechBaseRemainingMs: Math.max(0, Math.floor(ms)) });
+  const v = Math.max(0, Math.floor(ms));
+  if (state.mode === 'affPrep') setState({ affPrepBaseRemainingMs: v });
+  else if (state.mode === 'negPrep') setState({ negPrepBaseRemainingMs: v });
+  else setState({ speechBaseRemainingMs: v });
 }
 
 /** Push the configured prep total into state. Called when settings

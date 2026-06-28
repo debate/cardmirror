@@ -2380,7 +2380,7 @@ function sanitize(s: Settings): Settings {
     timerProfiles: sanitizeTimerProfiles(s.timerProfiles),
     timerSpeechPresets: sanitizeNumberTriple(s.timerSpeechPresets, [3, 6, 9]),
     timerPrepMinutes:
-      typeof s.timerPrepMinutes === 'number' && s.timerPrepMinutes > 0 && s.timerPrepMinutes <= 999
+      typeof s.timerPrepMinutes === 'number' && s.timerPrepMinutes > 0 && s.timerPrepMinutes <= 99
         ? Math.floor(s.timerPrepMinutes)
         : 10,
     timerFlashEnabled: s.timerFlashEnabled === false ? false : true,
@@ -2824,7 +2824,7 @@ function sanitizeNumberTriple(raw: unknown, fallback: number[]): number[] {
   if (!Array.isArray(raw)) return out;
   for (let i = 0; i < 3; i++) {
     const v = raw[i];
-    if (typeof v === 'number' && Number.isFinite(v) && v > 0 && v <= 999) {
+    if (typeof v === 'number' && Number.isFinite(v) && v > 0 && v <= 99) {
       out[i] = Math.floor(v);
     }
   }
@@ -2859,7 +2859,7 @@ function sanitizeTimerProfiles(
       prepMinutes:
         typeof e['prepMinutes'] === 'number' &&
         e['prepMinutes'] >= 0 &&
-        e['prepMinutes'] <= 999
+        e['prepMinutes'] <= 99
           ? Math.floor(e['prepMinutes'])
           : defaults[id].prepMinutes,
     };

@@ -7,6 +7,33 @@ in each release, see `CHANGELOG.md`.
 
 ## Unreleased
 
+- **Timer: editable prep clocks, prep-aware display, capped/focus-stable
+  durations** (`editor/timer-state.ts`, `editor/timer-ui.ts`, `editor/style.css`,
+  `editor/settings.ts`, `editor/settings-ui.ts`,
+  `tests/editor/timer-state.test.ts`). Five related changes:
+  - *Editable prep time.* The display click-to-edit is no longer gated to speech
+    mode (`if (s.running || s.mode !== 'speech')` → `if (s.running)`), and commit
+    now routes through the new `setActiveRemainingMs` (renamed from
+    `setSpeechRemainingMs`), which writes the active mode's base — speech, or the
+    aff/neg prep base. Since prep balances only zero on Reset, an edit persists
+    across mode switches. Covered by a new `timer-state.test.ts`.
+  - *Prep-aware big display.* `render()` sets `data-mode` on the display; CSS
+    keyed on `data-prep-label` + `[data-mode="affPrep"|"negPrep"]` gives it the
+    same aff/neg color (and an `A:`/`N:` `::before` for the text/both modes) as
+    the prep buttons. The `::before` keeps the editable time text node clean.
+  - *Prep-button padding.* In the text/both modes the aff/neg buttons get
+    `padding: 0 1.7rem` so the prefix isn't crowded against a 4-digit time (the
+    `min-width: 3.2rem` floor means smaller bumps are absorbed by centering).
+  - *Durations capped at 99.* The durations editor `<input max>`/guard and the
+    three sanitize bounds (live `timerPrepMinutes`, per-profile `prepMinutes`,
+    and `sanitizeNumberTriple` for live + per-profile speech presets) went
+    `999` → `99`. Flash seconds (separate `sanitizeFlashSeconds`) are unaffected.
+  - *Durations editor focus.* `buildTimerProfileDurationsEditor` subscribed to
+    `settings.subscribe(buildFields)`, so each keystroke's `settings.set` tore
+    down and rebuilt the focused input. It now rebuilds only when the active
+    `timerProfile` actually changes (tracked via `lastProfile`), preserving focus
+    during multi-digit entry.
+
 - **iOS web file-open: drop `accept` so custom extensions are selectable**
   (`editor/host/browser-host.ts`). iOS's Files picker maps a file input's
   `accept` to UTIs and greys out any extension with no UTI — our `.cmir` /

@@ -14,8 +14,10 @@
  *   Compact  → display | (start/reset stacked) | (aff/neg)
  *
  * Editable display: when paused, clicking the display makes it
- * `contenteditable`. The user types MM:SS or seconds; on blur or
- * Enter we parse + `setSpeechRemainingMs`.
+ * `contenteditable` in any mode. The user types MM:SS or seconds; on blur or
+ * Enter we parse + `setActiveRemainingMs`, which writes the active mode's clock
+ * (in a prep mode that adjusts that side's saved balance, not just the speech
+ * timer).
  */
 
 import { settings } from './settings.js';
@@ -28,7 +30,7 @@ import {
   pauseTimer,
   resetTimer,
   selectMode,
-  setSpeechRemainingMs,
+  setActiveRemainingMs,
   startTimer,
   subscribeTimer,
 } from './timer-state.js';
@@ -133,12 +135,14 @@ export function mountTimerUI(): void {
   }
 
   // ─── Editable display ────────────────────────────────────────
-  // Click the display while paused → contenteditable. Blur or
-  // Enter parses + commits via setSpeechRemainingMs. Escape
+  // Click the display while paused → contenteditable, in ANY mode. Blur or
+  // Enter parses + commits via setActiveRemainingMs (which writes the active
+  // mode's clock — so editing aff/neg prep adjusts that side's saved balance,
+  // letting you fix a prep clock you started/stopped a touch late). Escape
   // cancels by re-rendering the current state.
   display.addEventListener('click', () => {
     const s = getTimerState();
-    if (s.running || s.mode !== 'speech') return;
+    if (s.running) return;
     display.contentEditable = 'true';
     display.focus();
     // Select-all so a quick MM:SS retype replaces the value.
@@ -154,7 +158,7 @@ export function mountTimerUI(): void {
     if (display.contentEditable !== 'true') return;
     display.contentEditable = 'false';
     const parsed = parseTimeInput(display.textContent ?? '');
-    if (parsed !== null) setSpeechRemainingMs(parsed);
+    if (parsed !== null) setActiveRemainingMs(parsed);
     render();
   };
   display.addEventListener('blur', commitEdit);
@@ -180,6 +184,11 @@ export function mountTimerUI(): void {
     const s = getTimerState();
     const now = Date.now();
     display.textContent = formatMs(getVisibleRemainingMs(s, now));
+    // Surface the mode so CSS can give the big display the same aff/neg
+    // color / text treatment as the prep buttons (per `data-prep-label`) when
+    // prep time is loaded — a presentational `::before` / color, so the text
+    // node stays just the time.
+    display.dataset['mode'] = s.mode;
     startBtn.textContent = s.running ? '⏸' : '▶';
     startBtn.setAttribute('aria-pressed', s.running ? 'true' : 'false');
     affTime.textContent = formatMs(getPrepRemainingMs(s, 'aff', now));

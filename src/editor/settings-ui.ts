@@ -2687,14 +2687,14 @@ function buildTimerProfileDurationsEditor(): HTMLElement {
     const input = document.createElement('input');
     input.type = 'number';
     input.min = '0';
-    input.max = '999';
+    input.max = '99';
     input.step = '1';
     input.className = 'pmd-timer-durations-input';
     input.dataset['label'] = label;
     input.value = String(getValue());
     input.addEventListener('input', () => {
       const v = parseInt(input.value, 10);
-      if (!Number.isFinite(v) || v < 0 || v > 999) return;
+      if (!Number.isFinite(v) || v < 0 || v > 99) return;
       onChange(v);
     });
     field.appendChild(input);
@@ -2745,9 +2745,18 @@ function buildTimerProfileDurationsEditor(): HTMLElement {
   }
 
   buildFields();
-  // Re-render on settings change so switching the active profile
-  // refreshes the displayed values to that profile's saved durations.
-  const unsub = settings.subscribe(buildFields);
+  // Rebuild ONLY when the active profile changes, to show that profile's saved
+  // durations. We must NOT rebuild on every settings change: each keystroke in a
+  // field calls settings.set, and a full rebuild here would destroy the focused
+  // input mid-entry (you couldn't type past one digit). Same-profile value
+  // edits already display what the user typed, so no rebuild is needed.
+  let lastProfile = settings.get('timerProfile');
+  const unsub = settings.subscribe(() => {
+    const active = settings.get('timerProfile');
+    if (active === lastProfile) return;
+    lastProfile = active;
+    buildFields();
+  });
   onDetached(wrap, () => unsub());
   return wrap;
 }
