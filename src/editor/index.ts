@@ -4898,6 +4898,48 @@ function installExternalOpenListener(): void {
   });
 }
 
+/** Drag-and-drop file opening (desktop). Dropping a .cmir / .cmir-journal /
+ *  .docx anywhere in the window opens it through the normal pipeline
+ *  (`openFileByPath` → dedup, unsaved-changes prompt, recovery-journal
+ *  handling all apply). Other file types fall through untouched. No-op on the
+ *  web edition, which has no filesystem paths to open. */
+function installDragToOpen(): void {
+  const electron = getElectronHost();
+  if (!electron) return;
+  const SUPPORTED = /\.(cmir|cmir-journal|docx)$/i;
+  // Permit the drop (and suppress Electron's default navigate-to-the-file) only
+  // while an OS file is being dragged — internal card drags carry no 'Files'
+  // type, so drag-and-drop card moves are left completely untouched.
+  document.addEventListener(
+    'dragover',
+    (e) => {
+      if (e.dataTransfer?.types?.includes('Files')) e.preventDefault();
+    },
+    true,
+  );
+  // Capture phase + stopPropagation so a drop on the editor is handled here
+  // instead of by ProseMirror. Only supported doc files are intercepted; an
+  // unsupported file (e.g. an image the editor may handle) falls through.
+  document.addEventListener(
+    'drop',
+    (e) => {
+      const files = e.dataTransfer?.files;
+      if (!files || files.length === 0) return;
+      const file = Array.from(files).find((f) => SUPPORTED.test(f.name));
+      if (!file) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const path = electron.getPathForFile(file);
+      if (!path) {
+        showToast(`Couldn't open “${file.name}” — try dragging it from a folder.`);
+        return;
+      }
+      void openFileByPath(path, file.name);
+    },
+    true,
+  );
+}
+
 /** A window spawned for an OS open carries an initial doc. Single-doc
  *  boot mounts it in place; multi-pane boot can't (the workspace owns
  *  layout), so route it through the slot picker instead of leaving the
@@ -6146,6 +6188,9 @@ function positionDropzone(): void {
 // Load the per-user Learn annotation store (flashcards / schedules /
 // anchors) so review counts + the comments column have it available.
 void loadLearnStore();
+
+// Drag-and-drop file opening works in both single-doc and multi-pane modes.
+installDragToOpen();
 
 if (BOOT_MULTI_DOC_WORKSPACE) {
   void import('./multi-pane-shell.js').then(async (m) => {

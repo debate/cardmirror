@@ -7,6 +7,21 @@ in each release, see `CHANGELOG.md`.
 
 ## Unreleased
 
+- **Drag-and-drop file opening (desktop)** (`apps/desktop/src/preload.ts`,
+  `editor/host/electron-host.ts`, `editor/index.ts`). New `installDragToOpen`
+  registers capture-phase `dragover`/`drop` listeners (run in both single-doc and
+  multi-pane boot). `dragover` preventDefaults only when the drag carries OS
+  `Files` (suppresses Electron's navigate-to-file; never touches internal card
+  drags, which carry no `Files` type). `drop` intercepts the first
+  `.cmir`/`.cmir-journal`/`.docx`, resolves its path via the new `getPathForFile`
+  bridge (`webUtils.getPathForFile` — Electron 32+ removed `File.path`), and
+  routes it through the existing `openFileByPath` → `routeOpenedFile`, so dedup,
+  the unsaved-changes prompt, and recovery-journal handling are all reused.
+  Capture phase + `stopPropagation` so an editor drop is handled here, not by
+  ProseMirror; unsupported files fall through untouched. No-op on the web edition
+  (no filesystem paths). Verified manually in the dev build — not unit-testable
+  (needs real Electron + an OS drag).
+
 - **Add/insert cross-verb aliases on the element-insertion commands**
   (`editor/ribbon-commands.ts`). Added the missing verb as a per-command alias so
   both phrasings match in command search: `insertTable` ← "add table",

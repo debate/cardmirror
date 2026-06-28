@@ -30,6 +30,13 @@ see `DETAILED_CHANGELOG.md`.
   commands — Add Quick Card, Add Comment, Add Note — are intentionally left out,
   since they make something new rather than placing it.
 
+- **Open a file by dragging it into the window.** Drag a `.docx`, `.cmir`, or
+  `.cmir-journal` from your file manager onto any CardMirror window — the editor,
+  the navigation pane, or the home screen — to open it, the same as File → Open
+  (including the unsaved-changes prompt, and focusing an already-open copy).
+  Desktop only; other file types are ignored, and dragging cards around the
+  editor is unaffected.
+
 ### Changed
 
 - **Saving a quick card now captures whole cards and sections.** Add Quick Card

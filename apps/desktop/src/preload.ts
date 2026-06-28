@@ -12,7 +12,7 @@
  * Host interface so BrowserHost grows the same capability).
  */
 
-import { contextBridge, ipcRenderer, webFrame } from 'electron';
+import { contextBridge, ipcRenderer, webFrame, webUtils } from 'electron';
 
 interface FileFilter {
   name: string;
@@ -66,6 +66,12 @@ interface PairingInboxItemIpc {
 }
 
 contextBridge.exposeInMainWorld('electronAPI', {
+  /** Absolute filesystem path of a dropped/selected `File`. Electron 32+
+   *  removed the `File.path` property, so drag-to-open resolves it through
+   *  `webUtils.getPathForFile` here in the preload. Returns '' if the file has
+   *  no real path (e.g. dragged from another app, not a folder). */
+  getPathForFile: (file: File): string => webUtils.getPathForFile(file),
+
   /** Read the system clipboard's plain-text content. Used by the
    *  F2 (Paste Plain) command on Electron — bypasses the Chromium
    *  web clipboard-permission UI that forces the web edition into
