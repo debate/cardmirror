@@ -18,6 +18,8 @@ import {
   exitRepairParagraph,
   designatedCount,
 } from './repair-paragraph-plugin.js';
+import { isAnyOverlayOpen } from './overlay-stack.js';
+import { quickCardSearchUI } from './quick-card-search-ui.js';
 
 /** The [before, after] range of the nearest enclosing card / analytic_unit
  *  for `$pos`, or null if the cursor isn't inside one. */
@@ -86,12 +88,8 @@ export class RepairParagraphBar {
   private wireEvents(): void {
     this.input.addEventListener('input', () => this.applyQuery());
     this.input.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        e.stopPropagation();
-        this.close();
-        return;
-      }
+      // Escape is owned by the document-level handler (onDocKeyDown) so it
+      // exits the workflow even when focus has left the bar.
       if (e.key === 'Enter') {
         e.preventDefault();
         e.stopPropagation();
@@ -101,6 +99,20 @@ export class RepairParagraphBar {
       }
     });
   }
+
+  /** Document-level Escape so the workflow can be exited even when the bar's
+   *  input isn't focused (e.g. the cursor is back in the card). Capture phase
+   *  so it runs before the editor; checked here (before anything pops itself in
+   *  the bubble phase) it defers to whatever is layered over the workflow and
+   *  owns Escape first — an overlay-stack modal, or the command bar (which isn't
+   *  on the stack). */
+  private onDocKeyDown = (e: KeyboardEvent): void => {
+    if (!this.open_ || e.key !== 'Escape') return;
+    if (isAnyOverlayOpen() || quickCardSearchUI.isOpen()) return;
+    e.preventDefault();
+    e.stopPropagation();
+    this.close();
+  };
 
   open(): void {
     const view = this.getView();
@@ -115,6 +127,7 @@ export class RepairParagraphBar {
     view.dispatch(view.state.tr.setMeta(repairParagraphKey, { type: 'open', cardRange: range }));
 
     this.open_ = true;
+    document.addEventListener('keydown', this.onDocKeyDown, true);
     this.lastCount = -1;
     this.input.value = '';
     this.root.classList.remove('pmd-repair-ok');
@@ -128,6 +141,7 @@ export class RepairParagraphBar {
   close(): void {
     if (!this.open_) return;
     this.open_ = false;
+    document.removeEventListener('keydown', this.onDocKeyDown, true);
     this.root.hidden = true;
     this.root.classList.remove('pmd-repair-ok');
     const view = this.getView();

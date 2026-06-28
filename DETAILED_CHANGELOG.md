@@ -7,6 +7,17 @@ in each release, see `CHANGELOG.md`.
 
 ## Unreleased
 
+- **Repair Paragraph Integrity: Escape exits from anywhere**
+  (`editor/repair-paragraph-ui.ts`). The Escape handler lived only on the bar's
+  input, so once focus left the bar (e.g. clicking back into the card) there was
+  no exit avenue. Moved Escape to a capture-phase document handler
+  (`onDocKeyDown`, installed on open / removed on close) so it fires regardless
+  of focus and ahead of the editor. It defers — checked in the capture phase,
+  before anything pops itself in bubble — to a supervening overlay-stack modal
+  (`isAnyOverlayOpen()`) or the open command bar (`quickCardSearchUI.isOpen()`),
+  so those absorb Escape first. The input's own Escape branch was removed so
+  there's a single Escape path.
+
 - **Multi-pane nav pane tracks the caret** (`editor/multi-pane-shell.ts`).
   Single-doc highlights the caret's heading via `navPanel.setCaretHeading` in its
   `dispatchTransaction` (plus a re-apply after each outline rebuild); the

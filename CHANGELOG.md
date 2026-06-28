@@ -77,6 +77,12 @@ see `DETAILED_CHANGELOG.md`.
 
 ### Fixed
 
+- **Escape now exits the Repair Paragraph Integrity workflow from anywhere.**
+  Escape previously only worked while the workflow's input box was focused — once
+  you clicked back into the card there was no obvious way out. It now exits the
+  workflow regardless of focus, while still deferring to anything layered on top
+  that should close first (a modal dialog, or the command bar).
+
 - **The navigation pane now follows the cursor in three-pane mode.** Clicking or
   moving the cursor in a document highlights the heading it lands in in the nav
   pane — that already worked in single-pane view, and now works in each pane of
