@@ -15,6 +15,14 @@ see `DETAILED_CHANGELOG.md`.
   other assistive technology. The change takes effect after you restart CardMirror,
   and the setting tells you when a restart is still pending.
 
+- **Select multiple separate ranges at once.** Hold **Ctrl** (**Cmd** on Mac)
+  and drag to add another range to your selection, or Ctrl/Cmd-click to add a
+  word — building a discontinuous selection across non-adjacent spots, like Word.
+  You can **copy** the whole set, and run any formatting that already works on a
+  Select Similar selection (highlight, underline, emphasis, cite, colors, shrink,
+  clear formatting, …) across all the pieces in one go. The set shows in the
+  selection color; Escape or a plain click clears it, and any edit ends it.
+
 ### Fixed
 
 - **White screen and lost work when an accessibility tool was running.** On some

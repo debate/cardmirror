@@ -7,6 +7,24 @@ in each release, see `CHANGELOG.md`.
 
 ## Unreleased
 
+- **Discontinuous (Ctrl/Cmd) selection** (`editor/word-selection-plugin.ts`,
+  `editor/similar-selection-plugin.ts`, `editor/style.css`,
+  `tests/editor/discontinuous-selection.test.ts`). Ctrl + drag (Cmd on macOS —
+  Ctrl-click is the OS context menu there) adds an arbitrary range to the
+  selection; Ctrl/Cmd-click adds the word under the pointer, folding the current
+  normal selection in as the first range. It reuses the Select Similar "shadow
+  selection" machinery: the ranges populate the plugin's match set via a new
+  `setManualShadowSelection`, so the ~15 format commands that already consume
+  `getOperatingRanges` act across all of them in one transaction — no per-command
+  work. A new `copy` DOM handler on the shadow plugin serializes every range (text
+  joined by newlines, HTML concatenated) when a shadow set is active and the PM
+  selection is collapsed; cut/paste are intentionally not special-cased, and any
+  real edit / Escape / plain click clears the set (the existing shadow dismissal).
+  The set renders with the native-`::selection` accent tint — a `style` flag on
+  the shadow state keeps it distinct from Select Similar's dashed outline — and
+  the live drag shows as a `pending` decoration rather than the real selection, so
+  the already-selected ranges aren't dismissed mid-drag.
+
 - **Renderer accessibility tree disabled by default to work around a Chromium
   accessibility crash** (`apps/desktop/src/main.ts`,
   `apps/desktop/src/accessibility-pref.ts`, `apps/desktop/src/preload.ts`,

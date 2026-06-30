@@ -37,6 +37,8 @@ import {
   type Command,
 } from 'prosemirror-state';
 import { Decoration, DecorationSet } from 'prosemirror-view';
+import type { EditorView } from 'prosemirror-view';
+import { DOMSerializer } from 'prosemirror-model';
 import type { Node as PMNode, Mark } from 'prosemirror-model';
 import { showToast } from './toast.js';
 
@@ -49,6 +51,14 @@ export interface SimilarSelectionState {
   matches: RangePair[];
   scope: RangePair | null;
   mode: 'idle' | 'awaiting-cursor';
+  /** When 'selection', the matches render with the native-selection look — the
+   *  manual Ctrl/Cmd discontinuous selection. Absent = Select Similar's dashed
+   *  outline. */
+  style?: 'selection';
+  /** Live drag range shown as a DECORATION (not the real selection) while a
+   *  Ctrl/Cmd discontinuous selection is being extended, so the existing matches
+   *  aren't dismissed mid-drag. Folded into `matches` on release. */
+  pending?: RangePair | null;
 }
 
 const META_KEY = 'pmd-similar-selection';
@@ -62,9 +72,10 @@ const META_KEY = 'pmd-similar-selection';
 export const META_OPERATING_ON_SHADOW = 'pmd-shadow-op';
 
 type Meta =
-  | { type: 'setMatches'; matches: RangePair[] }
+  | { type: 'setMatches'; matches: RangePair[]; style?: 'selection' }
   | { type: 'setMatchesScoped'; matches: RangePair[]; scope: RangePair }
   | { type: 'setScope'; scope: RangePair }
+  | { type: 'setPending'; pending: RangePair | null }
   | { type: 'clear' };
 
 export const similarSelectionKey = new PluginKey<SimilarSelectionState>(
@@ -96,7 +107,10 @@ export function buildSimilarSelectionPlugin(
           return { matches: [], scope: meta.scope, mode: 'awaiting-cursor' };
         }
         if (meta?.type === 'setMatches') {
-          return { matches: meta.matches, scope: null, mode: 'idle' };
+          return { matches: meta.matches, scope: null, mode: 'idle', style: meta.style };
+        }
+        if (meta?.type === 'setPending') {
+          return { ...prev, pending: meta.pending };
         }
         if (meta?.type === 'setMatchesScoped') {
           // Matches AND a scope tint, but already resolved (idle) — used
@@ -200,9 +214,19 @@ export function buildSimilarSelectionPlugin(
             }),
           );
         }
+        const matchClass =
+          ps.style === 'selection'
+            ? 'pmd-discontinuous-selection'
+            : 'pmd-similar-match';
         for (const m of ps.matches) {
+          decs.push(Decoration.inline(m.from, m.to, { class: matchClass }));
+        }
+        // Live drag-preview range (Ctrl/Cmd discontinuous select), same look.
+        if (ps.pending && ps.pending.to > ps.pending.from) {
           decs.push(
-            Decoration.inline(m.from, m.to, { class: 'pmd-similar-match' }),
+            Decoration.inline(ps.pending.from, ps.pending.to, {
+              class: 'pmd-discontinuous-selection',
+            }),
           );
         }
         if (decs.length === 0) return null;
@@ -221,6 +245,38 @@ export function buildSimilarSelectionPlugin(
         }
         view.dispatch(view.state.tr.setMeta(META_KEY, { type: 'clear' }));
         return true;
+      },
+      handleDOMEvents: {
+        // Copy a discontinuous (shadow) selection: concatenate every match
+        // range's content to the clipboard — text joined by newlines, HTML
+        // fragments concatenated. Only fires when a shadow set is active AND the
+        // PM selection is collapsed; otherwise PM copies the normal selection.
+        // (Cut/paste are intentionally NOT handled — a shadow set is copy- and
+        // format-only.)
+        copy(view, event): boolean {
+          const ps = similarSelectionKey.getState(view.state);
+          if (!ps || ps.matches.length === 0 || !view.state.selection.empty) {
+            return false;
+          }
+          const cd = (event as ClipboardEvent).clipboardData;
+          if (!cd) return false;
+          const { doc, schema } = view.state;
+          const serializer = DOMSerializer.fromSchema(schema);
+          const textParts: string[] = [];
+          const htmlParts: string[] = [];
+          for (const m of ps.matches) {
+            textParts.push(doc.textBetween(m.from, m.to, '\n', ' '));
+            const wrap = document.createElement('div');
+            wrap.appendChild(
+              serializer.serializeFragment(doc.slice(m.from, m.to).content),
+            );
+            htmlParts.push(wrap.innerHTML);
+          }
+          cd.setData('text/plain', textParts.join('\n'));
+          cd.setData('text/html', htmlParts.join(''));
+          event.preventDefault();
+          return true;
+        },
       },
     },
   });
@@ -530,6 +586,47 @@ export function clearSimilarSelection(): Command {
     dispatch(state.tr.setMeta(META_KEY, { type: 'clear' } as Meta));
     return true;
   };
+}
+
+/**
+ * Set the shadow selection to `ranges` (merged, empty dropped) and collapse the
+ * PM cursor inside the first one, so `getOperatingRanges` returns the shadow and
+ * the existing format commands (and the copy handler above) act across all of
+ * them. Drives the Ctrl/Cmd discontinuous-selection interaction in
+ * `word-selection-plugin.ts`. Clears the shadow when nothing is left to select.
+ */
+export function setManualShadowSelection(
+  view: EditorView,
+  ranges: RangePair[],
+): void {
+  const merged = mergeRanges(ranges.filter((r) => r.to > r.from));
+  if (merged.length === 0) {
+    view.dispatch(view.state.tr.setMeta(META_KEY, { type: 'clear' } as Meta));
+    return;
+  }
+  const tr = view.state.tr
+    .setMeta(META_KEY, {
+      type: 'setMatches',
+      matches: merged,
+      style: 'selection',
+    } as Meta)
+    // Collapse inside the first match so the shadow survives this selection set
+    // (the plugin's apply keeps matches when the cursor lands in one).
+    .setSelection(TextSelection.create(view.state.doc, merged[0]!.from));
+  view.dispatch(tr);
+}
+
+/** Set (or clear, with `null`) the live drag-preview range for the Ctrl/Cmd
+ *  discontinuous selection. It renders as a decoration — not the real selection
+ *  — so the already-selected ranges stay put while a new one is being dragged.
+ *  Folded into the matches on release via `setManualShadowSelection`. */
+export function setShadowPending(
+  view: EditorView,
+  pending: RangePair | null,
+): void {
+  view.dispatch(
+    view.state.tr.setMeta(META_KEY, { type: 'setPending', pending } as Meta),
+  );
 }
 
 /** Snapshot accessor for tests / UI introspection. */

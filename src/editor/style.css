@@ -5732,6 +5732,13 @@ body.pmd-steady-cursor .pmd-italic-caret,
   background-color: var(--pmd-c-find-match-current);
 }
 
+/* Manual Ctrl/Cmd discontinuous selection (and its live drag-preview): looks
+   like a real text selection — same accent tint as the native `::selection`
+   rule above — rather than Select Similar's dashed shadow. */
+.pmd-discontinuous-selection {
+  background: color-mix(in srgb, var(--pmd-c-accent) 30%, transparent);
+}
+
 /* ---------------------------------------------- Find: category-order editor */
 
 .pmd-find-category-order-editor {

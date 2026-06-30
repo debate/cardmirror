@@ -42,6 +42,17 @@ import type { Transaction } from 'prosemirror-state';
 import type { EditorView } from 'prosemirror-view';
 import type { Node as PMNode, ResolvedPos } from 'prosemirror-model';
 import { classifyChar } from './word-break.js';
+import {
+  similarSelectionKey,
+  setManualShadowSelection,
+  setShadowPending,
+  type RangePair,
+} from './similar-selection-plugin.js';
+
+/** Cmd is the discontinuous-select modifier on macOS (Ctrl-click is the OS
+ *  context menu there); Ctrl elsewhere. */
+const IS_MAC =
+  typeof navigator !== 'undefined' && /mac/i.test(navigator.platform ?? '');
 
 type Granularity = 'character' | 'word' | 'paragraph';
 
@@ -141,6 +152,17 @@ function handleMousedown(view: EditorView, event: MouseEvent): boolean {
     return false;
   }
 
+  // Ctrl (Windows/Linux) / Cmd (Mac) — discontinuous "add to selection". A drag
+  // adds an arbitrary range; a plain click adds the word under the pointer. The
+  // ranges become a shadow selection (see `similar-selection-plugin`), so the
+  // existing format commands AND the copy handler act across all of them.
+  const discontinuousMod = IS_MAC ? event.metaKey : event.ctrlKey;
+  if (discontinuousMod && !event.shiftKey && !event.altKey) {
+    event.preventDefault();
+    beginDiscontinuousSelect(view, clickPos);
+    return true;
+  }
+
   // Shift+click: extend, never re-anchor.
   if (event.shiftKey) {
     if (detail !== 1) {
@@ -222,6 +244,57 @@ function handleMousedown(view: EditorView, event: MouseEvent): boolean {
   installDragListeners(view, anchor);
   event.preventDefault();
   return true;
+}
+
+/** Ctrl/Cmd add-to-selection. From the pointer-down at `startPos`, track the
+ *  gesture; on release add either the dragged range or (for a plain click) the
+ *  word under the pointer to the discontinuous shadow selection. The set being
+ *  extended is captured up front: any existing shadow matches, plus — on the
+ *  FIRST such gesture — the current non-empty selection as the first range. */
+function beginDiscontinuousSelect(view: EditorView, startPos: number): void {
+  const ps = similarSelectionKey.getState(view.state);
+  const existing: RangePair[] =
+    ps && ps.matches.length > 0 ? ps.matches.map((r) => ({ ...r })) : [];
+  const sel = view.state.selection;
+  const priorSel: RangePair[] =
+    existing.length === 0 && !sel.empty ? [{ from: sel.from, to: sel.to }] : [];
+  const base = [...existing, ...priorSel];
+  // Lock the already-selected ranges in as a discontinuous selection right away
+  // (folding a live normal selection in), so they stay put while the drag adds
+  // to them — only the drag-preview moves.
+  if (base.length > 0) setManualShadowSelection(view, base);
+
+  let dragged = false;
+  const posAt = (e: MouseEvent): number | null => {
+    const hit = view.posAtCoords({ left: e.clientX, top: e.clientY });
+    return hit ? hit.pos : null;
+  };
+  const onMove = (e: MouseEvent): void => {
+    const pos = posAt(e);
+    if (pos === null || pos === startPos) return;
+    dragged = true;
+    // Preview the pending range as a DECORATION (not the real selection) so the
+    // existing ranges aren't dismissed mid-drag.
+    setShadowPending(view, {
+      from: Math.min(startPos, pos),
+      to: Math.max(startPos, pos),
+    });
+  };
+  const onUp = (e: MouseEvent): void => {
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
+    const endPos = posAt(e) ?? startPos;
+    let added: RangePair;
+    if (dragged && endPos !== startPos) {
+      added = { from: Math.min(startPos, endPos), to: Math.max(startPos, endPos) };
+    } else {
+      added = queryUnitAtDocPos(view, startPos) ?? { from: startPos, to: startPos };
+    }
+    // setManualShadowSelection clears the pending preview (its setMatches resets it).
+    setManualShadowSelection(view, [...base, added]);
+  };
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onUp);
 }
 
 /** Resolve the effective anchor for a shift+click. Re-uses
