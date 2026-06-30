@@ -131,6 +131,12 @@ export class NavigationPanel {
   private unsubscribeDrag: (() => void) | null = null;
   private unregisterSurface: (() => void) | null = null;
   private destroyed = false;
+  /** Custom handler for the header × button. When set (multi-pane,
+   *  where each section is one document's outline) the × closes just
+   *  THIS section via the callback; otherwise it falls back to
+   *  toggling the global `navPaneVisible` setting (single-doc, where
+   *  there's only one pane and × means "hide the nav pane"). */
+  private onClose: (() => void) | null = null;
 
   // ---- Selection state (multi-select) ----
   private selectedIds: Set<string> = new Set();
@@ -232,10 +238,18 @@ export class NavigationPanel {
     return settings.get('navMaxLevel');
   }
 
-  constructor(parent: HTMLElement, opts?: { localMaxLevel?: boolean; initialMaxLevel?: number }) {
+  constructor(
+    parent: HTMLElement,
+    opts?: {
+      localMaxLevel?: boolean;
+      initialMaxLevel?: number;
+      onClose?: () => void;
+    },
+  ) {
     if (opts?.localMaxLevel) {
       this.localMaxLevel = opts.initialMaxLevel ?? settings.get('navMaxLevel');
     }
+    this.onClose = opts?.onClose ?? null;
     this.root = document.createElement('aside');
     this.root.className = 'pmd-nav-panel';
 
@@ -264,10 +278,14 @@ export class NavigationPanel {
     closeBtn.type = 'button';
     closeBtn.className = 'pmd-nav-close';
     setIcon(closeBtn, 'close');
-    closeBtn.title = 'Hide navigation pane';
-    closeBtn.setAttribute('aria-label', 'Hide navigation pane');
+    // In multi-pane mode the × closes just this document's outline
+    // section (via `onClose`); in single-doc it hides the whole pane.
+    const closeLabel = this.onClose ? "Hide this document's outline" : 'Hide navigation pane';
+    closeBtn.title = closeLabel;
+    closeBtn.setAttribute('aria-label', closeLabel);
     closeBtn.addEventListener('click', () => {
-      settings.set('navPaneVisible', false);
+      if (this.onClose) this.onClose();
+      else settings.set('navPaneVisible', false);
     });
     header.appendChild(closeBtn);
 

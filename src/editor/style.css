@@ -8777,9 +8777,57 @@ body.pmd-multi-doc #word-count-btn {
   flex-direction: column;
   border-top: 1px solid var(--pmd-c-border-soft);
   overflow: hidden;
+  /* Anchor for the absolutely-positioned top-edge resize handle. */
+  position: relative;
 }
 .pmd-multi-nav-section:first-child {
   border-top: none;
+}
+
+/* Vertical resize handle straddling the border between two stacked
+ * outline sections. Absolutely positioned so it doesn't consume the
+ * section's flex height; hidden on the topmost visible section (set
+ * via the `hidden` attribute from reconcileNavRail). */
+.pmd-multi-nav-resize {
+  position: absolute;
+  /* Flush with the section's top edge — the section's `overflow:
+   * hidden` would clip a handle pulled above it, so it sits just
+   * inside, straddling the `border-top` visually on hover. */
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 6px;
+  cursor: row-resize;
+  z-index: 2;
+  background: transparent;
+  transition: background-color 0.1s ease;
+}
+.pmd-multi-nav-resize[hidden] {
+  display: none;
+}
+.pmd-multi-nav-resize:hover,
+body.pmd-nav-resize-vertical .pmd-multi-nav-resize {
+  background: var(--pmd-c-accent-soft);
+}
+/* While dragging a section divider: lock selection + row-resize cursor
+ * document-wide so a fast drag that outruns the handle keeps state. */
+body.pmd-nav-resize-vertical {
+  user-select: none;
+  cursor: row-resize !important;
+}
+
+/* Rail hidden because every open doc's outline was individually closed.
+ * Mirror the section's explicit UA-display restore so the class's
+ * `display: flex` doesn't beat `[hidden]`, and reclaim the rail's width
+ * the same way the global nav toggle does. */
+.pmd-multi-nav[hidden] {
+  display: none;
+}
+body.pmd-multi-nav-empty.pmd-multi-doc #app {
+  margin-left: 0;
+}
+body.pmd-multi-nav-empty.pmd-multi-doc #status-bar {
+  left: 0;
 }
 /* Class-selector specificity ties [hidden]'s UA `display: none`,
  * so the .pmd-multi-nav-section `display: flex` would otherwise win
@@ -9148,10 +9196,12 @@ body.pmd-multi-doc #word-count-btn {
 }
 .pmd-pane-focused .pmd-pane-chip-close,
 .pmd-pane-focused .pmd-pane-chip-stack,
+.pmd-pane-focused .pmd-pane-chip-nav,
 .pmd-pane-focused .pmd-pane-chip-expand {
   color: var(--pmd-c-text-on-accent);
 }
-.pmd-pane-focused .pmd-pane-chip-expand[aria-pressed="true"] {
+.pmd-pane-focused .pmd-pane-chip-expand[aria-pressed="true"],
+.pmd-pane-focused .pmd-pane-chip-nav[aria-pressed="true"] {
   /* Active-state accent reads as too-similar to the focused-pane
    * blue background; switch to white + a subtle box to flag the
    * pressed state instead. */
@@ -9261,6 +9311,22 @@ body.pmd-multi-doc #word-count-btn {
 }
 .pmd-pane-chip-expand:hover { color: var(--pmd-c-text-strong); }
 .pmd-pane-chip-expand[aria-pressed="true"] {
+  color: var(--pmd-c-accent);
+}
+.pmd-pane-chip-nav {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--pmd-c-text-muted);
+  font-size: 0.9rem;
+  line-height: 1;
+}
+.pmd-pane-chip-nav:hover { color: var(--pmd-c-text-strong); }
+.pmd-pane-chip-nav[aria-pressed="true"] {
   color: var(--pmd-c-accent);
 }
 .pmd-pane-chip-close {

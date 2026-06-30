@@ -718,6 +718,21 @@ as you open more.
 - When you have more than one document in a slot, jump between them using
   the drop-down in the document's title bar or by using **Ctrl-Tab**.
 
+### Per-document outlines
+
+The navigation rail stacks one outline section per open document. Each is
+independent:
+
+- **Close one outline** — click the **×** at the top of a section (or the
+  outline button in that document's title bar) to hide just that
+  document's outline. The document stays open; the other outlines are
+  untouched. Click the title-bar outline button again to bring it back.
+  When every open document's outline is closed, the rail collapses and the
+  panes reclaim the space.
+- **Resize** — drag the divider between two sections to give one outline
+  more height and the other less; double-click the divider to even them
+  back out.
+
 ### Layouts
 
 When all three slots are full, two layouts are available (pick in

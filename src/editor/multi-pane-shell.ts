@@ -453,10 +453,28 @@ class Slot {
   readonly navSectionEl: HTMLElement;
   /** Nav body — DocRecord.navEl mounts here. */
   private navBodyEl: HTMLElement;
+  /** Top-edge drag handle that resizes this section against the one
+   *  above it. Hidden on the topmost visible section. */
+  private navResizeHandle: HTMLElement;
   /** Last width we wrote into `--pmd-card-intrinsic-width`. Skips
    *  no-op writes on repeated sync calls (e.g. multiple events
    *  firing in one frame for the same final width). */
   private lastIntrinsicWidth = -1;
+  /** Chip outline-toggle button — shows / hides THIS slot's nav
+   *  section. The reopen path for a section closed via its × (and a
+   *  one-click hide without reaching into the rail). */
+  private chipNavBtn: HTMLButtonElement;
+  /** True when the user has closed this slot's outline section (via the
+   *  section × or the chip toggle). The section stays out of the rail —
+   *  the doc itself stays open — until the user reopens it. Per-slot, so
+   *  closing one document's outline leaves the others' untouched. */
+  navHidden = false;
+  /** Vertical flex weight of this slot's nav section within the rail.
+   *  All start at 1 (equal share); dragging a section's resize handle
+   *  shifts weight between it and its neighbour. Reset to 1 whenever the
+   *  set of open sections changes (so a closed doc doesn't strand a
+   *  lopsided split). */
+  navFlex = 1;
 
   /** Live stack. Index 0 = bottom (least recently active);
    *  `visibleIndex` is the doc currently shown. */
@@ -517,6 +535,19 @@ class Slot {
       this.shell.toggleExpanded(this);
     });
     chip.appendChild(this.chipExpandBtn);
+    // Outline-toggle — shows / hides this slot's nav section. Pressed
+    // = outline visible. Doubles as the reopen affordance after the
+    // user closes the section with its own × button.
+    this.chipNavBtn = document.createElement('button');
+    this.chipNavBtn.type = 'button';
+    this.chipNavBtn.className = 'pmd-pane-chip-nav';
+    setIcon(this.chipNavBtn, 'nav-toggle');
+    this.chipNavBtn.addEventListener('mousedown', (e) => e.preventDefault());
+    this.chipNavBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.shell.setSlotNavHidden(this, !this.navHidden);
+    });
+    chip.appendChild(this.chipNavBtn);
     this.chipCloseBtn = document.createElement('button');
     this.chipCloseBtn.type = 'button';
     this.chipCloseBtn.className = 'pmd-pane-chip-close';
@@ -586,6 +617,23 @@ class Slot {
     // focused, which feels broken when the user is navigating
     // via the nav pane.
     this.navSectionEl.addEventListener('mousedown', () => this.shell.focusSlot(this));
+    // Vertical resize handle along the section's TOP edge — drags
+    // weight between this section and the visible one above it. The
+    // topmost visible section's handle has nothing above it and is
+    // hidden by `reconcileNavRail`.
+    this.navResizeHandle = document.createElement('div');
+    this.navResizeHandle.className = 'pmd-multi-nav-resize';
+    this.navResizeHandle.setAttribute('role', 'separator');
+    this.navResizeHandle.setAttribute('aria-orientation', 'horizontal');
+    this.navResizeHandle.setAttribute('aria-label', 'Resize outline section');
+    this.navResizeHandle.title = 'Drag to resize · double-click to reset';
+    this.navResizeHandle.addEventListener('mousedown', (e) =>
+      this.shell.beginNavSectionResize(this, e),
+    );
+    this.navResizeHandle.addEventListener('dblclick', () =>
+      this.shell.resetNavSectionSizes(),
+    );
+    this.navSectionEl.appendChild(this.navResizeHandle);
     this.navBodyEl = document.createElement('div');
     this.navBodyEl.className = 'pmd-multi-nav-body';
     this.navSectionEl.appendChild(this.navBodyEl);
@@ -598,6 +646,28 @@ class Slot {
     this.chipExpandBtn.title = pressed
       ? 'Restore the multi-pane layout'
       : 'Expand this pane to fill the workspace';
+  }
+
+  /** Sync the chip's outline-toggle button + the section's flex weight
+   *  to current per-slot state. Called by the shell's nav reconcile. */
+  applyNavState(): void {
+    const shown = !this.navHidden;
+    this.chipNavBtn.setAttribute('aria-pressed', shown ? 'true' : 'false');
+    this.chipNavBtn.title = shown
+      ? "Hide this document's outline"
+      : "Show this document's outline";
+    this.navSectionEl.style.flexGrow = String(this.navFlex);
+  }
+
+  /** Toggle the resize handle. Hidden on the topmost visible section
+   *  (no neighbour above to trade height with). */
+  setResizeHandleEnabled(enabled: boolean): void {
+    this.navResizeHandle.hidden = !enabled;
+  }
+
+  /** Live pixel height of the section in the rail (0 when hidden). */
+  navSectionHeight(): number {
+    return this.navSectionEl.getBoundingClientRect().height;
   }
 
   /** Read the visible ProseMirror element's content-area width and
@@ -715,8 +785,11 @@ class Slot {
     if (this.stack.length === 0) {
       this.visibleIndex = -1;
       this.paneEl.hidden = true;
-      this.navSectionEl.hidden = true;
+      // Reset the per-slot outline-closed flag so a doc opened into
+      // this slot later starts with its outline shown.
+      this.navHidden = false;
       this.shell.notifySlotEmptied(this);
+      this.shell.reconcileNavRail();
       this.shell.refreshLayout();
       this.shell.handleSlotEmptied(this);
       return record;
@@ -784,10 +857,13 @@ class Slot {
     if (this.stack.length === 0) {
       this.visibleIndex = -1;
       this.paneEl.hidden = true;
-      this.navSectionEl.hidden = true;
+      // Reset the per-slot outline-closed flag so a doc opened into
+      // this slot later starts with its outline shown.
+      this.navHidden = false;
       // If this empty slot was the expanded one, exit expand mode —
       // no doc to expand any more.
       this.shell.notifySlotEmptied(this);
+      this.shell.reconcileNavRail();
       this.shell.refreshLayout();
       // If this slot was focused, hand focus to the next active slot.
       this.shell.handleSlotEmptied(this);
@@ -1291,7 +1367,6 @@ class MultiPaneShell {
         ? slot === expanded
         : slot.stack.length > 0;
       slot.paneEl.hidden = !show;
-      slot.navSectionEl.hidden = !show;
       slot.setExpandButtonPressed(slot === expanded);
     }
     if (expanded) {
@@ -1301,8 +1376,115 @@ class MultiPaneShell {
       delete this.rowEl.dataset['expanded'];
       delete this.navRailEl.dataset['expanded'];
     }
+    // Nav-section visibility (per-slot, honours navHidden) is owned by
+    // reconcileNavRail; pane visibility above stays independent.
+    this.reconcileNavRail();
     this.refreshLayout();
     if (expanded) this.focusSlot(expanded);
+  }
+
+  /** Count of visible nav sections at the last reconcile — used to
+   *  detect a composition change (open / close / hide / show) so we
+   *  can re-even the vertical split. */
+  private lastNavVisibleCount = -1;
+
+  /** Single source of truth for which nav sections show in the rail,
+   *  their vertical split, their resize handles, and whether the rail
+   *  itself is shown at all. Derives visibility from: expand mode →
+   *  only the expanded slot; otherwise every slot with a loaded doc —
+   *  minus any the user has individually closed (`navHidden`). */
+  reconcileNavRail(): void {
+    const expanded = this.expandedSlot;
+    const visible: Slot[] = [];
+    for (const id of SLOT_IDS) {
+      const slot = this.slots[id];
+      const showByLayout = expanded ? slot === expanded : slot.stack.length > 0;
+      const show = showByLayout && !slot.navHidden;
+      slot.navSectionEl.hidden = !show;
+      if (show) visible.push(slot);
+    }
+    // Composition changed → reset to an even split so a reopened or
+    // newly-opened section doesn't inherit a stale, lopsided weight.
+    if (visible.length !== this.lastNavVisibleCount) {
+      for (const id of SLOT_IDS) this.slots[id].navFlex = 1;
+      this.lastNavVisibleCount = visible.length;
+    }
+    // The topmost visible section has no neighbour above to trade
+    // height with, so it gets no resize handle.
+    for (let i = 0; i < visible.length; i++) {
+      visible[i]!.setResizeHandleEnabled(i > 0);
+    }
+    // Chip toggle pressed-state + flex weight apply to every slot (a
+    // closed section's chip still needs to show the reopen affordance).
+    for (const id of SLOT_IDS) this.slots[id].applyNavState();
+    // Every open doc's outline closed → drop the rail so the editor row
+    // reclaims its width; the CSS `pmd-multi-nav-empty` body class zeroes
+    // `#app`'s left margin.
+    const railEmpty = visible.length === 0;
+    this.navRailEl.hidden = railEmpty;
+    document.body.classList.toggle('pmd-multi-nav-empty', railEmpty);
+    this.scheduleSyncAllCardIntrinsicWidths();
+  }
+
+  /** Show / hide a single slot's outline section. The doc stays open;
+   *  only its rail section toggles. Reopen via the same chip button or
+   *  the section's × (close only). */
+  setSlotNavHidden(slot: Slot, hidden: boolean): void {
+    if (slot.navHidden === hidden) return;
+    slot.navHidden = hidden;
+    this.reconcileNavRail();
+  }
+
+  /** Reset every section back to an even vertical split (double-click
+   *  on a resize handle). */
+  resetNavSectionSizes(): void {
+    for (const id of SLOT_IDS) this.slots[id].navFlex = 1;
+    for (const id of SLOT_IDS) this.slots[id].applyNavState();
+  }
+
+  /** Begin a vertical drag on `slot`'s resize handle. Trades flex
+   *  weight between `slot` and the visible section directly above it,
+   *  keeping their combined weight constant so the other sections hold
+   *  their size. Pixel delta → flex delta via the live combined height. */
+  beginNavSectionResize(slot: Slot, e: MouseEvent): void {
+    e.preventDefault();
+    // The section directly above this one in rail (document) order,
+    // skipping hidden ones.
+    const order = SLOT_IDS.map((id) => this.slots[id]).filter(
+      (s) => !s.navSectionEl.hidden,
+    );
+    const idx = order.indexOf(slot);
+    if (idx <= 0) return;
+    const above = order[idx - 1]!;
+
+    const startY = e.clientY;
+    const aboveH = above.navSectionHeight();
+    const selfH = slot.navSectionHeight();
+    const totalH = aboveH + selfH;
+    const totalFlex = above.navFlex + slot.navFlex;
+    if (totalH <= 0 || totalFlex <= 0) return;
+    // Don't let a section collapse to nothing — keep room for at least
+    // its sticky header.
+    const MIN_PX = 48;
+
+    const onMove = (ev: MouseEvent) => {
+      let newAboveH = aboveH + (ev.clientY - startY);
+      newAboveH = Math.max(MIN_PX, Math.min(totalH - MIN_PX, newAboveH));
+      const aboveFlex = (newAboveH / totalH) * totalFlex;
+      above.navFlex = aboveFlex;
+      slot.navFlex = totalFlex - aboveFlex;
+      above.applyNavState();
+      slot.applyNavState();
+    };
+    const onUp = () => {
+      document.body.classList.remove('pmd-nav-resize-vertical');
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+      this.scheduleSyncAllCardIntrinsicWidths();
+    };
+    document.body.classList.add('pmd-nav-resize-vertical');
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
   }
 
   /** Pending rAF id for the next card-intrinsic-width batch. */
@@ -1758,11 +1940,12 @@ class MultiPaneShell {
   notifySlotPopulated(slot: Slot): void {
     if (this.expandedSlot && this.expandedSlot !== slot) {
       slot.paneEl.hidden = true;
-      slot.navSectionEl.hidden = true;
     } else {
       slot.paneEl.hidden = false;
-      slot.navSectionEl.hidden = false;
     }
+    // Section visibility (honouring navHidden + expand mode) is owned
+    // by reconcileNavRail.
+    this.reconcileNavRail();
     this.refreshLayout();
   }
 
@@ -2435,7 +2618,13 @@ function buildDocRecord(
 
   // Per-pane nav panel with an INDEPENDENT outline-level filter
   // (`localMaxLevel`). Each section's 1/2/3/4 buttons act locally.
-  const navPanel = new NavigationPanel(navEl, { localMaxLevel: true });
+  // Its × closes just THIS document's outline section (via the slot
+  // the record currently lives in — records can move between slots, so
+  // resolve `owner` lazily at click time, not build time).
+  const navPanel = new NavigationPanel(navEl, {
+    localMaxLevel: true,
+    onClose: () => record.owner.shell.setSlotNavHidden(record.owner, true),
+  });
   navPanel.attach(view);
   // Initial caret-heading highlight so a freshly-mounted pane reflects the
   // cursor before the first selection change (parity with index.ts).

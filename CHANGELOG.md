@@ -5,6 +5,19 @@ changes in each release, written for users of the editor. For
 in-depth rationale and implementation context behind each entry,
 see `DETAILED_CHANGELOG.md`.
 
+## Unreleased
+
+### Added
+
+- **Per-document outlines in the multi-doc workspace.** Each open document's
+  outline section in the navigation rail can now be managed on its own. Click
+  the **×** on a section (or the outline button in that document's title bar)
+  to hide just that document's outline — the document stays open and the other
+  outlines are untouched; the title-bar button brings it back. Drag the divider
+  between two sections to resize them, and double-click the divider to even them
+  out again. Previously the × closed the whole rail and the sections always
+  split the rail evenly.
+
 ## 0.1.0-beta.4 — 2026-06-29
 
 ### Added
