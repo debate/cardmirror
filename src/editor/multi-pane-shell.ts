@@ -33,6 +33,7 @@ import { schema, newHeadingId } from '../schema/index.js';
 import { fromDocxFull, parseNative, serializeNative, NATIVE_FILE_EXTENSION } from '../index.js';
 import { settings } from './settings.js';
 import { getHost, getElectronHost, isSameOpenHandle, type OpenedFile } from './host/index.js';
+import { isFileOpenInAnotherWindow } from './window-coordination.js';
 import { getCommentsState, loadThreads, type Thread } from './comments-plugin.js';
 import { learnStore, type ShowInContextRequest } from './learn-store-host.js';
 import { resolveDescriptor, type AnchorDescriptor } from './learn-anchor.js';
@@ -1673,6 +1674,19 @@ class MultiPaneShell {
     return SLOT_IDS.map((id) => this.slots[id].visible?.filename ?? null);
   }
 
+  /** Every open doc's file handle across all panes and their stacks — for the
+   *  web cross-window same-file guard's query responder (a stacked, non-visible
+   *  doc is still "open" and can be the duplicate). */
+  getAllHandles(): unknown[] {
+    const handles: unknown[] = [];
+    for (const id of SLOT_IDS) {
+      for (const rec of this.slots[id].stack) {
+        if (rec.handle != null) handles.push(rec.handle);
+      }
+    }
+    return handles;
+  }
+
   /** Replace the focused pane's filename with `name` and refresh
    *  the chip. */
   setFocusedFilename(name: string): void {
@@ -1838,19 +1852,13 @@ class MultiPaneShell {
       return;
     }
     if (!opened) return;
-    // Cross-window duplicate-open guard (Electron). Runs BEFORE
-    // the within-window check so a duplicate held by another
-    // window jumps focus there rather than landing on this
+    // Cross-window duplicate-open guard. Runs BEFORE the within-window
+    // check so a duplicate held by another window jumps focus there
+    // (Electron) or is refused (web) rather than landing on this
     // window's existing copy if any.
-    if (typeof opened.handle === 'string' && opened.handle) {
-      const electron = getElectronHost();
-      if (electron) {
-        const { takenByOther } = await electron.openPathCheck(opened.handle);
-        if (takenByOther) {
-          showToast(`"${opened.name}" is already open in another window.`);
-          return;
-        }
-      }
+    if (opened.handle != null && (await isFileOpenInAnotherWindow(opened.handle))) {
+      showToast(`"${opened.name}" is already open in another window.`);
+      return;
     }
     if (await this.surfaceDuplicateIfOpen(opened)) return;
     await this.loadOpenedIntoSlot(opened, target);
@@ -2596,5 +2604,6 @@ export function mountMultiPaneShell(): void {
     onRecoveredDoc: (entry) => shell!.onRecoveredDoc(entry),
     journalAll: () => shell!.journalAll(),
     reduceToFocusedForModeSwitch: () => shell!.reduceToFocusedForModeSwitch(),
+    getOpenHandles: () => shell!.getAllHandles(),
   });
 }

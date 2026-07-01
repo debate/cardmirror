@@ -60,7 +60,8 @@ import {
 } from './mode-switch.js';
 import {
   webCloseOtherWindowsForModeSwitch,
-  installModeSwitchCloseHandler,
+  isFileOpenInAnotherWindow,
+  installWindowCoordination,
 } from './window-coordination.js';
 import { resolveMobileLayout } from './mobile-layout.js';
 import { mobilePlugin, setMobileShellActive } from './mobile-plugin.js';
@@ -748,6 +749,16 @@ let multiDocJournalAll: (() => Promise<ModeSwitchDoc[]>) | null = null;
  *  dirty ones), keeping only the focused doc for the single-doc window. Returns
  *  false if the user cancelled a save prompt (the switch aborts). */
 let multiDocReduceToFocused: (() => Promise<boolean>) | null = null;
+/** Web same-file guard: the file handles this window currently has open, so a
+ *  peer window's cross-window duplicate-open query can compare against them
+ *  (single-doc reports its one handle; multi-pane reports every pane's). */
+let multiDocGetOpenHandles: (() => unknown[]) | null = null;
+/** File handles open in THIS window right now, for the web same-file guard's
+ *  query responder. */
+function getThisWindowOpenHandles(): unknown[] {
+  if (multiDocActive && multiDocGetOpenHandles) return multiDocGetOpenHandles();
+  return currentDocHandle != null ? [currentDocHandle] : [];
+}
 /** Crash-recovery hook: load a recovered journal entry into the
  *  multi-pane workspace. The shell picks a slot (first empty, or
  *  prompts the user) and pushes a DocRecord built from the
@@ -813,6 +824,7 @@ export function enableMultiDocMode(opts: {
   }) => Promise<void>;
   journalAll?: () => Promise<ModeSwitchDoc[]>;
   reduceToFocusedForModeSwitch?: () => Promise<boolean>;
+  getOpenHandles?: () => unknown[];
 }): void {
   multiDocActive = true;
   multiDocOnFileOpen = opts.onFileOpen;
@@ -839,6 +851,7 @@ export function enableMultiDocMode(opts: {
   multiDocOnRecoveredDoc = opts.onRecoveredDoc ?? null;
   multiDocJournalAll = opts.journalAll ?? null;
   multiDocReduceToFocused = opts.reduceToFocusedForModeSwitch ?? null;
+  multiDocGetOpenHandles = opts.getOpenHandles ?? null;
   // Hide the single-doc editor surface. The multi-pane shell
   // mounts its own DOM into #app alongside it. The comments
   // column is NOT hidden — the shell adopts it as a sibling of
@@ -4624,23 +4637,16 @@ async function routeOpenedFile(opened: OpenedFile): Promise<void> {
     alert('That .cmir-journal file is corrupt or could not be read.');
     return;
   }
-  // Cross-window duplicate-open guard (Electron): if any other
-  // window already has this path open, main focuses that window
-  // and we abort. Runs BEFORE the multi-doc / spawn-window /
-  // mount branches so the same check applies whether this
-  // window is single-doc or multi-pane and whether we're about
-  // to mount here or spawn a fresh window. Path-only — never-
-  // saved docs (handle == null, incl. a recovered journal) have
-  // no identity yet so they're not deduped.
-  if (typeof src.handle === 'string' && src.handle) {
-    const electron = getElectronHost();
-    if (electron) {
-      const { takenByOther } = await electron.openPathCheck(src.handle);
-      if (takenByOther) {
-        showToast(`"${src.name}" is already open in another window.`);
-        return;
-      }
-    }
+  // Cross-window duplicate-open guard: if any other window already has this
+  // file open, refuse (Electron focuses that window; web just toasts). Runs
+  // BEFORE the multi-doc / spawn-window / mount branches so the same check
+  // applies whether this window is single-doc or multi-pane and whether we're
+  // about to mount here or spawn a fresh window. Handle-keyed — never-saved
+  // docs (handle == null, incl. a recovered journal) have no identity yet so
+  // they're not deduped.
+  if (src.handle != null && (await isFileOpenInAnotherWindow(src.handle))) {
+    showToast(`"${src.name}" is already open in another window.`);
+    return;
   }
   if (multiDocActive && multiDocOnFileOpen) {
     // Multi-pane shell runs its own within-window duplicate-open
@@ -4902,15 +4908,9 @@ async function pickAndLoadInPlace(): Promise<boolean> {
     alert('That .cmir-journal file is corrupt or could not be read.');
     return false;
   }
-  if (typeof src.handle === 'string' && src.handle) {
-    const electron = getElectronHost();
-    if (electron) {
-      const { takenByOther } = await electron.openPathCheck(src.handle);
-      if (takenByOther) {
-        showToast(`"${src.name}" is already open in another window.`);
-        return false;
-      }
-    }
+  if (src.handle != null && (await isFileOpenInAnotherWindow(src.handle))) {
+    showToast(`"${src.name}" is already open in another window.`);
+    return false;
   }
   try {
     await loadFileInPlace({
@@ -6358,10 +6358,14 @@ if (
 // on Electron; safe to install in both single-doc and (will-be)
 // multi-pane paths since the resolver filters by uid.
 installIncomingSpeechSliceHandler();
-// Passenger side of a web mode switch: listen for another window's please-close,
-// journal our open doc(s), report them, and self-close. No-op on Electron (which
-// coordinates through main) and where BroadcastChannel is unavailable.
-installModeSwitchCloseHandler(journalAllForModeSwitch);
+// Persistent web cross-window coordination: tracks live peer windows and answers
+// mode-switch please-close (journal our doc(s), report, self-close) + same-file
+// queries (is this file already open here?). No-op on Electron (coordinates
+// through main) and where BroadcastChannel is unavailable.
+installWindowCoordination({
+  journalOpenDocs: journalAllForModeSwitch,
+  getOpenHandles: getThisWindowOpenHandles,
+});
 // Load the persistent, cross-window Quick Cards library + subscribe to
 // changes. Done at boot (not on first UI mount) so the add command and
 // search palette work the instant they're invoked, in either layout.

@@ -3,19 +3,24 @@
  * counterpart to the Electron main process, which the desktop build uses as its
  * coordination hub.
  *
- * Powers the multi-pane mode-switch's "ask the other windows to journal their
- * docs and close, then collect what they had open" handshake — the web analogue
- * of Electron's `journalAndCloseOtherWindows` + `reportModeSwitchJournaled` +
- * `closeSelf`. (Later: single-window singleton enforcement and the cross-window
- * same-file guard hang off the same channel.)
+ * One persistent channel per window (opened by `installWindowCoordination` at
+ * boot) tracks live peers and answers two kinds of request:
+ *  - **Mode-switch please-close** (three-pane consolidation): a window journals
+ *    its open doc(s), reports {uid,dirty}, and self-closes — the web analogue of
+ *    Electron's `journalAndCloseOtherWindows` / `reportModeSwitchJournaled` /
+ *    `closeSelf`.
+ *  - **Same-file query** (duplicate-open guard): a window about to open a file
+ *    asks whether any other window already has it open, answered via
+ *    `FileSystemFileHandle.isSameEntry` — the web analogue of Electron's
+ *    `openPathCheck`.
  *
  * Design notes:
- *  - A BroadcastChannel delivers a message to every OTHER instance of the same
- *    channel name — INCLUDING other instances in the SAME window. So every
- *    handler ignores messages stamped with its own `WINDOW_ID`.
- *  - Passenger windows report {uid,dirty} only; the doc bytes ride in the shared
- *    journal store (IndexedDB), which the survivor reads after its reload. So the
- *    report is tiny and fast (no serialization) and never races the reload.
+ *  - A BroadcastChannel delivers to every OTHER instance of the same channel
+ *    name — including other instances in the SAME window — so every handler
+ *    ignores messages stamped with its own `WINDOW_ID`.
+ *  - Live-peer tracking (`hello`/`here`/`bye`) lets same-file checks short-circuit
+ *    instantly when this window is alone, and gives the mode-switch an exact peer
+ *    set to wait for.
  *  - Everything degrades to a graceful no-op where BroadcastChannel is absent.
  */
 
@@ -25,18 +30,21 @@ import { getElectronHost } from './host/index.js';
 const CHANNEL_NAME = 'pmd-window-coord';
 
 /** Stable identity for THIS window, for the session. Shared across every channel
- *  instance this module opens in this window (module-level constant), so a
- *  window can recognize — and ignore — its own broadcasts. */
+ *  instance this module opens in this window, so a window recognizes — and
+ *  ignores — its own broadcasts. */
 const WINDOW_ID =
   typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
     ? crypto.randomUUID()
     : `w${Math.floor(performance.now())}-${Math.floor(Math.random() * 1e9)}`;
 
 type CoordMsg =
-  | { kind: 'coord:ping'; from: string }
+  | { kind: 'coord:hello'; from: string }
   | { kind: 'coord:here'; from: string }
+  | { kind: 'coord:bye'; from: string }
   | { kind: 'mode-switch:please-close'; from: string }
-  | { kind: 'mode-switch:report'; from: string; docs: ModeSwitchDoc[] };
+  | { kind: 'mode-switch:report'; from: string; docs: ModeSwitchDoc[] }
+  | { kind: 'file-open:query'; from: string; nonce: string; handle: unknown }
+  | { kind: 'file-open:hit'; from: string; nonce: string };
 
 function makeChannel(): BroadcastChannel | null {
   try {
@@ -48,35 +56,128 @@ function makeChannel(): BroadcastChannel | null {
   }
 }
 
-// How long to listen for peer pongs before deciding who's open.
-const PING_WINDOW_MS = 250;
-// Hard cap on waiting for slow passengers to report before we proceed anyway.
+/** Hard cap on waiting for slow passengers to report before proceeding anyway. */
 const REPORT_CAP_MS = 1500;
+/** Cap on waiting for a same-file answer (only paid when peers exist AND none
+ *  claims the file — the alone case short-circuits). */
+const FILE_QUERY_MS = 300;
 
-/** Count the other open windows (their WINDOW_IDs) via a quick ping/pong. */
-function pingPeers(channel: BroadcastChannel): Promise<Set<string>> {
-  return new Promise((resolve) => {
-    const peers = new Set<string>();
-    const onMsg = (e: MessageEvent<CoordMsg>): void => {
-      const msg = e.data;
-      if (msg?.kind === 'coord:here' && msg.from !== WINDOW_ID) peers.add(msg.from);
-    };
-    channel.addEventListener('message', onMsg);
-    channel.postMessage({ kind: 'coord:ping', from: WINDOW_ID } satisfies CoordMsg);
-    window.setTimeout(() => {
-      channel.removeEventListener('message', onMsg);
-      resolve(peers);
-    }, PING_WINDOW_MS);
+/** IDs of the other windows we currently believe are open. Maintained by the
+ *  persistent coordination channel via hello/here/bye. */
+const livePeers = new Set<string>();
+
+/** Whether any other window is (believed to be) open. */
+export function hasPeers(): boolean {
+  return livePeers.size > 0;
+}
+
+function hasIsSameEntry(h: unknown): h is FileSystemFileHandle {
+  return (
+    !!h &&
+    typeof (h as { isSameEntry?: unknown }).isSameEntry === 'function'
+  );
+}
+
+async function respondToFileQuery(
+  ch: BroadcastChannel,
+  getOpenHandles: () => unknown[],
+  msg: Extract<CoordMsg, { kind: 'file-open:query' }>,
+): Promise<void> {
+  for (const h of getOpenHandles()) {
+    if (!hasIsSameEntry(h)) continue;
+    try {
+      if (await h.isSameEntry(msg.handle as FileSystemFileHandle)) {
+        ch.postMessage({ kind: 'file-open:hit', from: WINDOW_ID, nonce: msg.nonce } satisfies CoordMsg);
+        return;
+      }
+    } catch {
+      /* ignore a handle we can't compare */
+    }
+  }
+}
+
+async function handlePleaseClose(
+  ch: BroadcastChannel,
+  journalOpenDocs: () => Promise<ModeSwitchDoc[]>,
+): Promise<void> {
+  let docs: ModeSwitchDoc[] = [];
+  try {
+    docs = await journalOpenDocs();
+  } catch (err) {
+    console.warn('Mode-switch journaling failed:', err);
+  }
+  ch.postMessage({ kind: 'mode-switch:report', from: WINDOW_ID, docs } satisfies CoordMsg);
+  // Give the report a beat to flush before this context is torn down, then
+  // close (with the stuck-window fallback).
+  window.setTimeout(() => {
+    closeSelfWithFallback(
+      'This document moved to your three-pane window. You can close this window.',
+    );
+  }, 150);
+}
+
+/**
+ * Install the persistent coordination channel (once, at boot, on the browser
+ * host only — Electron coordinates through main). Tracks live peers and answers
+ * please-close + same-file queries. `journalOpenDocs` journals this window's
+ * open doc(s) for a mode switch; `getOpenHandles` returns the file handles this
+ * window currently has open (for the duplicate-open guard).
+ */
+export function installWindowCoordination(hooks: {
+  journalOpenDocs: () => Promise<ModeSwitchDoc[]>;
+  getOpenHandles: () => unknown[];
+}): void {
+  if (getElectronHost()) return; // desktop coordinates through main
+  const ch = makeChannel();
+  if (!ch) return;
+  ch.addEventListener('message', (e: MessageEvent<CoordMsg>) => {
+    const msg = e.data;
+    if (!msg || msg.from === WINDOW_ID) return; // ignore our own broadcasts
+    switch (msg.kind) {
+      case 'coord:hello':
+        livePeers.add(msg.from);
+        ch.postMessage({ kind: 'coord:here', from: WINDOW_ID } satisfies CoordMsg);
+        break;
+      case 'coord:here':
+        livePeers.add(msg.from);
+        break;
+      case 'coord:bye':
+        livePeers.delete(msg.from);
+        break;
+      case 'mode-switch:please-close':
+        void handlePleaseClose(ch, hooks.journalOpenDocs);
+        break;
+      case 'file-open:query':
+        void respondToFileQuery(ch, hooks.getOpenHandles, msg);
+        break;
+      default:
+        break; // 'mode-switch:report' / 'file-open:hit' are collected elsewhere
+    }
+  });
+  // Announce ourselves and learn who's already here.
+  ch.postMessage({ kind: 'coord:hello', from: WINDOW_ID } satisfies CoordMsg);
+  // Best-effort departure notice so peers prune us promptly.
+  window.addEventListener('pagehide', () => {
+    try {
+      ch.postMessage({ kind: 'coord:bye', from: WINDOW_ID } satisfies CoordMsg);
+    } catch {
+      /* ignore */
+    }
   });
 }
 
-/** Broadcast please-close and collect each peer's {uid,dirty} report; resolve as
- *  soon as every counted peer has reported, or at the cap. */
-function collectReports(
-  channel: BroadcastChannel,
-  peers: Set<string>,
-): Promise<ModeSwitchDoc[]> {
-  return new Promise((resolve) => {
+/**
+ * Initiator side of a web mode switch: ask every other window to journal its
+ * open doc(s) and close, and return the {uid,dirty} each reported so the caller
+ * can fold them into the mode-switch marker. Resolves when every known peer has
+ * reported or at the cap. Short-circuits to `[]` when this window is alone.
+ */
+export async function webCloseOtherWindowsForModeSwitch(): Promise<ModeSwitchDoc[]> {
+  const expected = new Set(livePeers);
+  if (expected.size === 0) return [];
+  const channel = makeChannel();
+  if (!channel) return [];
+  return new Promise<ModeSwitchDoc[]>((resolve) => {
     const collected: ModeSwitchDoc[] = [];
     const reported = new Set<string>();
     let settled = false;
@@ -84,6 +185,7 @@ function collectReports(
       if (settled) return;
       settled = true;
       channel.removeEventListener('message', onMsg);
+      channel.close();
       resolve(collected);
     };
     const onMsg = (e: MessageEvent<CoordMsg>): void => {
@@ -95,7 +197,7 @@ function collectReports(
       ) {
         reported.add(msg.from);
         collected.push(...msg.docs);
-        if ([...peers].every((p) => reported.has(p))) finish();
+        if ([...expected].every((p) => reported.has(p))) finish();
       }
     };
     channel.addEventListener('message', onMsg);
@@ -105,74 +207,70 @@ function collectReports(
 }
 
 /**
- * Initiator side of a web mode switch: ask every OTHER window to journal its
- * open doc(s) and close, and return the {uid,dirty} each reported so the caller
- * can fold them into the mode-switch marker. Short-circuits to `[]` when no
- * other window is open (so a lone-window switch never pauses) or when
- * BroadcastChannel is unavailable.
+ * Duplicate-open guard: does any OTHER window already have this file open?
+ * Broadcasts the handle and resolves true if a peer answers that it matches one
+ * of its open docs (via `isSameEntry`). Short-circuits to false when this window
+ * is alone or the handle isn't comparable.
  */
-export async function webCloseOtherWindowsForModeSwitch(): Promise<ModeSwitchDoc[]> {
+export async function webIsFileOpenElsewhere(handle: unknown): Promise<boolean> {
+  if (!hasIsSameEntry(handle) || !hasPeers()) return false;
   const channel = makeChannel();
-  if (!channel) return [];
-  try {
-    const peers = await pingPeers(channel);
-    if (peers.size === 0) return [];
-    return await collectReports(channel, peers);
-  } finally {
-    channel.close();
-  }
-}
-
-/**
- * Passenger side: install a listener (once, at boot, on the browser host only —
- * Electron uses its own IPC path) that answers presence pings and, on a
- * please-close, journals this window's open doc(s) via `journalOpenDocs`,
- * reports the {uid,dirty} back to the initiator, and self-closes.
- */
-export function installModeSwitchCloseHandler(
-  journalOpenDocs: () => Promise<ModeSwitchDoc[]>,
-): void {
-  if (getElectronHost()) return; // desktop coordinates through main
-  const channel = makeChannel();
-  if (!channel) return;
-  channel.addEventListener('message', (e: MessageEvent<CoordMsg>) => {
-    const msg = e.data;
-    if (!msg || msg.from === WINDOW_ID) return; // ignore our own broadcasts
-    if (msg.kind === 'coord:ping') {
-      channel.postMessage({ kind: 'coord:here', from: WINDOW_ID } satisfies CoordMsg);
-      return;
-    }
-    if (msg.kind === 'mode-switch:please-close') {
-      void (async (): Promise<void> => {
-        let docs: ModeSwitchDoc[] = [];
-        try {
-          docs = await journalOpenDocs();
-        } catch (err) {
-          console.warn('Mode-switch journaling failed:', err);
-        }
-        channel.postMessage({
-          kind: 'mode-switch:report',
-          from: WINDOW_ID,
-          docs,
-        } satisfies CoordMsg);
-        // Give the report a beat to flush across the channel before this
-        // context is torn down, then close (with the stuck-window fallback).
-        window.setTimeout(() => {
-          closeSelfWithFallback(
-            'This document moved to your three-pane window. You can close this window.',
-          );
-        }, 150);
-      })();
-    }
+  if (!channel) return false;
+  const nonce =
+    typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      ? crypto.randomUUID()
+      : String(Math.random());
+  return new Promise<boolean>((resolve) => {
+    let settled = false;
+    const finish = (result: boolean): void => {
+      if (settled) return;
+      settled = true;
+      channel.removeEventListener('message', onMsg);
+      channel.close();
+      resolve(result);
+    };
+    const onMsg = (e: MessageEvent<CoordMsg>): void => {
+      const msg = e.data;
+      if (msg?.kind === 'file-open:hit' && msg.nonce === nonce && msg.from !== WINDOW_ID) {
+        finish(true);
+      }
+    };
+    channel.addEventListener('message', onMsg);
+    channel.postMessage({
+      kind: 'file-open:query',
+      from: WINDOW_ID,
+      nonce,
+      handle,
+    } satisfies CoordMsg);
+    window.setTimeout(() => finish(false), FILE_QUERY_MS);
   });
 }
 
 /**
- * Close this window, with a fallback for the rare case Chrome refuses the
- * self-close (a window is only script-closable as a top-level context with a
- * single history entry). If we're still alive shortly after `window.close()`,
- * cover the (now-stale) content with a dismissible notice rather than leave a
- * duplicate window sitting there.
+ * Whether `handle` is already open in another window — the duplicate-open guard.
+ * Electron checks the main-process path registry (`openPathCheck`, string path
+ * handles); web queries peer windows over BroadcastChannel (`isSameEntry`). A
+ * second window editing the same file would race its save/autosave against the
+ * first, so callers refuse the open when this returns true.
+ */
+export async function isFileOpenInAnotherWindow(handle: unknown): Promise<boolean> {
+  const electron = getElectronHost();
+  if (electron) {
+    if (typeof handle === 'string' && handle) {
+      const { takenByOther } = await electron.openPathCheck(handle);
+      return takenByOther;
+    }
+    return false;
+  }
+  return webIsFileOpenElsewhere(handle);
+}
+
+/**
+ * Close this window, with a fallback for the case Chrome refuses the self-close
+ * (a window opened via a capturable link click isn't script-closable from a
+ * message handler — there's no user activation). If we're still alive shortly
+ * after `window.close()`, cover the (now-stale) content with a dismissible
+ * notice rather than leave a duplicate window sitting there.
  */
 export function closeSelfWithFallback(message: string): void {
   window.close();
