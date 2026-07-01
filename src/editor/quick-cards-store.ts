@@ -59,9 +59,11 @@ export function normalizeTag(tag: string): string {
 
 /** Order-independent equality key for a set of normalized tags — used
  *  by the duplicate-name check (a name may repeat only if its tag-set
- *  differs). */
+ *  differs). JSON-encodes the sorted set so distinct tag-sets can't collide:
+ *  a plain separator would, because normalized tags keep their internal spaces
+ *  (e.g. `["a b"]` and `["a", "b"]` must stay distinct). */
 export function tagSetKey(tagsLower: string[]): string {
-  return [...new Set(tagsLower)].sort().join(' ');
+  return JSON.stringify([...new Set(tagsLower)].sort());
 }
 
 /** Distinct tags across a card list (display casing kept from first
