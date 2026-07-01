@@ -62,6 +62,8 @@ import {
   webCloseOtherWindowsForModeSwitch,
   isFileOpenInAnotherWindow,
   installWindowCoordination,
+  anOlderMultiPaneWindowExists,
+  closeSelfWithFallback,
 } from './window-coordination.js';
 import { resolveMobileLayout } from './mobile-layout.js';
 import { mobilePlugin, setMobileShellActive } from './mobile-plugin.js';
@@ -6354,6 +6356,10 @@ if (BOOT_MOBILE_ENV.hostKind === 'browser') {
 }
 if (BOOT_MOBILE) setMobileShellActive(true);
 const BOOT_MULTI_DOC_WORKSPACE = !BOOT_MOBILE && settings.get('multiDocWorkspace');
+// Set when this window bounced itself as a redundant three-pane duplicate
+// (singleton enforcement). A bounced window that lingers (couldn't self-close)
+// must stop claiming to be a workspace, so it never blocks a future window.
+let redundantWindowBounced = false;
 // Multi-window mode shows the speech-stack ribbon cluster (mark-as-speech + the
 // two send buttons). On desktop that's single-doc + a host that can spawn
 // windows (Electron). On the web a single-doc tab can send to the speech doc in
@@ -6376,6 +6382,10 @@ installIncomingSpeechSliceHandler();
 installWindowCoordination({
   journalOpenDocs: journalAllForModeSwitch,
   getOpenHandles: getThisWindowOpenHandles,
+  // A page-load's mode is fixed (a toggle reloads), so the boot constant is the
+  // current three-pane state — for the singleton (one-three-pane-window) rule.
+  // A window that already bounced no longer counts as a live workspace.
+  isMultiPane: () => BOOT_MULTI_DOC_WORKSPACE && !redundantWindowBounced,
 });
 // Load the persistent, cross-window Quick Cards library + subscribe to
 // changes. Done at boot (not on first UI mount) so the add command and
@@ -6498,7 +6508,22 @@ void loadLearnStore();
 installDragToOpen();
 
 if (BOOT_MULTI_DOC_WORKSPACE) {
-  void import('./multi-pane-shell.js').then(async (m) => {
+  void (async () => {
+    // Singleton: only one three-pane window. Run the check alongside the shell
+    // import; if an older three-pane window is already open, this is a
+    // browser-spawned duplicate (Cmd+N / app icon) — bounce it instead of
+    // opening a second workspace.
+    const [older, m] = await Promise.all([
+      anOlderMultiPaneWindowExists(),
+      import('./multi-pane-shell.js'),
+    ]);
+    if (older) {
+      redundantWindowBounced = true;
+      closeSelfWithFallback(
+        'You’re in three-pane mode — open new docs using in-app commands.',
+      );
+      return;
+    }
     m.mountMultiPaneShell();
     // The dropzone pill anchors to the leftmost VISIBLE pane body, but
     // panes boot `[hidden]` until a doc loads — so the anchor doesn't
@@ -6537,7 +6562,7 @@ if (BOOT_MULTI_DOC_WORKSPACE) {
     // isn't the place to surface unrelated drafts (matches single-doc).
     const routedInitialDoc = await routeInitialDocIntoWorkspace();
     if (!routedInitialDoc) await runStartupRecovery();
-  });
+  })();
 } else {
   // Home screen is a single-doc-mode feature (multi-pane has its
   // own workspace layout). Mount it before boot so the overlay is

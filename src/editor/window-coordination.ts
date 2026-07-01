@@ -37,6 +37,9 @@ const WINDOW_ID =
     ? crypto.randomUUID()
     : `w${Math.floor(performance.now())}-${Math.floor(Math.random() * 1e9)}`;
 
+/** Wall-clock time this window loaded — the singleton tiebreaker (older wins). */
+const OPENED_AT = Date.now();
+
 type CoordMsg =
   | { kind: 'coord:hello'; from: string }
   | { kind: 'coord:here'; from: string }
@@ -44,7 +47,9 @@ type CoordMsg =
   | { kind: 'mode-switch:please-close'; from: string }
   | { kind: 'mode-switch:report'; from: string; docs: ModeSwitchDoc[] }
   | { kind: 'file-open:query'; from: string; nonce: string; handle: unknown }
-  | { kind: 'file-open:hit'; from: string; nonce: string };
+  | { kind: 'file-open:hit'; from: string; nonce: string }
+  | { kind: 'singleton:who'; from: string; openedAt: number }
+  | { kind: 'singleton:here'; from: string; openedAt: number };
 
 function makeChannel(): BroadcastChannel | null {
   try {
@@ -126,6 +131,8 @@ async function handlePleaseClose(
 export function installWindowCoordination(hooks: {
   journalOpenDocs: () => Promise<ModeSwitchDoc[]>;
   getOpenHandles: () => unknown[];
+  /** Whether THIS window is a three-pane workspace (for singleton enforcement). */
+  isMultiPane: () => boolean;
 }): void {
   if (getElectronHost()) return; // desktop coordinates through main
   const ch = makeChannel();
@@ -150,8 +157,20 @@ export function installWindowCoordination(hooks: {
       case 'file-open:query':
         void respondToFileQuery(ch, hooks.getOpenHandles, msg);
         break;
+      case 'singleton:who':
+        // A window booting into three-pane is asking whether one is already
+        // open. Answer only if WE are a three-pane window; it compares our
+        // openedAt to decide who yields.
+        if (hooks.isMultiPane()) {
+          ch.postMessage({
+            kind: 'singleton:here',
+            from: WINDOW_ID,
+            openedAt: OPENED_AT,
+          } satisfies CoordMsg);
+        }
+        break;
       default:
-        break; // 'mode-switch:report' / 'file-open:hit' are collected elsewhere
+        break; // '*:report' / '*:hit' / '*:here' are collected in their queries
     }
   });
   // Announce ourselves and learn who's already here.
@@ -263,6 +282,47 @@ export async function isFileOpenInAnotherWindow(handle: unknown): Promise<boolea
     return false;
   }
   return webIsFileOpenElsewhere(handle);
+}
+
+/** Singleton enforcement: is another THREE-PANE window already open that
+ *  OUTRANKS this one (opened earlier; exact ties broken by id)? A window booting
+ *  into three-pane calls this and bounces itself when it's true, so a
+ *  browser-spawned duplicate (Cmd+N, app icon) never becomes a second workspace.
+ *  Resolves as soon as an older peer answers, else after a short timeout.
+ *  No-op (false) on Electron (main manages windows) or without BroadcastChannel. */
+export async function anOlderMultiPaneWindowExists(): Promise<boolean> {
+  if (getElectronHost()) return false;
+  const channel = makeChannel();
+  if (!channel) return false;
+  return new Promise<boolean>((resolve) => {
+    let older = false;
+    let settled = false;
+    const finish = (): void => {
+      if (settled) return;
+      settled = true;
+      channel.removeEventListener('message', onMsg);
+      channel.close();
+      resolve(older);
+    };
+    const onMsg = (e: MessageEvent<CoordMsg>): void => {
+      const m = e.data;
+      if (m?.kind === 'singleton:here' && m.from !== WINDOW_ID) {
+        const outranks =
+          m.openedAt < OPENED_AT || (m.openedAt === OPENED_AT && m.from < WINDOW_ID);
+        if (outranks) {
+          older = true;
+          finish(); // an older three-pane window exists — we should bounce
+        }
+      }
+    };
+    channel.addEventListener('message', onMsg);
+    channel.postMessage({
+      kind: 'singleton:who',
+      from: WINDOW_ID,
+      openedAt: OPENED_AT,
+    } satisfies CoordMsg);
+    window.setTimeout(finish, 250);
+  });
 }
 
 /**
