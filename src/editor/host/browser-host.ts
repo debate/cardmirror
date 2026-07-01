@@ -463,12 +463,13 @@ export class BrowserHost implements Host {
     const db = await openDb();
     await new Promise<void>((resolve, reject) => {
       const tx = db.transaction(STORE_JOURNALS, 'readwrite');
-      // IndexedDB structured-clones the value, which supports
-      // Uint8Array natively. The handle field is `null` for browser
-      // — FileSystemFileHandles aren't serializable into the DB.
-      // (We could persist them via the FSA API's permission /
-      // saved-handle features, but that's future work.)
-      tx.objectStore(STORE_JOURNALS).put({ ...entry, handle: null });
+      // IndexedDB structured-clones the value: Uint8Array is supported
+      // natively, and a FileSystemFileHandle is cloneable too — so the file
+      // handle survives the reload (restored with 'prompt' permission, which is
+      // fine: the duplicate-open guard's isSameEntry needs no grant, and
+      // in-place save re-requests permission on first write). Keeping it lets a
+      // journaled/recovered doc retain its file identity across a mode switch.
+      tx.objectStore(STORE_JOURNALS).put({ ...entry });
       tx.oncomplete = (): void => resolve();
       tx.onerror = (): void => reject(tx.error ?? new Error('writeJournal failed.'));
     });

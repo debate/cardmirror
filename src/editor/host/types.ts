@@ -98,9 +98,12 @@ export interface JournalEntry {
    *  was never named. */
   filename: string;
   /** Last-known on-disk handle (Electron: absolute path string;
-   *  Browser: never set — File System Access handles don't survive
-   *  reload). `null` for never-saved docs. */
-  handle: string | null;
+   *  Browser: the File System Access `FileSystemFileHandle`). Handles ARE
+   *  structured-cloneable, so the browser one survives a reload via IndexedDB —
+   *  a journaled/recovered doc keeps its file identity (for the duplicate-open
+   *  guard, which only needs `isSameEntry`, and for in-place save, which
+   *  re-requests permission on first write). `null` for never-saved docs. */
+  handle: unknown;
   /** The format the doc was last saved in (or null if never saved).
    *  Drives whether a recovered + re-saved doc round-trips through
    *  `toDocx` or stays native. */

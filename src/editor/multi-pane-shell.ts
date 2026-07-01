@@ -152,7 +152,9 @@ async function runJournalForRecord(record: DocRecord): Promise<void> {
     await host.writeJournal({
       uid: record.uid,
       filename: record.filename,
-      handle: typeof record.handle === 'string' ? record.handle : null,
+      // Electron path string OR the browser's FileSystemFileHandle (both
+      // survive the journal round-trip).
+      handle: record.handle,
       format: record.format,
       savedAt: new Date().toISOString(),
       bytes,
@@ -1763,7 +1765,7 @@ class MultiPaneShell {
   async onRecoveredDoc(entry: {
     uid: string;
     filename: string;
-    handle: string | null;
+    handle: unknown;
     format: DocFormat | null;
     docId: string | null;
     doc: PMNode;
@@ -1920,10 +1922,6 @@ class MultiPaneShell {
    *  doc open. */
   private async surfaceDuplicateIfOpen(opened: OpenedFile): Promise<boolean> {
     const existing = await this.findOpenRecordByHandle(opened.handle ?? null);
-    console.log('[samefile] surfaceDuplicateIfOpen (within-window)', {
-      hasHandle: opened.handle != null,
-      found: !!existing,
-    });
     if (!existing) return false;
     existing.slot.showRecord(existing.record);
     this.focusSlot(existing.slot);

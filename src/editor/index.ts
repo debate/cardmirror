@@ -756,18 +756,8 @@ let multiDocGetOpenHandles: (() => unknown[]) | null = null;
 /** File handles open in THIS window right now, for the web same-file guard's
  *  query responder. */
 function getThisWindowOpenHandles(): unknown[] {
-  const result =
-    multiDocActive && multiDocGetOpenHandles
-      ? multiDocGetOpenHandles()
-      : currentDocHandle != null
-        ? [currentDocHandle]
-        : [];
-  console.log('[samefile] getOpenHandles', {
-    multiDocActive,
-    hasMultiCb: !!multiDocGetOpenHandles,
-    count: result.length,
-  });
-  return result;
+  if (multiDocActive && multiDocGetOpenHandles) return multiDocGetOpenHandles();
+  return currentDocHandle != null ? [currentDocHandle] : [];
 }
 /** Crash-recovery hook: load a recovered journal entry into the
  *  multi-pane workspace. The shell picks a slot (first empty, or
@@ -777,7 +767,7 @@ let multiDocOnRecoveredDoc:
   | ((entry: {
       uid: string;
       filename: string;
-      handle: string | null;
+      handle: unknown;
       format: 'cmir' | 'docx' | null;
       docId: string | null;
       doc: import('prosemirror-model').Node;
@@ -825,7 +815,7 @@ export function enableMultiDocMode(opts: {
   onRecoveredDoc?: (entry: {
     uid: string;
     filename: string;
-    handle: string | null;
+    handle: unknown;
     format: 'cmir' | 'docx' | null;
     docId: string | null;
     doc: import('prosemirror-model').Node;
@@ -5900,8 +5890,9 @@ async function runJournalWrite(): Promise<void> {
     await host.writeJournal({
       uid: currentDocUid,
       filename: currentDocFilename ?? 'Untitled',
-      handle:
-        typeof currentDocHandle === 'string' ? currentDocHandle : null,
+      // Keep the handle as-is: Electron path string OR the browser's
+      // FileSystemFileHandle (both survive the journal round-trip).
+      handle: currentDocHandle,
       format: currentDocFormat,
       savedAt: new Date().toISOString(),
       bytes,
@@ -7102,7 +7093,10 @@ async function autoRecoverAll(
       await host.spawnWindow({
         filename: entry.filename,
         bytes: entry.bytes,
-        handle: entry.handle,
+        // spawnWindow handoff carries a path string (Electron); a web handle
+        // can't cross to a new window, so it coerces to null. (Web multi->single
+        // never reaches here — reduceToFocused leaves only the focused doc.)
+        handle: typeof entry.handle === 'string' ? entry.handle : null,
         format: entry.format,
         // Reuse the original uid so the spawned window's
         // journal continues to track the same logical doc.
