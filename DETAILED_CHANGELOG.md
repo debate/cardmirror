@@ -51,6 +51,36 @@ in each release, see `CHANGELOG.md`.
   dropping a row's own divider when it sits against a section boundary
   so lines never stack.
 
+- **Accessibility: annotation underline shapes toggle** (`settings.ts`,
+  `index.ts`, `style.css`, `MANUAL.md`). The color audit flagged the
+  in-document annotation ranges as HIGH severity for red-green CVD: the
+  flashcard / AI-thread / private-note decorations shared an identical
+  2px-solid contrast-edge underline and differed only by tint hue
+  (accent blue / purple / green) — and purple collapses toward blue when
+  the red channel is impaired. New `annotationShapes` toggle (off by
+  default, deferred from the audit at maintainer direction as its own
+  feature) drives `data-annotation-shapes` on the document root — fifth
+  use of the attribute-swap pattern — and a CSS block adds the per-kind
+  underlines: comment 1px dotted, flashcard 2px solid, AI 2px dashed,
+  note 3px double (double needs ≥3px to draw two lines). Per maintainer
+  direction the toggle OWNS the underlines outright: with it off, all
+  annotation ranges render as tint + the accent click-outline
+  (.pmd-annotation-active) only — both the previous always-on 2px solid
+  underline on flashcard/AI/note and the always-on dotted comment
+  underline are gone. Known tradeoff, accepted by the maintainer: the
+  comment dotted underline was the fix for gold-tint-on-yellow
+  invisibility (a comment tint on matching highlighted text can
+  vanish); with the toggle off that cue is absent. To compensate for
+  losing the underlines, all four tints were strengthened ~5 points
+  (comment gold 0.12→0.17 light / 0.18→0.23 dark, flashcard accent
+  13%→18%, AI + note 14%→19%); the color-mix percentages reference the
+  identity tokens, so the color-vision preset inherits the change. This
+  mirrors in-document the text redundancy the comments column's type
+  chips already provide. No decoration/plugin changes — the per-kind
+  classes already existed; underlines keep the theme-contrast edge
+  token, so the toggle composes with light/dark and with the
+  color-vision preset.
+
 - **Accessibility: color-vision friendly palette preset** (`settings.ts`,
   `index.ts`, `style.css`, `MANUAL.md`, `ARCHITECTURE.md`). New
   `colorVisionFriendly` toggle drives a `data-cvd="friendly"` attribute on

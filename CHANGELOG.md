@@ -24,6 +24,14 @@ see `DETAILED_CHANGELOG.md`.
   palette engineered to stay distinguishable under red-green and blue-yellow
   color-vision deficiencies. Works in light and dark themes, and any colors
   you've set by hand still win.
+- **Annotations distinguishable by shape.** A new Accessibility toggle,
+  **Distinguish annotations by underline shape**, adds a shape-coded
+  underline to each kind of in-document annotation: comments dotted,
+  flashcards solid, AI threads dashed, private notes double — so you can
+  tell them apart even when their tint colors look alike. With the toggle
+  off, annotations are also lighter-weight than before — just the tinted
+  background, no underline — and the tints themselves are slightly
+  stronger to compensate.
 - **20 more colors are now rebindable** under Settings → Accessibility →
   Color overrides: the prep timer's Aff/Neg colors, AI comment / private
   note / AI repair accents, hyperlinks, the misspelling underline, the

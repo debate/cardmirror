@@ -2447,6 +2447,15 @@ function applyColorVision(on: boolean): void {
   else document.documentElement.removeAttribute('data-cvd');
 }
 
+/** Annotation underline shapes: `data-annotation-shapes` gates the
+ *  per-kind underlines in style.css (comment dotted, flashcard solid,
+ *  AI dashed, note double; off = tint only). Orthogonal to the
+ *  color-vision preset. */
+function applyAnnotationShapes(on: boolean): void {
+  if (on) document.documentElement.setAttribute('data-annotation-shapes', 'on');
+  else document.documentElement.removeAttribute('data-annotation-shapes');
+}
+
 /** Steady text cursor: a body class that hides the native blinking
  *  caret; the italic-caret plugin then draws a steady caret in its
  *  place (CSS consumes the class). */
@@ -2649,6 +2658,7 @@ settings.subscribe((s) => {
   applyIconSet(s.iconSet);
   applyReduceMotion(s.reduceMotion);
   applyColorVision(s.colorVisionFriendly);
+  applyAnnotationShapes(s.annotationShapes);
   applyCursorBlink(s.disableCursorBlink);
   if (s.readMode !== lastReadMode || s.hideEmphasisBordersInReadMode !== lastReadModeBorders) {
     lastReadMode = s.readMode;
@@ -2863,6 +2873,7 @@ applyShowDocNameChip(settings.get('showDocNameChip'));
 applyIconSet(settings.get('iconSet'));
 applyReduceMotion(settings.get('reduceMotion'));
 applyColorVision(settings.get('colorVisionFriendly'));
+applyAnnotationShapes(settings.get('annotationShapes'));
 applyPillVisibility(); // default-off dropzone pill + quick-card cluster, at boot
 // Build the timer panel + button bindings. Visibility is gated
 // on `timerVisible` (transient per-window setting); the panel

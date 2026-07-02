@@ -1681,6 +1681,11 @@ remove one, **↺** to restore its default. A few window-level shortcuts
   only — highlights and shading stored in documents are untouched. For
   those, use the **Override highlight/shading color** settings below and the
   status-bar color names setting above.
+- **Distinguish annotations by underline shape** — add a shape-coded
+  underline to in-document annotation ranges so you can tell them apart
+  without relying on their tint colors: comments dotted, flashcards
+  solid, AI threads dashed, private notes double. Off shows just the
+  tinted backgrounds. Works independently of the palette above.
 - **Override highlight color in display** — render highlights in your
   chosen colors regardless of what's stored on the mark (display-only).
 - **Highlight override colors** — up to three ordered colors; the

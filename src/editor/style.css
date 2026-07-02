@@ -653,7 +653,7 @@ button {
   --pmd-c-note-text: #15803d;
   --pmd-c-note-soft: rgba(22, 163, 74, 0.15);
   --pmd-c-comment-thread-toast: rgba(139, 92, 246, 0.95);
-  --pmd-c-comment-cite-bg: rgba(255, 215, 0, 0.12);
+  --pmd-c-comment-cite-bg: rgba(255, 215, 0, 0.17);
   --pmd-c-comment-cite-border: #c79a00;
   /* Contrast edge for annotation underlines — dark in light theme so the
      second tone of the two-tone underline shows on light highlights. */
@@ -877,7 +877,7 @@ button {
   --pmd-c-note: #22c55e;
   --pmd-c-note-text: #86efac;
   --pmd-c-note-soft: rgba(34, 197, 94, 0.22);
-  --pmd-c-comment-cite-bg: rgba(255, 215, 0, 0.18);
+  --pmd-c-comment-cite-bg: rgba(255, 215, 0, 0.23);
   --pmd-c-comment-cite-border: #e0bf3a;
   /* Light edge in dark theme (contrasts dark backgrounds + bright
      highlights). */
@@ -6894,26 +6894,22 @@ body.pmd-comments-resize-active {
   background: var(--pmd-c-accent-hover);
 }
 
-/* Inline indicator on commented text — subtle yellow underline so
-   you can see at a glance what's commented. Doesn't fight with
-   highlight backgrounds since it's an underline. */
-/* Annotation markers (comment + flashcard) = a translucent identity
-   highlight PLUS a thin underline. The highlight gives presence + tells
-   the two apart (gold vs accent); the underline uses the theme-contrast
-   edge (dark in light theme / light in dark) so the cue stays visible
-   even when the text already carries a matching highlight — the old
-   gold-tint-on-yellow invisibility. Shown only while the comments panel
-   is open: flashcards (decorations) are cleared on close; the comment
+/* Annotation markers (comment + flashcard/AI/note) = a translucent
+   identity highlight; the selected one additionally gets the accent
+   outline (.pmd-annotation-active). Underlines exist only under the
+   shapes toggle below — with it off, a comment tint on text that
+   already carries a matching yellow highlight can vanish (the old
+   gold-tint-on-yellow invisibility; the toggle's dotted underline is
+   the fix). Comment styling is shown only while the comments panel is
+   open: flashcards (decorations) are cleared on close; the comment
    mark is in the doc always, so its styling is gated on the panel via
    `:has`. */
 body:has(#comments-column:not([hidden])) :is(#editor, .pmd-pane-editor) .pmd-comment-range {
   background-color: var(--pmd-c-comment-cite-bg);
-  border-bottom: 1px dotted var(--pmd-c-annotation-edge);
   cursor: help;
 }
 :is(#editor, .pmd-pane-editor) .pmd-flashcard-range {
-  background-color: color-mix(in srgb, var(--pmd-c-accent) 13%, transparent);
-  border-bottom: 2px solid var(--pmd-c-annotation-edge);
+  background-color: color-mix(in srgb, var(--pmd-c-accent) 18%, transparent);
   border-radius: 2px;
   cursor: pointer;
 }
@@ -6921,8 +6917,7 @@ body:has(#comments-column:not([hidden])) :is(#editor, .pmd-pane-editor) .pmd-com
    distinct from flashcards' accent tint. Same view-only decoration
    mechanism; never serialized. */
 :is(#editor, .pmd-pane-editor) .pmd-ai-range {
-  background-color: color-mix(in srgb, var(--pmd-c-comment-thread) 14%, transparent);
-  border-bottom: 2px solid var(--pmd-c-annotation-edge);
+  background-color: color-mix(in srgb, var(--pmd-c-comment-thread) 19%, transparent);
   border-radius: 2px;
   cursor: pointer;
 }
@@ -6930,10 +6925,26 @@ body:has(#comments-column:not([hidden])) :is(#editor, .pmd-pane-editor) .pmd-com
    from flashcards (accent) and AI threads (purple). View-only; never
    serialized unless the user opts into export. */
 :is(#editor, .pmd-pane-editor) .pmd-note-range {
-  background-color: color-mix(in srgb, var(--pmd-c-note) 14%, transparent);
-  border-bottom: 2px solid var(--pmd-c-annotation-edge);
+  background-color: color-mix(in srgb, var(--pmd-c-note) 19%, transparent);
   border-radius: 2px;
   cursor: pointer;
+}
+/* Accessibility: "Distinguish annotations by underline shape"
+   (data-annotation-shapes, set from the annotationShapes setting).
+   Adds shape-coded underlines so annotation ranges don't rely on tint
+   hue alone: comment dotted, flashcard solid, AI dashed, note double
+   (double needs 3px to render as two lines). Off = tint only. */
+:root[data-annotation-shapes] body:has(#comments-column:not([hidden])) :is(#editor, .pmd-pane-editor) .pmd-comment-range {
+  border-bottom: 1px dotted var(--pmd-c-annotation-edge);
+}
+:root[data-annotation-shapes] :is(#editor, .pmd-pane-editor) .pmd-flashcard-range {
+  border-bottom: 2px solid var(--pmd-c-annotation-edge);
+}
+:root[data-annotation-shapes] :is(#editor, .pmd-pane-editor) .pmd-ai-range {
+  border-bottom: 2px dashed var(--pmd-c-annotation-edge);
+}
+:root[data-annotation-shapes] :is(#editor, .pmd-pane-editor) .pmd-note-range {
+  border-bottom: 3px double var(--pmd-c-annotation-edge);
 }
 
 /* AI-working box — the card/container an AI op is currently working on,

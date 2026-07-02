@@ -379,6 +379,13 @@ export interface Settings {
    *  style.css consume it. Composes with light/dark; explicit Color
    *  overrides still win (inline styles beat the CSS blocks). */
   colorVisionFriendly: boolean;
+  /** Accessibility: add a shape-coded underline to each in-document
+   *  annotation kind (comment dotted, flashcard solid, AI thread
+   *  dashed, private note double) so the kinds don't rely on tint hue
+   *  alone. Off shows just the tinted backgrounds. Resolved into a
+   *  `data-annotation-shapes` attribute on the document root;
+   *  style.css consumes it. */
+  annotationShapes: boolean;
   /** Accessibility: when true, the text cursor doesn't blink — the
    *  native blinking caret is hidden and a steady custom caret is drawn
    *  in its place. */
@@ -1090,6 +1097,7 @@ const DEFAULTS: Settings = {
   commentsColumnWidth: 320,
   reduceMotion: 'auto',
   colorVisionFriendly: false,
+  annotationShapes: false,
   disableCursorBlink: false,
   accessibilityTreeEnabled: false,
   flowHostOnLaunch: false,
@@ -1693,6 +1701,15 @@ export const SETTING_METADATA: SettingMeta[] = [
     kind: 'toggle',
     category: 'accessibility',
     aliases: ['colorblind', 'color blind', 'cvd', 'deuteranopia', 'protanopia', 'tritanopia'],
+  },
+  {
+    key: 'annotationShapes',
+    label: 'Distinguish annotations by underline shape',
+    description:
+      'Add a shape-coded underline to in-document annotations so you can tell them apart without relying on their tint colors: comments dotted, flashcards solid, AI threads dashed, private notes double. Off shows just the tinted backgrounds. Works independently of the palette above.',
+    kind: 'toggle',
+    category: 'accessibility',
+    aliases: ['underline shapes', 'annotation shapes', 'dashed', 'colorblind', 'cvd'],
   },
   {
     key: 'reduceMotion',
@@ -2613,6 +2630,7 @@ function sanitize(s: Settings): Settings {
     overrideShadingColor: !!s.overrideShadingColor,
     showCursorColorNames: !!s.showCursorColorNames,
     colorVisionFriendly: !!s.colorVisionFriendly,
+    annotationShapes: !!s.annotationShapes,
     overrideShadingSlots: sanitizeColorSlots(
       s.overrideShadingSlots,
       (s as { overrideShadingColorValue?: unknown }).overrideShadingColorValue,
