@@ -2959,6 +2959,33 @@ export const CUSTOMIZABLE_COLOR_TOKENS: readonly CustomizableColorToken[] = [
   // pickers stay linked to one value.
   { group: 'Document text', name: 'pmd-color-analytic', label: 'Analytic text' },
   { group: 'Document text', name: 'pmd-color-undertag', label: 'Undertag text' },
+  // ── Added with the 2026-07-01 color-compliance pass. Rebindable per
+  //    user request — colorblind users get direct recourse on the
+  //    meaning-carrying hues until dedicated presets ship. The band
+  //    foreground pair (band-fg-light/dark) is deliberately NOT here:
+  //    text-on-band contrast only makes sense authored together with
+  //    band rendering (preset territory), and a bad pick makes
+  //    highlighted document text invisible.
+  { group: 'Timer', name: 'pmd-c-aff', label: 'Prep timer: Aff' },
+  { group: 'Timer', name: 'pmd-c-neg', label: 'Prep timer: Neg' },
+  { group: 'Annotations', name: 'pmd-c-comment-thread', label: 'AI accent (comments + working indicator)' },
+  { group: 'Annotations', name: 'pmd-c-note', label: 'Private note accent' },
+  { group: 'Annotations', name: 'pmd-c-repair-accent', label: 'Paragraph repair accent' },
+  { group: 'Editor', name: 'pmd-c-link', label: 'Hyperlink' },
+  { group: 'Editor', name: 'pmd-c-spellcheck', label: 'Misspelling underline' },
+  { group: 'Status', name: 'pmd-c-notify-dot', label: 'Due-date dot' },
+  { group: 'Find matches', name: 'pmd-c-find-match', label: 'Match highlight' },
+  { group: 'Find matches', name: 'pmd-c-find-match-current', label: 'Current match highlight' },
+  { group: 'Category chips', name: 'pmd-c-cat-heading-bg', label: 'Heading chip background' },
+  { group: 'Category chips', name: 'pmd-c-cat-heading-fg', label: 'Heading chip text' },
+  { group: 'Category chips', name: 'pmd-c-cat-tag-bg', label: 'Tag chip background' },
+  { group: 'Category chips', name: 'pmd-c-cat-tag-fg', label: 'Tag chip text' },
+  { group: 'Category chips', name: 'pmd-c-cat-cite-bg', label: 'Cite chip background' },
+  { group: 'Category chips', name: 'pmd-c-cat-cite-fg', label: 'Cite chip text' },
+  { group: 'Category chips', name: 'pmd-c-cat-analytic-bg', label: 'Analytic chip background' },
+  { group: 'Category chips', name: 'pmd-c-cat-analytic-fg', label: 'Analytic chip text' },
+  { group: 'Category chips', name: 'pmd-c-cat-undertag-bg', label: 'Undertag chip background' },
+  { group: 'Category chips', name: 'pmd-c-cat-undertag-fg', label: 'Undertag chip text' },
 ];
 
 /** The CUSTOMIZABLE_COLOR_TOKENS whose value lives in `displayColors`

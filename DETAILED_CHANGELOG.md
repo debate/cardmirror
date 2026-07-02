@@ -7,6 +7,24 @@ in each release, see `CHANGELOG.md`.
 
 ## Unreleased
 
+- **Accessibility: 20 more tokens in the Color overrides allowlist**
+  (`settings.ts` CUSTOMIZABLE_COLOR_TOKENS, 37 → 57 entries). Added the
+  meaning-carrying hues from the color-semantics audit so colorblind users
+  have direct recourse before dedicated presets exist: prep-timer Aff/Neg
+  (color is the ONLY signal in the timer's "color" label mode), the
+  annotation accent family (AI comment purple / private note green / AI
+  repair green — flagged as hue-only distinctions), hyperlink blue,
+  misspelling-underline red, the due-date dot, the find-match highlight pair,
+  and all ten category-chip tokens (bg + fg × heading/tag/cite/analytic/
+  undertag). Translucent tokens work because the overrides widget already
+  has an alpha slider with rgba round-tripping (originally added for the
+  modal scrim). Deliberately excluded: `--pmd-c-band-fg-light/dark` — text
+  contrast on the fixed OOXML bands is a paired decision that belongs to
+  preset authoring, and a bad standalone pick makes highlighted document
+  text invisible. Zero widget changes: the manifest design (runtime
+  defaults via getComputedStyle, sanitizer keyed on the manifest) makes
+  additions declarative.
+
 - **Accessibility: standalone "Show highlight & shading names in the status
   bar" toggle** (`settings.ts`, `index.ts`, `MANUAL.md`). The status-bar
   cursor-color readout (actual stored highlight/shading names via

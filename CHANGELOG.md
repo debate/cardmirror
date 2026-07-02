@@ -18,6 +18,11 @@ see `DETAILED_CHANGELOG.md`.
   names for the text at your cursor (e.g. `Hl: Yellow`) — so a file's
   color-coding conventions are readable as text even when the hues are hard
   to tell apart. Works in the three-pane workspace too.
+- **20 more colors are now rebindable** under Settings → Accessibility →
+  Color overrides: the prep timer's Aff/Neg colors, AI comment / private
+  note / AI repair accents, hyperlinks, the misspelling underline, the
+  due-date dot, find-match highlights, and all ten search category chip
+  colors. Useful if any of the defaults are hard to distinguish.
 
 ### Changed
 
