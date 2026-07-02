@@ -351,8 +351,8 @@ function showMovedOverlay(message: string): void {
     'align-items:center',
     'justify-content:center',
     'padding:24px',
-    'background:var(--pmd-c-bg, #fff)',
-    'color:var(--pmd-c-fg, #1a1a1a)',
+    'background:var(--pmd-c-bg)',
+    'color:var(--pmd-c-text)',
     'font:15px/1.5 system-ui,sans-serif',
     'text-align:center',
   ].join(';');

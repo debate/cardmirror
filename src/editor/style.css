@@ -741,6 +741,34 @@ button {
   --pmd-c-image-placeholder-border: #999;
   --pmd-c-highlight-default: #ffff66;  /* default user-applied highlight color */
 
+  /* ── Theme-invariant tokens (2026-07-01 color-compliance audit). ──
+     These deliberately do NOT get dark-theme overrides:
+     - doc-paper: the document's paper when the theme is NOT applied
+       to the doc — must stay white in dark mode by design.
+     - band-fg-*: text on the fixed OOXML highlight bands; the bands
+       are document data at canonical hex, so their contrast text is
+       a function of the band, not the app theme.
+     - repair / aff-neg / indicator colors: feature accents that render
+       identically in both themes today; theme variants can be added
+       in the dark block later without touching call sites. */
+  --pmd-c-doc-paper: #fff;
+  --pmd-c-band-fg-light: #000;         /* text on light OOXML bands */
+  --pmd-c-band-fg-dark: #fff;          /* text on dark OOXML bands */
+  --pmd-c-repair-accent: #2e7d32;      /* AI repair-highlight green */
+  --pmd-c-repair-match: rgba(76, 175, 80, 0.32);
+  --pmd-c-repair-match-strong: rgba(76, 175, 80, 0.55);
+  --pmd-c-repair-glow: rgba(76, 175, 80, 0.9); /* pulse-ring keyframe peak */
+  --pmd-c-aff: #1e6fcc;                /* prep-timer Aff (was a phantom token) */
+  --pmd-c-neg: #c53030;                /* prep-timer Neg (was a phantom token) */
+  --pmd-c-notify-dot: #e5484d;         /* ribbon due-date dot */
+  --pmd-c-spellcheck: red;             /* misspelling squiggle */
+  --pmd-c-live-indicator: #00ff66;     /* benchmark live dot */
+  --pmd-c-bench-chip-bg: rgba(20, 22, 26, 0.92); /* diagnostics chip: fixed dark */
+  --pmd-c-bench-chip-text: #eaeaea;
+  --pmd-c-chart-bg: #1b1d22;           /* bench frame-graph canvas (read via getComputedStyle) */
+  --pmd-c-chart-ref: #3a7d44;
+  --pmd-c-chart-line: #7fd1ff;
+
   /* Per-style document colors. The user's chosen color lives in
      `--pmd-user-color-*` (written inline on :root by
      `applyDisplayColors` from settings.displayColors); the effective
@@ -1021,7 +1049,7 @@ button {
    ends. */
 :root[data-theme="dark"]:not([data-theme-doc="dark"]) body:not(.pmd-multi-doc) #app,
 :root[data-theme="dark"]:not([data-theme-doc="dark"]) .pmd-pane-body {
-  background: #fff;
+  background: var(--pmd-c-doc-paper);
 }
 
 /* Scroll-padding on the root scroll container so the browser's
@@ -1638,7 +1666,7 @@ body:not(.pmd-inplace-save) #autosave-btn { display: none; }
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #e5484d;
+  background: var(--pmd-c-notify-dot);
   /* Small ring so the dot stays visible against the icon / hover bg. */
   box-shadow: 0 0 0 1px var(--pmd-c-bg);
   pointer-events: none;
@@ -1719,7 +1747,7 @@ body:not(.pmd-inplace-save) #autosave-btn { display: none; }
       var(--pmd-c-error-strong) calc(50% - 1px),
       var(--pmd-c-error-strong) calc(50% + 1px),
       transparent calc(50% + 1px)),
-    white;
+    var(--pmd-c-doc-paper);
 }
 .pmd-color-picker-label {
   font-size: 0.75rem;
@@ -1828,7 +1856,7 @@ body:not(.pmd-inplace-save) #autosave-btn { display: none; }
 }
 
 .pmd-emphasis-box #ribbon .ribbon-cite-panel.style-preview .formatting-panel-emphasis {
-  border: var(--pmd-emphasis-box-size, 1pt) solid var(--pmd-c-emphasis-box);
+  border: var(--pmd-emphasis-box-size) solid var(--pmd-c-emphasis-box);
 }
 
 #app {
@@ -2697,21 +2725,21 @@ body.pmd-override-shading [data-shading] {
 .pmd-highlight {
   background: var(--pmd-c-highlight-default); /* yellow default, overridden by data-highlight below */
 }
-.pmd-highlight[data-highlight="yellow"]      { background: #ffff00; color: #000; }
-.pmd-highlight[data-highlight="green"]       { background: #00ff00; color: #000; }
-.pmd-highlight[data-highlight="cyan"]        { background: #00ffff; color: #000; }
-.pmd-highlight[data-highlight="magenta"]     { background: #ff00ff; color: #000; }
-.pmd-highlight[data-highlight="blue"]        { background: #0000ff; color: #fff; }
-.pmd-highlight[data-highlight="red"]         { background: #ff0000; color: #000; }
-.pmd-highlight[data-highlight="darkBlue"]    { background: #000080; color: #fff; }
-.pmd-highlight[data-highlight="darkCyan"]    { background: #008080; color: #fff; }
-.pmd-highlight[data-highlight="darkGreen"]   { background: #008000; color: #fff; }
-.pmd-highlight[data-highlight="darkMagenta"] { background: #800080; color: #fff; }
-.pmd-highlight[data-highlight="darkRed"]     { background: #800000; color: #fff; }
-.pmd-highlight[data-highlight="darkYellow"]  { background: #808000; color: #fff; }
-.pmd-highlight[data-highlight="darkGray"]    { background: #808080; color: #fff; }
-.pmd-highlight[data-highlight="lightGray"]   { background: #c0c0c0; color: #000; }
-.pmd-highlight[data-highlight="black"]       { background: #000000; color: #fff; }
+.pmd-highlight[data-highlight="yellow"]      { background: #ffff00; color: var(--pmd-c-band-fg-light); }
+.pmd-highlight[data-highlight="green"]       { background: #00ff00; color: var(--pmd-c-band-fg-light); }
+.pmd-highlight[data-highlight="cyan"]        { background: #00ffff; color: var(--pmd-c-band-fg-light); }
+.pmd-highlight[data-highlight="magenta"]     { background: #ff00ff; color: var(--pmd-c-band-fg-light); }
+.pmd-highlight[data-highlight="blue"]        { background: #0000ff; color: var(--pmd-c-band-fg-dark); }
+.pmd-highlight[data-highlight="red"]         { background: #ff0000; color: var(--pmd-c-band-fg-light); }
+.pmd-highlight[data-highlight="darkBlue"]    { background: #000080; color: var(--pmd-c-band-fg-dark); }
+.pmd-highlight[data-highlight="darkCyan"]    { background: #008080; color: var(--pmd-c-band-fg-dark); }
+.pmd-highlight[data-highlight="darkGreen"]   { background: #008000; color: var(--pmd-c-band-fg-dark); }
+.pmd-highlight[data-highlight="darkMagenta"] { background: #800080; color: var(--pmd-c-band-fg-dark); }
+.pmd-highlight[data-highlight="darkRed"]     { background: #800000; color: var(--pmd-c-band-fg-dark); }
+.pmd-highlight[data-highlight="darkYellow"]  { background: #808000; color: var(--pmd-c-band-fg-dark); }
+.pmd-highlight[data-highlight="darkGray"]    { background: #808080; color: var(--pmd-c-band-fg-dark); }
+.pmd-highlight[data-highlight="lightGray"]   { background: #c0c0c0; color: var(--pmd-c-band-fg-light); }
+.pmd-highlight[data-highlight="black"]       { background: #000000; color: var(--pmd-c-band-fg-dark); }
 .pmd-highlight[data-highlight="none"]        { background: transparent; }
 
 /* Underline / emphasis (and cite under the citeUnderlined flag) own
@@ -2739,13 +2767,13 @@ body.pmd-override-shading [data-shading] {
   :has([data-highlight-band="light"]),
   :has([data-shading-band="light"])
 ) {
-  text-decoration-color: #000;
+  text-decoration-color: var(--pmd-c-band-fg-light);
 }
 :is(.pmd-underline, .pmd-emphasis, #editor.pmd-cite-underlined .pmd-cite):is(
   :has([data-highlight-band="dark"]),
   :has([data-shading-band="dark"])
 ) {
-  text-decoration-color: #fff;
+  text-decoration-color: var(--pmd-c-band-fg-dark);
 }
 
 /* Shading is an arbitrary RGB background, so we can't enumerate the
@@ -2759,8 +2787,8 @@ body.pmd-override-shading [data-shading] {
    yellow-shading still reads correctly regardless of theme. Always
    on (not dark-mode-gated): the shading background is doc data,
    not chrome. */
-.ProseMirror [data-shading-band="light"] { color: #000; }
-.ProseMirror [data-shading-band="dark"]  { color: #fff; }
+.ProseMirror [data-shading-band="light"] { color: var(--pmd-c-band-fg-light); }
+.ProseMirror [data-shading-band="dark"]  { color: var(--pmd-c-band-fg-dark); }
 
 /* Hyperlinks in the editor pick up the themed link color. The
    `!important` beats the canonical `0563C1` font_color marks Word
@@ -3882,8 +3910,8 @@ body.pmd-nav-resize-active {
   align-items: center;
   justify-content: center;
   background: var(--pmd-c-success);
-  color: white;
-  border: 2px solid white;
+  color: var(--pmd-c-text-on-accent);
+  border: 2px solid var(--pmd-c-text-on-accent);
   border-radius: 50%;
   font-size: 0.8rem;
   font-weight: 700;
@@ -4334,7 +4362,7 @@ html.pmd-nav-flat .pmd-nav-type-analytic:hover .pmd-nav-label {
 
 .pmd-settings-tab-active {
   color: var(--pmd-c-text-strong);
-  border-bottom-color: var(--pmd-c-accent, currentColor);
+  border-bottom-color: var(--pmd-c-accent);
   font-weight: 600;
 }
 
@@ -4980,7 +5008,7 @@ html.pmd-nav-flat .pmd-nav-type-analytic:hover .pmd-nav-label {
   color: var(--pmd-c-text-on-accent);
   font-size: 0.78rem;
   line-height: 1.3;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+  box-shadow: 0 2px 8px var(--pmd-c-shadow-strong);
   pointer-events: none;
   user-select: none;
   opacity: 0;
@@ -6015,9 +6043,9 @@ body.pmd-steady-cursor .pmd-italic-caret,
    outline (`.pmd-ai-working`), but green, so it's clear which card is in
    scope for the whole workflow. */
 :is(#editor, .pmd-pane-editor) .pmd-repair-card-box {
-  outline: 2px solid #2e7d32;
+  outline: 2px solid var(--pmd-c-repair-accent);
   outline-offset: -2px;
-  background: color-mix(in srgb, #2e7d32 8%, transparent);
+  background: color-mix(in srgb, var(--pmd-c-repair-accent) 8%, transparent);
   border-radius: 4px;
 }
 
@@ -6026,7 +6054,7 @@ body.pmd-steady-cursor .pmd-italic-caret,
    text, so it never overlaps or hides the paragraph's words). */
 :is(#editor, .pmd-pane-editor) .pmd-repair-indent-pending {
   position: relative;
-  background: color-mix(in srgb, #2e7d32 6%, transparent);
+  background: color-mix(in srgb, var(--pmd-c-repair-accent) 6%, transparent);
 }
 :is(#editor, .pmd-pane-editor) .pmd-repair-indent-pending::before {
   content: '';
@@ -6036,7 +6064,7 @@ body.pmd-steady-cursor .pmd-italic-caret,
   left: -8px;
   width: 3px;
   border-radius: 2px;
-  background: #2e7d32;
+  background: var(--pmd-c-repair-accent);
   pointer-events: none;
 }
 
@@ -6044,12 +6072,12 @@ body.pmd-steady-cursor .pmd-italic-caret,
    soft green band; the single remaining match (Enter-ready) is stronger with
    an outline, the "green selection" the workflow targets. */
 .pmd-repair-match {
-  background-color: rgba(76, 175, 80, 0.32);
+  background-color: var(--pmd-c-repair-match);
   border-radius: 2px;
 }
 .pmd-repair-match-single {
-  background-color: rgba(76, 175, 80, 0.55);
-  outline: 1px solid rgba(46, 125, 50, 0.85);
+  background-color: var(--pmd-c-repair-match-strong);
+  outline: 1px solid color-mix(in srgb, var(--pmd-c-repair-accent) 85%, transparent);
   outline-offset: 0;
 }
 
@@ -6097,13 +6125,13 @@ body.pmd-steady-cursor .pmd-italic-caret,
   border-color: var(--pmd-c-accent);
 }
 .pmd-repair-ok .pmd-repair-para-input {
-  border-color: rgba(46, 125, 50, 0.9);
+  border-color: color-mix(in srgb, var(--pmd-c-repair-accent) 90%, transparent);
 }
 /* The check that appears inside the box once exactly one match remains. */
 .pmd-repair-para-check {
   position: absolute;
   right: 0.55rem;
-  color: #2e7d32;
+  color: var(--pmd-c-repair-accent);
   font-weight: 700;
   font-size: 1rem;
   opacity: 0;
@@ -6116,17 +6144,17 @@ body.pmd-steady-cursor .pmd-italic-caret,
   transform: scale(1);
 }
 .pmd-repair-para-hint {
-  color: var(--pmd-c-text-soft, var(--pmd-c-text));
+  color: var(--pmd-c-text);
   opacity: 0.75;
   font-size: 0.78rem;
 }
 .pmd-repair-para-error .pmd-repair-para-input {
-  border-color: rgba(200, 60, 60, 0.85);
+  border-color: color-mix(in srgb, var(--pmd-c-error-alt) 85%, transparent);
 }
 
 /* Green entrance / reached-one flash, mirroring the command bar's pulse. */
 @keyframes pmd-repair-para-pulse {
-  0%   { box-shadow: 0 8px 32px var(--pmd-c-shadow-deep), 0 0 0 3px rgba(76, 175, 80, 0.9); }
+  0%   { box-shadow: 0 8px 32px var(--pmd-c-shadow-deep), 0 0 0 3px var(--pmd-c-repair-glow); }
   100% { box-shadow: 0 8px 32px var(--pmd-c-shadow-deep), 0 0 0 0 transparent; }
 }
 .pmd-repair-para-pulse {
@@ -7379,7 +7407,7 @@ body.pmd-recovery-active:not(.pmd-multi-doc) #app {
 }
 
 .pmd-recovery-sidebar-row-btn-discard:hover {
-  background: var(--pmd-c-surface-3, var(--pmd-c-surface));
+  background: var(--pmd-c-surface);
   border-color: var(--pmd-c-danger);
   color: var(--pmd-c-danger);
 }
@@ -7401,7 +7429,7 @@ body.pmd-recovery-active:not(.pmd-multi-doc) #app {
   color: var(--pmd-c-text);
 }
 .pmd-recovery-sidebar-done:hover {
-  background: var(--pmd-c-surface-3, var(--pmd-c-surface));
+  background: var(--pmd-c-surface);
 }
 
 /* Multi-doc layout has its own `body.pmd-multi-doc #app` rule
@@ -7471,7 +7499,7 @@ body.pmd-recovery-active.pmd-multi-doc #app {
 
 .pmd-save-as-field-label {
   font-size: 0.85rem;
-  color: var(--pmd-c-text-secondary, var(--pmd-c-text-muted));
+  color: var(--pmd-c-text-secondary);
 }
 
 .pmd-save-as-input {
@@ -7668,7 +7696,7 @@ body.pmd-recovery-active.pmd-multi-doc #app {
 }
 .pmd-qc-add-field-label {
   font-size: 0.85rem;
-  color: var(--pmd-c-text-secondary, var(--pmd-c-text-muted));
+  color: var(--pmd-c-text-secondary);
 }
 .pmd-qc-add-input {
   padding: 0.4rem 0.55rem;
@@ -7738,7 +7766,7 @@ body.pmd-recovery-active.pmd-multi-doc #app {
 }
 .pmd-qc-add-error {
   font-size: 0.82rem;
-  color: var(--pmd-c-danger, #c0392b);
+  color: var(--pmd-c-danger);
   line-height: 1.3;
 }
 .pmd-qc-add-conflict-open {
@@ -7960,7 +7988,7 @@ body.pmd-recovery-active.pmd-multi-doc #app {
   min-height: 0;
   border: 1px solid var(--pmd-c-border);
   border-radius: 4px;
-  background: var(--pmd-c-surface, var(--pmd-c-bg));
+  background: var(--pmd-c-surface);
   overflow-y: auto;
 }
 .pmd-qc-manage-editor .ProseMirror {
@@ -7992,13 +8020,13 @@ body.pmd-recovery-active.pmd-multi-doc #app {
   color: var(--pmd-c-text-on-accent);
 }
 .pmd-qc-manage-primary:hover { background: var(--pmd-c-accent-hover); }
-.pmd-qc-manage-danger { color: var(--pmd-c-danger, #c0392b); }
+.pmd-qc-manage-danger { color: var(--pmd-c-danger); }
 /* Armed state of the two-click delete (confirmButton): solid danger fill,
    mirroring the learn manager's armed Delete. */
 .pmd-qc-manage-danger.is-armed {
   color: var(--pmd-c-text-on-accent);
-  background: var(--pmd-c-danger, #c0392b);
-  border-color: var(--pmd-c-danger, #c0392b);
+  background: var(--pmd-c-danger);
+  border-color: var(--pmd-c-danger);
 }
 .pmd-qc-manage-empty {
   color: var(--pmd-c-text-muted);
@@ -8068,8 +8096,8 @@ body.pmd-recovery-active.pmd-multi-doc #app {
   align-self: center;
 }
 .pmd-qcs-badge-dropzone {
-  color: var(--pmd-c-drop, var(--pmd-c-accent));
-  border-color: var(--pmd-c-drop, var(--pmd-c-accent));
+  color: var(--pmd-c-drop);
+  border-color: var(--pmd-c-drop);
 }
 .pmd-qcs-badge-settings {
   color: var(--pmd-c-accent);
@@ -8374,13 +8402,13 @@ body.pmd-recovery-active.pmd-multi-doc #app {
 .pmd-bulk-progress {
   height: 6px;
   border-radius: 3px;
-  background: var(--pmd-c-surface-sunken, color-mix(in srgb, currentColor 12%, transparent));
+  background: color-mix(in srgb, currentColor 12%, transparent);
   overflow: hidden;
 }
 .pmd-bulk-progress-fill {
   height: 100%;
   width: 0;
-  background: var(--pmd-c-accent, var(--pmd-c-comment-thread));
+  background: var(--pmd-c-accent);
   transition: width 120ms linear;
 }
 
@@ -8394,7 +8422,7 @@ body.pmd-recovery-active.pmd-multi-doc #app {
   overflow-y: auto;
 }
 .pmd-clean-prot-empty {
-  color: var(--pmd-c-text-muted, #888);
+  color: var(--pmd-c-text-muted);
   font-size: 0.85rem;
   padding: 0.3rem 0;
 }
@@ -8416,8 +8444,8 @@ body.pmd-recovery-active.pmd-multi-doc #app {
   padding: 0.2rem 0.4rem;
   border: 1px solid var(--pmd-c-border);
   border-radius: 3px;
-  background: var(--pmd-c-surface, #fff);
-  color: var(--pmd-c-text, inherit);
+  background: var(--pmd-c-surface);
+  color: var(--pmd-c-text);
 }
 /* Clean: the "Prepend cleaned_" toggle row. */
 .pmd-clean-prepend-row {
@@ -8441,7 +8469,7 @@ body.pmd-recovery-active.pmd-multi-doc #app {
 .pmd-clean-overwrite-dialog .pmd-clean-overwrite-confirm {
   background: var(--pmd-c-danger);
   border-color: var(--pmd-c-danger);
-  color: #fff;
+  color: var(--pmd-c-text-on-accent);
 }
 .pmd-clean-overwrite-dialog .pmd-clean-overwrite-confirm:disabled {
   opacity: 0.5;
@@ -8481,7 +8509,7 @@ body.pmd-recovery-active.pmd-multi-doc #app {
   gap: 0.15rem;
   max-height: 320px;
   overflow-y: auto;
-  border: 1px solid var(--pmd-c-border-soft, #ddd);
+  border: 1px solid var(--pmd-c-border-soft);
   border-radius: 6px;
   padding: 0.4rem;
 }
@@ -9306,7 +9334,7 @@ body.pmd-multi-nav-empty.pmd-multi-doc #status-bar {
   color: var(--pmd-c-text-muted);
   cursor: pointer;
 }
-.pmd-pane-chip-stack:hover { background: var(--pmd-c-surface-3, var(--pmd-c-surface)); }
+.pmd-pane-chip-stack:hover { background: var(--pmd-c-surface); }
 .pmd-pane-chip-stack[hidden] { display: none; }
 .pmd-pane-chip-expand {
   flex: 0 0 auto;
@@ -9448,7 +9476,7 @@ body.pmd-multi-nav-empty.pmd-multi-doc #status-bar {
   /* Inherit the body font picked in Settings. `--pmd-body-font` is
    * set on documentElement by `applyBodyFont`, so it cascades here
    * even though `.pmd-pane-editor` is not a descendant of #editor. */
-  font-family: var(--pmd-body-font, "Times New Roman", Times, serif);
+  font-family: var(--pmd-body-font);
   /* Match the single-doc editor: preserve typed whitespace + tab
    * stops. Also wrap long words rather than letting them push the
    * pane wider than 1/3 of the row. */
@@ -9503,7 +9531,7 @@ body.pmd-multi-nav-empty.pmd-multi-doc #status-bar {
   color: var(--pmd-c-text);
   cursor: pointer;
 }
-.pmd-pane-open:hover { background: var(--pmd-c-surface-3, var(--pmd-c-surface)); }
+.pmd-pane-open:hover { background: var(--pmd-c-surface); }
 
 /* ---- Routing prompt overlay ---- */
 
@@ -9545,8 +9573,8 @@ body.pmd-multi-nav-empty.pmd-multi-doc #status-bar {
 .pmd-file-tool-spinner {
   width: 32px;
   height: 32px;
-  border: 3px solid var(--pmd-c-border, rgba(0, 0, 0, 0.15));
-  border-top-color: var(--pmd-c-accent, #2563eb);
+  border: 3px solid var(--pmd-c-border);
+  border-top-color: var(--pmd-c-accent);
   border-radius: 50%;
   /* transform-based → runs on the compositor, so it keeps turning even while a
      heavy transform (Clean, docx conversion) blocks the main thread. */
@@ -9563,7 +9591,7 @@ body.pmd-multi-nav-empty.pmd-multi-doc #status-bar {
 }
 .pmd-file-tool-note {
   font-size: 0.82rem;
-  color: var(--pmd-c-fg-muted, #666);
+  color: var(--pmd-c-text-muted);
   max-width: 24rem;
   overflow-wrap: anywhere;
 }
@@ -9576,23 +9604,23 @@ body.pmd-multi-nav-empty.pmd-multi-doc #status-bar {
 .pmd-file-tool-btn {
   padding: 0.4rem 0.9rem;
   border-radius: 6px;
-  border: 1px solid var(--pmd-c-border, rgba(0, 0, 0, 0.2));
-  background: var(--pmd-c-bg, #fff);
-  color: var(--pmd-c-fg, #1a1a1a);
+  border: 1px solid var(--pmd-c-border);
+  background: var(--pmd-c-bg);
+  color: var(--pmd-c-text);
   font-size: 0.85rem;
   cursor: pointer;
 }
 .pmd-file-tool-btn:hover {
-  background: var(--pmd-c-hover, rgba(0, 0, 0, 0.05));
+  background: var(--pmd-c-hover);
 }
 .pmd-file-tool-btn-primary {
-  background: var(--pmd-c-accent, #2563eb);
-  border-color: var(--pmd-c-accent, #2563eb);
-  color: #fff;
+  background: var(--pmd-c-accent);
+  border-color: var(--pmd-c-accent);
+  color: var(--pmd-c-text-on-accent);
 }
 .pmd-file-tool-btn-primary:hover {
   filter: brightness(1.05);
-  background: var(--pmd-c-accent, #2563eb);
+  background: var(--pmd-c-accent);
 }
 .pmd-route-buttons {
   display: flex;
@@ -9612,7 +9640,7 @@ body.pmd-multi-nav-empty.pmd-multi-doc #status-bar {
 }
 .pmd-route-btn strong { font-size: 0.9rem; }
 .pmd-route-btn span { color: var(--pmd-c-text-muted); }
-.pmd-route-btn:hover { background: var(--pmd-c-surface-3, var(--pmd-c-surface)); }
+.pmd-route-btn:hover { background: var(--pmd-c-surface); }
 .pmd-route-cancel {
   align-self: flex-end;
   background: transparent;
@@ -10172,7 +10200,7 @@ html.pmd-emphasis-italic .pmd-pane-editor .pmd-emphasis {
   font-style: italic;
 }
 html.pmd-emphasis-box .pmd-pane-editor .pmd-emphasis {
-  border: var(--pmd-emphasis-box-size, 0.5pt) solid currentColor;
+  border: var(--pmd-emphasis-box-size) solid currentColor;
   padding: 0 0.1em;
   border-radius: 1px;
 }
@@ -10372,14 +10400,14 @@ html.pmd-emphasis-box .pmd-pane-editor .pmd-emphasis {
    `color: var(--pmd-c-text)` wins and the buttons appear in
    the default text color. */
 #ribbon .pmd-timer-panel button.pmd-timer-aff {
-  color: var(--pmd-c-aff, #1e6fcc);
-  border-color: var(--pmd-c-aff, #1e6fcc);
+  color: var(--pmd-c-aff);
+  border-color: var(--pmd-c-aff);
   grid-column: 5;
   grid-row: 1;
 }
 #ribbon .pmd-timer-panel button.pmd-timer-neg {
-  color: var(--pmd-c-neg, #c53030);
-  border-color: var(--pmd-c-neg, #c53030);
+  color: var(--pmd-c-neg);
+  border-color: var(--pmd-c-neg);
   grid-column: 5;
   grid-row: 2;
 }
@@ -10460,11 +10488,11 @@ html.pmd-emphasis-box .pmd-pane-editor .pmd-emphasis {
    node itself clean. */
 #ribbon .pmd-timer-panel[data-prep-label="color"] #timer-display[data-mode="affPrep"],
 #ribbon .pmd-timer-panel[data-prep-label="both"] #timer-display[data-mode="affPrep"] {
-  color: var(--pmd-c-aff, #1e6fcc);
+  color: var(--pmd-c-aff);
 }
 #ribbon .pmd-timer-panel[data-prep-label="color"] #timer-display[data-mode="negPrep"],
 #ribbon .pmd-timer-panel[data-prep-label="both"] #timer-display[data-mode="negPrep"] {
-  color: var(--pmd-c-neg, #c53030);
+  color: var(--pmd-c-neg);
 }
 #ribbon .pmd-timer-panel[data-prep-label="text"] #timer-display[data-mode="affPrep"]::before,
 #ribbon .pmd-timer-panel[data-prep-label="both"] #timer-display[data-mode="affPrep"]::before {
@@ -10478,7 +10506,7 @@ html.pmd-emphasis-box .pmd-pane-editor .pmd-emphasis {
 /* Flash-red animation at the configured remaining thresholds. */
 @keyframes pmd-timer-flash-pulse {
   0%, 100% { background: var(--pmd-c-bg); color: var(--pmd-c-text); }
-  50%      { background: #c53030; color: white; }
+  50%      { background: var(--pmd-c-neg); color: white; }
 }
 .pmd-timer-display.pmd-timer-flash {
   animation: pmd-timer-flash-pulse 600ms ease-in-out infinite;
@@ -10574,7 +10602,7 @@ html.pmd-emphasis-box .pmd-pane-editor .pmd-emphasis {
 /* Editor spellcheck squiggle (see viewport-spellcheck.ts). CSS-painted,
    so it renders under Wayland too (unlike the browser's native checker). */
 .pmd-misspelled {
-  text-decoration: red wavy underline;
+  text-decoration: var(--pmd-c-spellcheck) wavy underline;
   text-decoration-skip-ink: none;
 }
 
@@ -11588,7 +11616,7 @@ body.pmd-multi-doc .pmd-cardcutter-trim {
   font-family: var(--pmd-ui-font);
   font-size: 0.85rem;
   color: var(--pmd-c-text);
-  background: var(--pmd-c-surface-soft, var(--pmd-c-surface));
+  background: var(--pmd-c-surface-soft);
   border: 1px solid var(--pmd-c-border-soft);
   border-radius: 6px;
 }
@@ -11625,7 +11653,7 @@ body.pmd-multi-doc .pmd-cardcutter-trim {
   color: var(--pmd-c-text);
 }
 .pmd-cardcutter-trim-row:hover {
-  background: var(--pmd-c-hover, rgba(127, 127, 127, 0.08));
+  background: var(--pmd-c-hover);
 }
 .pmd-cardcutter-trim-text {
   display: flex;
@@ -11730,8 +11758,8 @@ body.pmd-multi-doc .pmd-cardcutter-trim {
 /* ---- Send pill ---- */
 .pmd-send-bar-hot,
 .pmd-send-pill[data-open="true"] .pmd-send-bar {
-  border-color: var(--pmd-c-drop, var(--pmd-c-accent));
-  box-shadow: 0 0 0 2px var(--pmd-c-drop-outline, var(--pmd-c-accent-soft));
+  border-color: var(--pmd-c-drop);
+  box-shadow: 0 0 0 2px var(--pmd-c-drop-outline);
 }
 /* Partner / group list — an upward overlay popover so expanding it never
    reflows the dropzone or receive pill beside it. */
@@ -11792,8 +11820,8 @@ body.pmd-multi-doc .pmd-cardcutter-trim {
 }
 /* The drop target the pointer is over during a drag. */
 .pmd-send-target-hot {
-  background: var(--pmd-c-drop-outline, var(--pmd-c-accent-soft));
-  outline: 2px solid var(--pmd-c-drop, var(--pmd-c-accent));
+  background: var(--pmd-c-drop-outline);
+  outline: 2px solid var(--pmd-c-drop);
   outline-offset: -2px;
 }
 .pmd-send-empty {
@@ -11819,8 +11847,8 @@ body.pmd-multi-doc .pmd-cardcutter-trim {
   transition: background-color 320ms ease, color 320ms ease;
 }
 .pmd-receive-badge-unread {
-  background: var(--pmd-c-accent, #4c8bf5);
-  color: #fff;
+  background: var(--pmd-c-accent);
+  color: var(--pmd-c-text-on-accent);
 }
 /* Inbox list — upward overlay popover, same family as the send panel. */
 .pmd-receive-list {
@@ -11862,7 +11890,7 @@ body.pmd-multi-doc .pmd-cardcutter-trim {
   background: var(--pmd-c-hover);
 }
 .pmd-receive-row-unread {
-  background: var(--pmd-c-accent-soft, rgba(76, 139, 245, 0.12));
+  background: var(--pmd-c-accent-soft);
 }
 .pmd-receive-row-main {
   flex: 1 1 auto;
@@ -11983,7 +12011,7 @@ body.pmd-multi-doc .pmd-cardcutter-trim {
   flex-direction: column;
   gap: 0.35rem;
   padding: 0.5rem;
-  border: 1px solid var(--pmd-c-border-soft, var(--pmd-c-border));
+  border: 1px solid var(--pmd-c-border-soft);
   border-radius: 8px;
 }
 .pmd-pairing-group-header {
@@ -12048,17 +12076,17 @@ body.pmd-multi-doc .pmd-cardcutter-trim {
   gap: 0.5rem;
   padding: 0.45rem 0.8rem;
   border-radius: 999px;
-  background: rgba(20, 22, 26, 0.92);
-  color: #eaeaea;
+  background: var(--pmd-c-bench-chip-bg);
+  color: var(--pmd-c-bench-chip-text);
   font-size: 0.85rem;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 4px 16px var(--pmd-c-shadow-deep);
   pointer-events: none;
 }
 .pmd-bench-chip-dot {
   width: 9px;
   height: 9px;
   border-radius: 50%;
-  background: #00ff66;
+  background: var(--pmd-c-live-indicator);
   animation: pmd-bench-pulse 0.9s ease-in-out infinite;
 }
 @keyframes pmd-bench-pulse {
@@ -12075,19 +12103,19 @@ body.pmd-multi-doc .pmd-cardcutter-trim {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.5);
+  background: var(--pmd-c-overlay);
 }
 .pmd-bench-dialog {
   width: min(640px, 92vw);
   max-height: 85vh;
   display: flex;
   flex-direction: column;
-  background: var(--pmd-c-surface, #fff);
-  color: var(--pmd-c-text, #1a1a1a);
-  border: 1px solid var(--pmd-c-divider, #ddd);
+  background: var(--pmd-c-surface);
+  color: var(--pmd-c-text);
+  border: 1px solid var(--pmd-c-divider);
   border-radius: 12px;
   padding: 1.25rem 1.5rem 1.5rem;
-  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 12px 48px var(--pmd-c-shadow-deep);
 }
 .pmd-bench-header h2 {
   margin: 0 0 0.5rem;
@@ -12104,13 +12132,13 @@ body.pmd-multi-doc .pmd-cardcutter-trim {
   font-weight: 800;
   line-height: 1;
   font-variant-numeric: tabular-nums;
-  color: var(--pmd-c-accent, #2563eb);
+  color: var(--pmd-c-accent);
 }
 .pmd-bench-score-lbl {
   font-size: 0.7rem;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--pmd-c-text-muted, #888);
+  color: var(--pmd-c-text-muted);
   margin-top: 0.25rem;
 }
 
@@ -12123,7 +12151,7 @@ body.pmd-multi-doc .pmd-cardcutter-trim {
 }
 .pmd-bench-section {
   padding: 0.5rem 0;
-  border-top: 1px solid var(--pmd-c-divider, #ececec);
+  border-top: 1px solid var(--pmd-c-divider);
 }
 .pmd-bench-section:first-child {
   border-top: 0;
@@ -12142,18 +12170,18 @@ body.pmd-multi-doc .pmd-cardcutter-trim {
   padding: 0.12rem 0;
 }
 .pmd-bench-row-label {
-  color: var(--pmd-c-text-muted, #666);
+  color: var(--pmd-c-text-muted);
 }
 .pmd-bench-row-val {
   font-variant-numeric: tabular-nums;
   font-weight: 600;
-  color: var(--pmd-c-text, #1a1a1a);
+  color: var(--pmd-c-text);
   white-space: nowrap;
 }
 .pmd-bench-noteref {
   font-size: 0.62em;
   font-weight: 700;
-  color: var(--pmd-c-accent, #2563eb);
+  color: var(--pmd-c-accent);
   margin-left: 0.15em;
   vertical-align: super;
 }
@@ -12163,18 +12191,18 @@ body.pmd-multi-doc .pmd-cardcutter-trim {
   display: flex;
   gap: 0.4rem;
   font-size: 0.76rem;
-  color: var(--pmd-c-text-muted, #888);
+  color: var(--pmd-c-text-muted);
   line-height: 1.4;
   padding: 0.12rem 0;
 }
 .pmd-bench-note-num {
   flex: 0 0 1.1rem;
   font-weight: 700;
-  color: var(--pmd-c-accent, #2563eb);
+  color: var(--pmd-c-accent);
 }
 .pmd-bench-note-meth {
   font-size: 0.72rem;
-  color: var(--pmd-c-text-muted, #999);
+  color: var(--pmd-c-text-muted);
   margin: 0.6rem 0 0;
   line-height: 1.4;
 }
@@ -12183,7 +12211,7 @@ body.pmd-multi-doc .pmd-cardcutter-trim {
 }
 .pmd-bench-graph-cap {
   font-size: 0.75rem;
-  color: var(--pmd-c-text-muted, #888);
+  color: var(--pmd-c-text-muted);
   margin-bottom: 0.3rem;
 }
 .pmd-bench-graph canvas {
@@ -12205,19 +12233,19 @@ body.pmd-multi-doc .pmd-cardcutter-trim {
 .pmd-bench-btn {
   padding: 0.45rem 1rem;
   border-radius: 7px;
-  border: 1px solid var(--pmd-c-divider, #ccc);
-  background: var(--pmd-c-surface, #fff);
-  color: var(--pmd-c-text, #1a1a1a);
+  border: 1px solid var(--pmd-c-divider);
+  background: var(--pmd-c-surface);
+  color: var(--pmd-c-text);
   font: inherit;
   cursor: pointer;
 }
 .pmd-bench-btn:hover {
-  background: var(--pmd-c-surface-soft, #f0f0f0);
+  background: var(--pmd-c-surface-soft);
 }
 .pmd-bench-btn-primary {
-  background: var(--pmd-c-accent, #2563eb);
-  border-color: var(--pmd-c-accent, #2563eb);
-  color: #fff;
+  background: var(--pmd-c-accent);
+  border-color: var(--pmd-c-accent);
+  color: var(--pmd-c-text-on-accent);
 }
 .pmd-bench-btn-primary:hover {
   filter: brightness(1.05);

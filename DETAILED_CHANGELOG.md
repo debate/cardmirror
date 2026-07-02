@@ -7,6 +7,31 @@ in each release, see `CHANGELOG.md`.
 
 ## Unreleased
 
+- **Color-compliance pass: ~100 hardcoded colors tokenized** (`src/editor/style.css`,
+  `benchmark-ui.ts`, `window-coordination.ts`). Audited the whole codebase
+  against ARCHITECTURE.md §15 ("a hardcoded color anywhere is a bug") via a
+  multi-agent sweep, reviewer-verified. Compliance was already ~94%; the
+  violations clustered in a few late-added features (repair UI, benchmark
+  overlay, home-screen file tools, prep-timer Aff/Neg, OOXML band foregrounds).
+  Every literal outside the token-definition blocks is now a `var(--pmd-c-*)`
+  except the 15 sanctioned OOXML highlight *backgrounds* (document data) and
+  `index.html`'s `theme-color` meta (read by the OS before CSS loads). Also:
+  defined seven **phantom tokens** that were referenced-but-never-defined
+  (`--pmd-c-aff`/`-neg` given real values; five others collapsed onto their
+  fallback token), stripped 49 dead `var(--token, #literal)` fallbacks where
+  the token is defined, and grouped new feature accents (repair green,
+  aff/neg, band foregrounds, bench chip) as explicitly theme-invariant tokens
+  so a future colorblind/high-contrast preset can add dark/preset variants in
+  one block without touching call sites. User-visible effects are limited to
+  the dark-mode home-screen file tools (previously stuck light — now themed)
+  and two tiny light-mode hue shifts (pairing unread badge → standard accent
+  blue; one repair error border → `--pmd-c-error-alt`). NOTE for future
+  tokenization work: a literal-free grep is NOT sufficient verification — a
+  self-referential token (`--x: var(--x)`, which a naive global find/replace
+  can create) is also literal-free but renders nothing; confirm tokens
+  *resolve*, and watch for a whole feature's color vanishing, not just wrong
+  shades. (One such cycle was introduced and caught in dev here.)
+
 First tier of fixes from a systematic performance & housecleaning audit
 (multi-agent review across hot paths, startup, memory, the Electron main
 process, and repo hygiene; every finding adversarially verified before

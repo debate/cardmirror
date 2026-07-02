@@ -41,6 +41,9 @@ see `DETAILED_CHANGELOG.md`.
   typed 1, 2, or 3.** Using the "Open into…" picker with the mouse previously
   left a hidden key handler behind that ate the next digit typed into the
   editor.
+- **Dark mode: the home-screen file tools (Clean, Convert, Compress) now
+  follow the dark theme** instead of rendering as light buttons on the dark
+  background.
 
 ## 0.1.0-beta.5 — 2026-07-01
 

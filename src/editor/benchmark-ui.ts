@@ -303,6 +303,14 @@ function frameGraph(frameMs: number[]): HTMLElement {
   wrap.append(cap, canvas);
   const ctx = canvas.getContext('2d');
   if (!ctx) return wrap;
+  // Canvas needs resolved color strings, so pull the chart tokens off
+  // :root rather than hardcoding (keeps the frame-graph swappable by a
+  // future theme like every other surface).
+  const cssVar = (name: string, fallback: string): string =>
+    getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
+  const chartBg = cssVar('--pmd-c-chart-bg', '#1b1d22');
+  const chartRef = cssVar('--pmd-c-chart-ref', '#3a7d44');
+  const chartLine = cssVar('--pmd-c-chart-line', '#7fd1ff');
 
   // Downsample to canvas width, plotting the worst (max) frame per bucket so
   // spikes survive — that's what the eye perceives as jank.
@@ -317,10 +325,10 @@ function frameGraph(frameMs: number[]): HTMLElement {
   const maxMs = Math.max(33, ...series);
   const y = (ms: number): number => H - (ms / maxMs) * (H - 8) - 4;
 
-  ctx.fillStyle = '#1b1d22';
+  ctx.fillStyle = chartBg;
   ctx.fillRect(0, 0, W, H);
   // 60 fps reference line
-  ctx.strokeStyle = '#3a7d44';
+  ctx.strokeStyle = chartRef;
   ctx.setLineDash([4, 4]);
   ctx.beginPath();
   ctx.moveTo(0, y(16.7));
@@ -328,7 +336,7 @@ function frameGraph(frameMs: number[]): HTMLElement {
   ctx.stroke();
   ctx.setLineDash([]);
   // frame-time line
-  ctx.strokeStyle = '#7fd1ff';
+  ctx.strokeStyle = chartLine;
   ctx.lineWidth = 1.5;
   ctx.beginPath();
   series.forEach((ms, i) => {
