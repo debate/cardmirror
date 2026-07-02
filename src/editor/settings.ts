@@ -372,6 +372,13 @@ export interface Settings {
    *  reduced. Resolved into a `data-motion` attribute on the
    *  document root; CSS rules in `style.css` consume it. */
   reduceMotion: 'auto' | 'on' | 'off';
+  /** Accessibility: remap the meaning-carrying hues (annotation
+   *  accents, voice-mode dots, timer Aff/Neg, search matches, category
+   *  chips) onto the Okabe-Ito colorblind-safe palette. Resolved into
+   *  a `data-cvd` attribute on the document root; the token blocks in
+   *  style.css consume it. Composes with light/dark; explicit Color
+   *  overrides still win (inline styles beat the CSS blocks). */
+  colorVisionFriendly: boolean;
   /** Accessibility: when true, the text cursor doesn't blink — the
    *  native blinking caret is hidden and a steady custom caret is drawn
    *  in its place. */
@@ -1082,6 +1089,7 @@ const DEFAULTS: Settings = {
   checkForUpdatesOnLaunch: false,
   commentsColumnWidth: 320,
   reduceMotion: 'auto',
+  colorVisionFriendly: false,
   disableCursorBlink: false,
   accessibilityTreeEnabled: false,
   flowHostOnLaunch: false,
@@ -1811,6 +1819,15 @@ export const SETTING_METADATA: SettingMeta[] = [
     category: 'appearance',
   },
   {
+    key: 'colorVisionFriendly',
+    label: 'Color-vision friendly palette',
+    description:
+      "Remaps the colors that carry meaning — annotation accents, voice-mode dots, prep-timer Aff/Neg, search-match highlights, category chips — onto a palette engineered to stay distinguishable under red-green and blue-yellow color-vision deficiencies (Okabe-Ito). Works with both light and dark themes. Any colors you set under Color overrides below still win. Note: this preset changes CardMirror's interface colors only — it does not recolor highlights or shading stored in documents. For those, use 'Override highlight/shading color in display' and 'Show highlight & shading names in the status bar' below.",
+    kind: 'toggle',
+    category: 'accessibility',
+    aliases: ['colorblind', 'color blind', 'cvd', 'deuteranopia', 'protanopia', 'tritanopia'],
+  },
+  {
     key: 'reduceMotion',
     label: 'Reduce motion',
     description:
@@ -2520,6 +2537,7 @@ function sanitize(s: Settings): Settings {
     ),
     overrideShadingColor: !!s.overrideShadingColor,
     showCursorColorNames: !!s.showCursorColorNames,
+    colorVisionFriendly: !!s.colorVisionFriendly,
     overrideShadingSlots: sanitizeColorSlots(
       s.overrideShadingSlots,
       (s as { overrideShadingColorValue?: unknown }).overrideShadingColorValue,

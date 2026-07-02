@@ -18,6 +18,12 @@ see `DETAILED_CHANGELOG.md`.
   names for the text at your cursor (e.g. `Hl: Yellow`) — so a file's
   color-coding conventions are readable as text even when the hues are hard
   to tell apart. Works in the three-pane workspace too.
+- **A color-vision friendly palette.** New Accessibility setting that remaps
+  the colors that carry meaning — annotation accents, voice-mode dots, the
+  prep timer's Aff/Neg, search-match highlights, category chips — onto a
+  palette engineered to stay distinguishable under red-green and blue-yellow
+  color-vision deficiencies. Works in light and dark themes, and any colors
+  you've set by hand still win.
 - **20 more colors are now rebindable** under Settings → Accessibility →
   Color overrides: the prep timer's Aff/Neg colors, AI comment / private
   note / AI repair accents, hyperlinks, the misspelling underline, the

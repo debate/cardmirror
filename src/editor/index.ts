@@ -2438,6 +2438,15 @@ function applyReduceMotion(pref: 'auto' | 'on' | 'off'): void {
   }
 }
 
+/** Color-vision preset: `data-cvd="friendly"` gates the Okabe-Ito
+ *  token blocks in style.css. Orthogonal to `data-theme` (composes
+ *  with dark); hand-set Color overrides land as inline styles on
+ *  documentElement and still beat the preset. */
+function applyColorVision(on: boolean): void {
+  if (on) document.documentElement.setAttribute('data-cvd', 'friendly');
+  else document.documentElement.removeAttribute('data-cvd');
+}
+
 /** Steady text cursor: a body class that hides the native blinking
  *  caret; the italic-caret plugin then draws a steady caret in its
  *  place (CSS consumes the class). */
@@ -2639,6 +2648,7 @@ settings.subscribe((s) => {
   applyShowDocNameChip(s.showDocNameChip);
   applyIconSet(s.iconSet);
   applyReduceMotion(s.reduceMotion);
+  applyColorVision(s.colorVisionFriendly);
   applyCursorBlink(s.disableCursorBlink);
   if (s.readMode !== lastReadMode || s.hideEmphasisBordersInReadMode !== lastReadModeBorders) {
     lastReadMode = s.readMode;
@@ -2852,6 +2862,7 @@ applyTheme(settings.get('theme'), settings.get('themeAppliesToDocument'));
 applyShowDocNameChip(settings.get('showDocNameChip'));
 applyIconSet(settings.get('iconSet'));
 applyReduceMotion(settings.get('reduceMotion'));
+applyColorVision(settings.get('colorVisionFriendly'));
 applyPillVisibility(); // default-off dropzone pill + quick-card cluster, at boot
 // Build the timer panel + button bindings. Visibility is gated
 // on `timerVisible` (transient per-window setting); the panel

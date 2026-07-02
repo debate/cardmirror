@@ -1603,6 +1603,15 @@ remove one, **↺** to restore its default. A few window-level shortcuts
   accessibility tree, so CardMirror disables it to stay stable. Turn it on only
   if you rely on a screen reader — it re-activates the known crash — and restart
   CardMirror to apply.
+- **Color-vision friendly palette** — remaps the colors that carry meaning
+  (annotation accents, voice-mode dots, prep-timer Aff/Neg, search-match
+  highlights, category chips) onto a palette engineered to stay
+  distinguishable under red-green and blue-yellow color-vision deficiencies.
+  Works with both light and dark themes; any colors you set under **Color
+  overrides** still win. This preset changes CardMirror's interface colors
+  only — highlights and shading stored in documents are untouched. For
+  those, use the **Override highlight/shading color** settings below and the
+  status-bar color names setting above.
 - **Override highlight color in display** — render highlights in your
   chosen colors regardless of what's stored on the mark (display-only).
 - **Highlight override colors** — up to three ordered colors; the

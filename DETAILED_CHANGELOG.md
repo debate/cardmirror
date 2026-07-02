@@ -7,6 +7,29 @@ in each release, see `CHANGELOG.md`.
 
 ## Unreleased
 
+- **Accessibility: color-vision friendly palette preset** (`settings.ts`,
+  `index.ts`, `style.css`, `MANUAL.md`, `ARCHITECTURE.md`). New
+  `colorVisionFriendly` toggle drives a `data-cvd="friendly"` attribute on
+  the document root via `applyColorVision()` — the fourth use of the
+  attribute-swap pattern (`data-theme`/`data-icons`/`data-motion`). Two CSS
+  token blocks remap the meaning-carrying hues onto the Okabe–Ito palette
+  (distinguishable under protanopia, deuteranopia AND tritanopia — one
+  preset instead of three per-type ones, per maintainer decision): blue
+  anchor (accent/focus/link/Aff), vermillion (AI identity + Neg), bluish
+  green (notes/success/dictation/paragraph-repair), current-find-match
+  stepped to vermillion with a luminance drop so it survives grayscale, and
+  all category chips; a `[data-theme="dark"][data-cvd]` block brightens for
+  dark. Precedence comes free from the architecture: hand-set Color
+  overrides are inline styles and beat the preset; the preset beats base
+  themes by cascade position. Deliberately not remapped: OOXML band colors
+  (document data — mitigated by the status-bar names toggle), band
+  foregrounds (pure luminance contrast already), comment gold + warning
+  amber (already CVD-safe), error reds (text-redundant). Declined the
+  audit's suggestion to auto-seed the highlight-override slots — a display
+  preset silently rewriting other settings can't be cleanly undone; the
+  description points at the companion settings instead. ARCHITECTURE §15's
+  deferred list updated.
+
 - **Accessibility: 20 more tokens in the Color overrides allowlist**
   (`settings.ts` CUSTOMIZABLE_COLOR_TOKENS, 37 → 57 entries). Added the
   meaning-carrying hues from the color-semantics audit so colorblind users

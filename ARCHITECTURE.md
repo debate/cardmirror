@@ -553,10 +553,14 @@ a sweep through the CSS.
   hidden behind an advanced menu.
 - **Headings render as `<h1>`–`<h4>`** for screen readers.
 
-Deferred but anticipated by the wiring: high-contrast/colorblind
-palettes, a dyslexia-font preset library, a document accessibility
-checker (flagging empty alt, low-contrast slots, out-of-order headings),
-and reduced-motion gating.
+A colorblind palette shipped 2026-07: the **Color-vision friendly
+palette** setting drives a `data-cvd` attribute on the document root
+(the same pattern as `data-theme` / `data-icons` / `data-motion`),
+gating Okabe–Ito token blocks in style.css that compose with either
+theme; explicit per-token user overrides still win. Deferred but
+anticipated by the wiring: high-contrast palettes, a dyslexia-font
+preset library, and a document accessibility checker (flagging empty
+alt, low-contrast slots, out-of-order headings).
 
 ## 16. Tournament reliability
 

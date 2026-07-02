@@ -966,6 +966,116 @@ button {
   --pmd-c-link: #7AB0FF;
 }
 
+/* ── Color-vision friendly preset ───────────────────────────────────
+   Active when `<html data-cvd="friendly">` — set by applyColorVision()
+   from the `colorVisionFriendly` Accessibility setting. Orthogonal to
+   `data-theme` (the dark+preset block below composes them). Remaps the
+   meaning-carrying hues onto the Okabe-Ito palette, engineered to stay
+   distinguishable under protanopia, deuteranopia, AND tritanopia.
+   Precedence comes free: hand-set Color overrides are inline styles on
+   <html> and beat these blocks; these blocks sit after the theme
+   blocks and win ties against them.
+
+   Deliberately NOT remapped:
+   - the 15 OOXML band colors (document data; mitigated by the
+     status-bar color-names toggle) and the band foregrounds (already
+     pure luminance contrast — hue-independent);
+   - comment gold + warning amber (already CVD-safe yellow/orange);
+   - error reds (always text/icon-redundant in this UI). */
+:root[data-cvd="friendly"] {
+  /* Blue anchor — flashcard identity, focused pane, voice command
+     dot, autosave-effective, links, prep-timer Aff. */
+  --pmd-c-accent: #0072b2;
+  --pmd-c-accent-hover: #005a8e;
+  --pmd-c-accent-soft: rgba(0, 114, 178, 0.12);
+  --pmd-c-focus: #0072b2;
+  --pmd-c-link: #0072b2;
+  --pmd-c-aff: #0072b2;
+
+  /* Vermillion — AI identity (comments, working boxes, thinking pill)
+     and prep-timer Neg. Maximally separated from the blue anchor. */
+  --pmd-c-comment-thread: #d55e00;
+  --pmd-c-comment-thread-text: #a34800;
+  --pmd-c-comment-thread-soft: rgba(213, 94, 0, 0.15);
+  --pmd-c-comment-thread-tint: rgba(213, 94, 0, 0.06);
+  --pmd-c-comment-thread-toast: rgba(213, 94, 0, 0.95);
+  --pmd-c-neg: #d55e00;
+
+  /* Bluish green — private notes, dictation dot / success states,
+     paragraph repair. Far from both anchors. */
+  --pmd-c-note: #009e73;
+  --pmd-c-note-text: #007a59;
+  --pmd-c-note-soft: rgba(0, 158, 115, 0.15);
+  --pmd-c-success: #009e73;
+  --pmd-c-success-soft: rgba(0, 158, 115, 0.2);
+  --pmd-c-repair-accent: #009e73;
+  --pmd-c-repair-match: rgba(0, 158, 115, 0.28);
+  --pmd-c-repair-match-strong: rgba(0, 158, 115, 0.5);
+  --pmd-c-repair-glow: rgba(0, 158, 115, 0.9);
+
+  /* Find: current match steps to vermillion with a luminance drop so
+     current-vs-other survives even in grayscale; other matches stay
+     Okabe-Ito yellow. */
+  --pmd-c-find-match: rgba(240, 228, 66, 0.5);
+  --pmd-c-find-match-strong: rgba(240, 228, 66, 0.65);
+  --pmd-c-find-match-current: rgba(213, 94, 0, 0.5);
+  --pmd-c-find-match-current-strong: rgba(213, 94, 0, 0.8);
+  --pmd-c-find-match-current-outline: rgba(140, 60, 0, 0.7);
+  --pmd-c-find-match-current-outline-soft: rgba(140, 60, 0, 0.4);
+
+  /* Category chips — labels already provide text redundancy; hues
+     remapped so the at-a-glance scan works too. */
+  --pmd-c-cat-heading-bg: rgba(0, 114, 178, 0.12);
+  --pmd-c-cat-heading-fg: #005a8e;
+  --pmd-c-cat-tag-bg: rgba(230, 159, 0, 0.18);
+  --pmd-c-cat-tag-fg: #8f6400;
+  --pmd-c-cat-cite-bg: rgba(204, 121, 167, 0.16);
+  --pmd-c-cat-cite-fg: #96426d;
+  --pmd-c-cat-undertag-bg: rgba(0, 158, 115, 0.16);
+  --pmd-c-cat-undertag-fg: #00775a;
+}
+
+/* Dark theme + preset: brighter Okabe-Ito variants (sky-blue anchor),
+   mirroring how the base dark block brightens the base palette. Chip
+   foregrounds must brighten too or they vanish on dark surfaces. */
+:root[data-theme="dark"][data-cvd="friendly"] {
+  --pmd-c-accent: #56b4e9;
+  --pmd-c-accent-hover: #7cc4ee;
+  --pmd-c-accent-soft: rgba(86, 180, 233, 0.18);
+  --pmd-c-focus: #56b4e9;
+  --pmd-c-link: #56b4e9;
+  --pmd-c-aff: #56b4e9;
+
+  --pmd-c-comment-thread: #ee7733;
+  --pmd-c-comment-thread-text: #f5a468;
+  --pmd-c-comment-thread-soft: rgba(238, 119, 51, 0.2);
+  --pmd-c-comment-thread-tint: rgba(238, 119, 51, 0.08);
+  --pmd-c-comment-thread-toast: rgba(238, 119, 51, 0.95);
+  --pmd-c-neg: #ee7733;
+
+  --pmd-c-note: #20c997;
+  --pmd-c-note-text: #7fe3c6;
+  --pmd-c-note-soft: rgba(32, 201, 151, 0.22);
+  --pmd-c-success: #20c997;
+  --pmd-c-success-soft: rgba(32, 201, 151, 0.25);
+  --pmd-c-repair-accent: #20c997;
+  --pmd-c-repair-match: rgba(32, 201, 151, 0.3);
+  --pmd-c-repair-match-strong: rgba(32, 201, 151, 0.5);
+  --pmd-c-repair-glow: rgba(32, 201, 151, 0.9);
+
+  /* Find-match values stay bright by design in dark (matches the base
+     dark block's approach); the light-preset values above apply. */
+
+  --pmd-c-cat-heading-bg: rgba(86, 180, 233, 0.22);
+  --pmd-c-cat-heading-fg: #9bd1f2;
+  --pmd-c-cat-tag-bg: rgba(230, 159, 0, 0.22);
+  --pmd-c-cat-tag-fg: #f0bc5e;
+  --pmd-c-cat-cite-bg: rgba(204, 121, 167, 0.25);
+  --pmd-c-cat-cite-fg: #e3a7c7;
+  --pmd-c-cat-undertag-bg: rgba(0, 158, 115, 0.25);
+  --pmd-c-cat-undertag-fg: #66d2b3;
+}
+
 /* "Dark chrome, light document" mode. When the theme is dark BUT
    `themeAppliesToDocument` is off (the default), re-declare the
    subset of tokens that surface inside the editor back to their
