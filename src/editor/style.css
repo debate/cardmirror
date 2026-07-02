@@ -1139,7 +1139,12 @@ html:has(body.pmd-speech-banner-visible) {
   height: 1.45rem;
   font-size: 0.85rem;
 }
-#ribbon #timer-toggle-btn[aria-pressed="true"] {
+/* Shared scaffolding (accent fill (2-prop)) — consolidated from 4 identical rules
+   (CSS dedup, 2026-07-01). Diverge by pulling a selector out, not by re-copying. */
+#ribbon #timer-toggle-btn[aria-pressed="true"],
+.pmd-theme-editor-btn[aria-pressed='true'],
+.pmd-pane-focused .pmd-pane-chip,
+#ribbon .pmd-timer-start[aria-pressed="true"] {
   background: var(--pmd-c-accent);
   color: var(--pmd-c-text-on-accent);
 }
@@ -1962,7 +1967,14 @@ body:not(.pmd-multi-doc) #app {
   white-space: nowrap;
 }
 
-.zoom-controls {
+/* Shared scaffolding (flex row) — consolidated from 6 identical rules
+   (CSS dedup, 2026-07-01). Diverge by pulling a selector out, not by re-copying. */
+.zoom-controls,
+.pmd-display-size-row,
+.pmd-reader-row,
+.pmd-msettings-stepper, .pmd-msettings-reader-row,
+.pmd-pairing-row,
+.pmd-pairing-group-header {
   display: flex;
   align-items: center;
   gap: 0.4rem;
@@ -2479,10 +2491,7 @@ body.pmd-override-shading [data-shading] {
 }
 .pmd-theme-editor-btn:last-child { border-right: none; }
 .pmd-theme-editor-btn:hover { background: var(--pmd-c-hover); }
-.pmd-theme-editor-btn[aria-pressed='true'] {
-  background: var(--pmd-c-accent);
-  color: var(--pmd-c-text-on-accent);
-}
+
 
 /* Multi-slot color editor — highlight / shading display
    overrides. Ordered list of 1-3 color pickers with grow/shrink
@@ -2538,7 +2547,12 @@ body.pmd-override-shading [data-shading] {
   line-height: 1;
 }
 .pmd-color-slot-trash:hover:not(:disabled) { background: var(--pmd-c-hover); }
-.pmd-color-slot-trash:disabled {
+/* Shared scaffolding (disabled dim) — consolidated from 4 identical rules
+   (CSS dedup, 2026-07-01). Diverge by pulling a selector out, not by re-copying. */
+.pmd-color-slot-trash:disabled,
+.pmd-color-override-reset:disabled,
+.pmd-color-overrides-reset-all:disabled,
+.pmd-colors-reset:disabled {
   opacity: 0.35;
   cursor: default;
 }
@@ -2636,10 +2650,7 @@ body.pmd-override-shading [data-shading] {
 .pmd-color-override-reset:hover:not(:disabled) {
   background: var(--pmd-c-hover);
 }
-.pmd-color-override-reset:disabled {
-  opacity: 0.35;
-  cursor: default;
-}
+
 
 /* Header above the per-token rows. Holds the "reset all"
    button; gives it a stable place at the top of the panel
@@ -2661,10 +2672,7 @@ body.pmd-override-shading [data-shading] {
 .pmd-color-overrides-reset-all:hover:not(:disabled) {
   background: var(--pmd-c-hover);
 }
-.pmd-color-overrides-reset-all:disabled {
-  opacity: 0.35;
-  cursor: default;
-}
+
 
 /* Color-picker widget in Settings — used by the highlight /
    shading override entries (and reusable for any future single-
@@ -2676,7 +2684,12 @@ body.pmd-override-shading [data-shading] {
   flex-direction: column;
   gap: 0.35rem;
 }
-.pmd-color-editor-row {
+/* Shared scaffolding (small flex row) — consolidated from 4 identical rules
+   (CSS dedup, 2026-07-01). Diverge by pulling a selector out, not by re-copying. */
+.pmd-color-editor-row,
+.pmd-line-height-row,
+.pmd-prompt-footer,
+.pmd-clean-prot-row, .pmd-clean-prot-addrow {
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -2713,7 +2726,13 @@ body.pmd-override-shading [data-shading] {
   outline: 1px solid var(--pmd-c-accent);
   outline-offset: 1px;
 }
-.pmd-color-editor-swatch-active {
+/* Shared scaffolding (outset focus ring) — consolidated from 5 identical rules
+   (CSS dedup, 2026-07-01). Diverge by pulling a selector out, not by re-copying. */
+.pmd-color-editor-swatch-active,
+.pmd-home-recent:focus-visible,
+.pmd-keybindings-search-input:focus,
+.pmd-reference-search-input:focus,
+.pmd-select-speech-row:focus-visible {
   outline: 2px solid var(--pmd-c-accent);
   outline-offset: 1px;
 }
@@ -2909,7 +2928,16 @@ body.pmd-nav-hidden #nav-pane-pull-tab {
   align-items: center;
   justify-content: center;
 }
-#nav-pane-pull-tab:hover {
+/* Shared scaffolding (hover highlight) — consolidated from 8 identical rules
+   (CSS dedup, 2026-07-01). Diverge by pulling a selector out, not by re-copying. */
+#nav-pane-pull-tab:hover,
+.pmd-home-recents-clear:hover,
+.pmd-dropzone-row-delete:hover,
+.pmd-dropzone-bar:hover,
+.pmd-dropzone-clear:hover,
+.pmd-qc-add-suggestion:hover,
+.pmd-voice-pill:hover,
+.pmd-pairing-star:hover:not(:disabled) {
   background: var(--pmd-c-hover);
   color: var(--pmd-c-text);
 }
@@ -3138,10 +3166,7 @@ html.pmd-home-active #speech-doc-banner {
   padding: 0.1rem 0.3rem;
   border-radius: 4px;
 }
-.pmd-home-recents-clear:hover {
-  background: var(--pmd-c-hover);
-  color: var(--pmd-c-text);
-}
+
 .pmd-home-recents {
   display: flex;
   flex-direction: column;
@@ -3169,10 +3194,7 @@ html.pmd-home-active #speech-doc-banner {
 .pmd-home-recent:hover {
   background: var(--pmd-c-hover);
 }
-.pmd-home-recent:focus-visible {
-  outline: 2px solid var(--pmd-c-accent);
-  outline-offset: 1px;
-}
+
 .pmd-home-recent-unavailable {
   cursor: default;
   opacity: 0.55;
@@ -3192,11 +3214,19 @@ html.pmd-home-active #speech-doc-banner {
   background: var(--pmd-c-bg-soft);
   color: var(--pmd-c-text-muted);
 }
-.pmd-home-recent-format-cmir {
+/* Shared scaffolding (category chip: heading family) — consolidated from 3 identical rules
+   (CSS dedup, 2026-07-01). Diverge by pulling a selector out, not by re-copying. */
+.pmd-home-recent-format-cmir,
+.pmd-dropzone-row-type-pocket, .pmd-dropzone-row-type-hat, .pmd-dropzone-row-type-block,
+.pmd-find-result-category-heading {
   background: var(--pmd-c-cat-heading-bg);
   color: var(--pmd-c-cat-heading-fg);
 }
-.pmd-home-recent-format-docx {
+/* Shared scaffolding (category chip: cite family) — consolidated from 3 identical rules
+   (CSS dedup, 2026-07-01). Diverge by pulling a selector out, not by re-copying. */
+.pmd-home-recent-format-docx,
+.pmd-dropzone-row-type-card, .pmd-dropzone-row-type-cite,
+.pmd-find-result-category-cite {
   background: var(--pmd-c-cat-cite-bg);
   color: var(--pmd-c-cat-cite-fg);
 }
@@ -3424,10 +3454,7 @@ body.pmd-multi-doc .pmd-pill-tray {
   flex: 0 0 auto;
   margin-top: 1px;
 }
-.pmd-dropzone-row-delete:hover {
-  background: var(--pmd-c-hover);
-  color: var(--pmd-c-text);
-}
+
 
 /* Type badge — small uppercase chip on the left of each row,
    mirroring the find-result category badges. */
@@ -3444,12 +3471,7 @@ body.pmd-multi-doc .pmd-pill-tray {
   background: var(--pmd-c-bg-soft);
   margin-top: 1px;
 }
-.pmd-dropzone-row-type-pocket,
-.pmd-dropzone-row-type-hat,
-.pmd-dropzone-row-type-block {
-  background: var(--pmd-c-cat-heading-bg);
-  color: var(--pmd-c-cat-heading-fg);
-}
+
 .pmd-dropzone-row-type-tag {
   background: var(--pmd-c-cat-tag-bg);
   color: var(--pmd-c-cat-tag-fg);
@@ -3458,11 +3480,7 @@ body.pmd-multi-doc .pmd-pill-tray {
   background: var(--pmd-c-cat-tag-bg);
   color: var(--pmd-color-analytic);
 }
-.pmd-dropzone-row-type-card,
-.pmd-dropzone-row-type-cite {
-  background: var(--pmd-c-cat-cite-bg);
-  color: var(--pmd-c-cat-cite-fg);
-}
+
 .pmd-dropzone-row-type-text,
 .pmd-dropzone-row-type-generic {
   background: var(--pmd-c-bg-soft);
@@ -3496,10 +3514,7 @@ body.pmd-multi-doc .pmd-pill-tray {
   /* See `.pmd-dropzone-root` — state morphs are instant. */
   transition: none;
 }
-.pmd-dropzone-bar:hover {
-  background: var(--pmd-c-hover);
-  color: var(--pmd-c-text);
-}
+
 .pmd-dropzone-root[data-open="true"] .pmd-dropzone-bar {
   align-self: stretch;
   background: transparent;
@@ -3540,7 +3555,12 @@ body.pmd-multi-doc .pmd-pill-tray {
   text-align: center;
   line-height: 1.3;
 }
-.pmd-dropzone-bar-spacer {
+/* Shared scaffolding (flex fill) — consolidated from 4 identical rules
+   (CSS dedup, 2026-07-01). Diverge by pulling a selector out, not by re-copying. */
+.pmd-dropzone-bar-spacer,
+.pmd-qc-manage-row-main,
+.pmd-learn-manage-text,
+.pmd-msettings-reader-row input[type='text'] {
   flex: 1 1 auto;
   min-width: 0;
 }
@@ -3555,10 +3575,7 @@ body.pmd-multi-doc .pmd-pill-tray {
   cursor: pointer;
   color: var(--pmd-c-text-muted);
 }
-.pmd-dropzone-clear:hover {
-  background: var(--pmd-c-hover);
-  color: var(--pmd-c-text);
-}
+
 
 .pmd-nav-panel {
   background: var(--pmd-c-bg);
@@ -3650,7 +3667,16 @@ body.pmd-nav-resize-active {
   background: var(--pmd-c-hover);
 }
 
-.pmd-nav-level-btn-active {
+/* Shared scaffolding (accent-filled active/CTA) — consolidated from 8 identical rules
+   (CSS dedup, 2026-07-01). Diverge by pulling a selector out, not by re-copying. */
+.pmd-nav-level-btn-active,
+#read-mode-btn.pmd-active,
+.pmd-prompt-btn-primary,
+.pmd-clod-btn-primary,
+.pmd-recovery-sidebar-row-btn-open,
+.pmd-save-as-btn-primary,
+.pmd-qc-add-btn-primary,
+.pmd-qc-manage-primary {
   background: var(--pmd-c-accent);
   color: var(--pmd-c-text-on-accent);
   border-color: var(--pmd-c-accent);
@@ -3937,7 +3963,11 @@ body.pmd-nav-resize-active {
   visibility: hidden;
 }
 
-.pmd-nav-label {
+/* Shared scaffolding (truncating label) — consolidated from 3 identical rules
+   (CSS dedup, 2026-07-01). Diverge by pulling a selector out, not by re-copying. */
+.pmd-nav-label,
+.pmd-keybinding-label,
+.pmd-qc-manage-row-tags {
   flex: 1 1 auto;
   min-width: 0;
   white-space: nowrap;
@@ -4140,12 +4170,7 @@ html.pmd-nav-flat .pmd-nav-type-analytic:hover .pmd-nav-label {
   /* inherits the icon-button look from #ribbon button; nothing extra */
 }
 
-/* Active state for the read-mode button (matches the level-N buttons). */
-#read-mode-btn.pmd-active {
-  background: var(--pmd-c-accent);
-  color: var(--pmd-c-text-on-accent);
-  border-color: var(--pmd-c-accent);
-}
+
 
 #read-mode-btn.pmd-active:hover:not(:disabled) {
   background: var(--pmd-c-accent-hover);
@@ -4220,7 +4245,15 @@ html.pmd-nav-flat .pmd-nav-type-analytic:hover .pmd-nav-label {
 
 /* ---------------------------------------------- Settings modal */
 
-.pmd-settings-overlay {
+/* Shared scaffolding (modal overlay) — consolidated from 7 identical rules
+   (CSS dedup, 2026-07-01). Diverge by pulling a selector out, not by re-copying. */
+.pmd-settings-overlay,
+.pmd-prompt-overlay,
+.pmd-clod-overlay,
+.pmd-save-as-overlay,
+.pmd-qc-add-overlay,
+.pmd-reference-overlay,
+.pmd-route-overlay {
   position: fixed;
   inset: 0;
   background: var(--pmd-c-overlay);
@@ -4575,7 +4608,17 @@ html.pmd-nav-flat .pmd-nav-type-analytic:hover .pmd-nav-label {
   background: var(--pmd-c-bg);
   color: var(--pmd-c-text);
 }
-.pmd-settings-text:focus {
+/* Shared scaffolding (input focus ring) — consolidated from 9 identical rules
+   (CSS dedup, 2026-07-01). Diverge by pulling a selector out, not by re-copying. */
+.pmd-settings-text:focus,
+.pmd-macro-text:focus,
+.pmd-find-input:focus,
+.pmd-comment-reply-input:focus,
+.pmd-save-as-input:focus,
+.pmd-qc-add-input:focus,
+.pmd-text-prompt-input:focus,
+.pmd-learn-create-input:focus,
+.pmd-learn-manage-filter:focus {
   outline: 2px solid var(--pmd-c-accent);
   outline-offset: -1px;
 }
@@ -4606,7 +4649,13 @@ html.pmd-nav-flat .pmd-nav-type-analytic:hover .pmd-nav-label {
   gap: 0.15rem;
 }
 
-.pmd-typography-flag-desc {
+/* Shared scaffolding (caption text) — consolidated from 5 identical rules
+   (CSS dedup, 2026-07-01). Diverge by pulling a selector out, not by re-copying. */
+.pmd-typography-flag-desc,
+.pmd-line-height-unit,
+.pmd-comment-date,
+.pmd-learn-session-hint,
+.pmd-timer-durations-unit {
   font-size: 0.75rem;
   color: var(--pmd-c-text-muted);
 }
@@ -4619,7 +4668,11 @@ html.pmd-nav-flat .pmd-nav-type-analytic:hover .pmd-nav-label {
   margin-top: 0.25rem;
 }
 
-.pmd-typography-size-input {
+/* Shared scaffolding (numeric input) — consolidated from 3 identical rules
+   (CSS dedup, 2026-07-01). Diverge by pulling a selector out, not by re-copying. */
+.pmd-typography-size-input,
+.pmd-line-height-input,
+.pmd-display-size-input {
   flex: 0 0 4rem;
   font-family: inherit;
   font-size: 0.85rem;
@@ -4629,7 +4682,11 @@ html.pmd-nav-flat .pmd-nav-type-analytic:hover .pmd-nav-label {
   text-align: right;
 }
 
-.pmd-typography-unit {
+/* Shared scaffolding (unit label) — consolidated from 3 identical rules
+   (CSS dedup, 2026-07-01). Diverge by pulling a selector out, not by re-copying. */
+.pmd-typography-unit,
+.pmd-display-size-unit,
+.pmd-reader-wpm-label {
   flex: 0 0 auto;
   font-size: 0.75rem;
   color: var(--pmd-c-text-muted);
@@ -4683,10 +4740,7 @@ html.pmd-nav-flat .pmd-nav-type-analytic:hover .pmd-nav-label {
 .pmd-colors-reset:hover:not(:disabled) {
   background: var(--pmd-c-hover);
 }
-.pmd-colors-reset:disabled {
-  opacity: 0.35;
-  cursor: default;
-}
+
 
 .pmd-body-font-editor {
   margin-top: 0.5rem;
@@ -4712,20 +4766,9 @@ html.pmd-nav-flat .pmd-nav-type-analytic:hover .pmd-nav-label {
   color: var(--pmd-c-text);
 }
 
-.pmd-line-height-input {
-  flex: 0 0 4rem;
-  font-family: inherit;
-  font-size: 0.85rem;
-  border: 1px solid var(--pmd-c-border);
-  border-radius: 3px;
-  padding: 0.2rem 0.4rem;
-  text-align: right;
-}
 
-.pmd-line-height-unit {
-  font-size: 0.75rem;
-  color: var(--pmd-c-text-muted);
-}
+
+
 
 .pmd-line-heights-editor {
   margin-top: 0.5rem;
@@ -4734,17 +4777,19 @@ html.pmd-nav-flat .pmd-nav-type-analytic:hover .pmd-nav-label {
   gap: 0.4rem;
 }
 
-.pmd-line-heights-rows {
+/* Shared scaffolding (field block) — consolidated from 5 identical rules
+   (CSS dedup, 2026-07-01). Diverge by pulling a selector out, not by re-copying. */
+.pmd-line-heights-rows,
+.pmd-save-as-preset,
+.pmd-qc-add-field,
+.pmd-qc-manage-field,
+.pmd-bulk-field {
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
 }
 
-.pmd-line-height-row {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
+
 
 .pmd-line-height-row-label {
   flex: 1 1 auto;
@@ -4828,32 +4873,16 @@ html.pmd-nav-flat .pmd-nav-type-analytic:hover .pmd-nav-label {
   gap: 0.3rem 0.75rem;
 }
 
-.pmd-display-size-row {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-}
+
 
 .pmd-display-size-label {
   flex: 1 1 auto;
   font-size: 0.85rem;
 }
 
-.pmd-display-size-input {
-  flex: 0 0 4rem;
-  font-family: inherit;
-  font-size: 0.85rem;
-  border: 1px solid var(--pmd-c-border);
-  border-radius: 3px;
-  padding: 0.2rem 0.4rem;
-  text-align: right;
-}
 
-.pmd-display-size-unit {
-  flex: 0 0 auto;
-  font-size: 0.75rem;
-  color: var(--pmd-c-text-muted);
-}
+
+
 
 .pmd-readers-editor {
   margin-top: 0.5rem;
@@ -4866,11 +4895,7 @@ html.pmd-nav-flat .pmd-nav-type-analytic:hover .pmd-nav-label {
   margin-bottom: 0.5rem;
 }
 
-.pmd-reader-row {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-}
+
 
 .pmd-reader-rank {
   flex: 0 0 1.7rem;
@@ -4898,11 +4923,7 @@ html.pmd-nav-flat .pmd-nav-type-analytic:hover .pmd-nav-label {
   padding: 0.2rem 0.4rem;
 }
 
-.pmd-reader-wpm-label {
-  flex: 0 0 auto;
-  font-size: 0.75rem;
-  color: var(--pmd-c-text-muted);
-}
+
 
 .pmd-reader-row button {
   flex: 0 0 auto;
@@ -5187,7 +5208,12 @@ html.pmd-nav-flat .pmd-nav-type-analytic:hover .pmd-nav-label {
 
 /* Heading-mode setting: radio rows. Long option labels wrap on
    narrow dialogs, unlike <select>'s OS-rendered options. */
-.pmd-heading-mode-editor {
+/* Shared scaffolding (settings sub-editor) — consolidated from 4 identical rules
+   (CSS dedup, 2026-07-01). Diverge by pulling a selector out, not by re-copying. */
+.pmd-heading-mode-editor,
+.pmd-condense-warning-delimiter-editor, .pmd-multi-doc-layout-mode-editor,
+.pmd-shrink-protections-editor,
+.pmd-keybindings-editor {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
@@ -5212,16 +5238,7 @@ html.pmd-nav-flat .pmd-nav-type-analytic:hover .pmd-nav-label {
   flex: 1 1 auto;
 }
 
-/* Condense-with-warning delimiter picker: radio rows showing a sample
-   `<open>PARAGRAPH INTEGRITY PAUSES<close>` line in a monospace font
-   so the brackets are visually distinct. */
-.pmd-condense-warning-delimiter-editor,
-.pmd-multi-doc-layout-mode-editor {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  margin-top: 0.4rem;
-}
+
 
 /* Italic caret: while the next typed character would be italic, the native
    caret is hidden (browsers can't slant it) and a custom slanted caret is
@@ -5308,7 +5325,11 @@ body.pmd-steady-cursor .pmd-italic-caret,
   flex-wrap: wrap;
   margin-top: 0.2rem;
 }
-.pmd-translation-langs > div {
+/* Shared scaffolding (tight column) — consolidated from 3 identical rules
+   (CSS dedup, 2026-07-01). Diverge by pulling a selector out, not by re-copying. */
+.pmd-translation-langs > div,
+.pmd-keybindings-group,
+.pmd-comment-root, .pmd-comment-reply {
   display: flex;
   flex-direction: column;
   gap: 0.2rem;
@@ -5405,12 +5426,7 @@ body.pmd-steady-cursor .pmd-italic-caret,
   cursor: pointer;
 }
 
-.pmd-shrink-protections-editor {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  margin-top: 0.4rem;
-}
+
 
 .pmd-shrink-protections-list {
   display: flex;
@@ -5425,7 +5441,11 @@ body.pmd-steady-cursor .pmd-italic-caret,
   font-style: italic;
 }
 
-.pmd-shrink-protection-row {
+/* Shared scaffolding (wrapping row) — consolidated from 3 identical rules
+   (CSS dedup, 2026-07-01). Diverge by pulling a selector out, not by re-copying. */
+.pmd-shrink-protection-row,
+.pmd-settings-folder,
+.pmd-pairing-owncode {
   display: flex;
   align-items: center;
   gap: 0.4rem;
@@ -5493,15 +5513,7 @@ body.pmd-steady-cursor .pmd-italic-caret,
   background: var(--pmd-c-info-bg);
 }
 
-/* Keybindings editor: scrollable list of rows, each row is
-   `[label] [chips…] [+] [↺]` plus an inline "note" that briefly
-   surfaces conflict / validation messages without growing the layout. */
-.pmd-keybindings-editor {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  margin-top: 0.4rem;
-}
+
 
 .pmd-keybindings-help {
   margin: 0 0 0.25rem 0;
@@ -5523,10 +5535,7 @@ body.pmd-steady-cursor .pmd-italic-caret,
   background: var(--pmd-c-bg);
   color: var(--pmd-c-text);
 }
-.pmd-keybindings-search-input:focus {
-  outline: 2px solid var(--pmd-c-accent);
-  outline-offset: 1px;
-}
+
 
 .pmd-keybindings-list {
   display: flex;
@@ -5540,15 +5549,7 @@ body.pmd-steady-cursor .pmd-italic-caret,
   background: var(--pmd-c-surface-soft);
 }
 
-/* Group sections — visually separate clusters of related commands,
-   matching the cheat-sheet's grouping. Same visual treatment as
-   `.pmd-reference-group-title` (uppercase muted heading) so users
-   see the same taxonomy in both surfaces. */
-.pmd-keybindings-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-}
+
 .pmd-keybindings-group-title {
   margin: 0;
   padding: 0.35rem 0.6rem 0.2rem 0.6rem;
@@ -5581,13 +5582,7 @@ body.pmd-steady-cursor .pmd-italic-caret,
   background: var(--pmd-c-warning-bg);
 }
 
-.pmd-keybinding-label {
-  flex: 1 1 auto;
-  min-width: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
+
 
 .pmd-keybinding-chips {
   display: inline-flex;
@@ -5721,11 +5716,13 @@ body.pmd-steady-cursor .pmd-italic-caret,
   background: var(--pmd-c-bg);
   color: var(--pmd-c-text);
 }
-.pmd-macro-text:focus {
-  outline: 2px solid var(--pmd-c-accent);
-  outline-offset: -1px;
-}
-.pmd-macro-delete:hover {
+
+/* Shared scaffolding (danger outline hover) — consolidated from 4 identical rules
+   (CSS dedup, 2026-07-01). Diverge by pulling a selector out, not by re-copying. */
+.pmd-macro-delete:hover,
+.pmd-flashcard-card-delete:hover,
+.pmd-learn-session-forgot:hover,
+.pmd-learn-manage-delete:hover {
   color: var(--pmd-c-error);
   border-color: var(--pmd-c-error);
 }
@@ -5852,10 +5849,7 @@ body.pmd-steady-cursor .pmd-italic-caret,
   background: var(--pmd-c-bg);
   color: var(--pmd-c-text);
 }
-.pmd-find-input:focus {
-  outline: 2px solid var(--pmd-c-accent);
-  outline-offset: -1px;
-}
+
 .pmd-find-toggle {
   display: inline-flex;
   align-items: center;
@@ -5979,18 +5973,12 @@ body.pmd-steady-cursor .pmd-italic-caret,
   background: var(--pmd-c-bg-soft);
   text-align: center;
 }
-.pmd-find-result-category-heading {
-  background: var(--pmd-c-cat-heading-bg);
-  color: var(--pmd-c-cat-heading-fg);
-}
+
 .pmd-find-result-category-tag {
   background: var(--pmd-c-cat-tag-bg);
   color: var(--pmd-c-cat-tag-fg);
 }
-.pmd-find-result-category-cite {
-  background: var(--pmd-c-cat-cite-bg);
-  color: var(--pmd-c-cat-cite-fg);
-}
+
 .pmd-find-result-category-analytic {
   background: var(--pmd-c-cat-analytic-bg);
   color: var(--pmd-c-cat-analytic-fg);
@@ -5999,7 +5987,11 @@ body.pmd-steady-cursor .pmd-italic-caret,
   background: var(--pmd-c-cat-undertag-bg);
   color: var(--pmd-c-cat-undertag-fg);
 }
-.pmd-find-result-snippet {
+/* Shared scaffolding (truncating flex text) — consolidated from 3 identical rules
+   (CSS dedup, 2026-07-01). Diverge by pulling a selector out, not by re-copying. */
+.pmd-find-result-snippet,
+.pmd-pane-chip-dropdown-name,
+.pmd-send-target-name {
   flex: 1 1 auto;
   white-space: nowrap;
   overflow: hidden;
@@ -6514,10 +6506,7 @@ body.pmd-comments-resize-active {
   background: var(--pmd-c-surface);
   color: var(--pmd-c-text);
 }
-.pmd-flashcard-card-delete:hover {
-  color: var(--pmd-c-error);
-  border-color: var(--pmd-c-error);
-}
+
 .pmd-flashcard-card-delete.is-armed {
   color: var(--pmd-c-text-on-accent);
   background: var(--pmd-c-error);
@@ -6622,12 +6611,7 @@ body.pmd-comments-resize-active {
   font-size: 0.85rem;
 }
 
-.pmd-comment-root,
-.pmd-comment-reply {
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-}
+
 .pmd-comment-reply {
   padding-left: 0.65rem;
   border-left: 2px solid var(--pmd-c-border-soft);
@@ -6666,10 +6650,7 @@ body.pmd-comments-resize-active {
   font-weight: 600;
   flex: 1 1 auto;
 }
-.pmd-comment-date {
-  color: var(--pmd-c-text-muted);
-  font-size: 0.75rem;
-}
+
 .pmd-comment-delete {
   background: transparent;
   border: none;
@@ -6755,10 +6736,7 @@ body.pmd-comments-resize-active {
   color: var(--pmd-c-text);
   min-height: 2.2em;
 }
-.pmd-comment-reply-input:focus {
-  outline: 2px solid var(--pmd-c-accent);
-  outline-offset: -1px;
-}
+
 .pmd-comment-reply-submit {
   flex: 0 0 auto;
   display: inline-flex;
@@ -6977,15 +6955,7 @@ body:has(#comments-column:not([hidden])) :is(#editor, .pmd-pane-editor) .pmd-com
 
 /* ---------------------------------------------- Prompt editor modal */
 
-.pmd-prompt-overlay {
-  position: fixed;
-  inset: 0;
-  background: var(--pmd-c-overlay);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
+
 .pmd-prompt-dialog {
   background: var(--pmd-c-bg);
   border-radius: 8px;
@@ -7004,8 +6974,19 @@ body:has(#comments-column:not([hidden])) :is(#editor, .pmd-pane-editor) .pmd-com
   align-items: center;
   justify-content: space-between;
 }
-.pmd-prompt-header h2 { margin: 0; font-size: 1.05rem; font-weight: 600; }
-.pmd-prompt-close {
+/* Shared scaffolding (modal header title) — consolidated from 5 identical rules
+   (CSS dedup, 2026-07-01). Diverge by pulling a selector out, not by re-copying. */
+.pmd-prompt-header h2,
+.pmd-clod-header h2,
+.pmd-save-as-header h2,
+.pmd-qc-add-header h2,
+.pmd-bulk-header h2 { margin: 0; font-size: 1.05rem; font-weight: 600; }
+/* Shared scaffolding (modal close button) — consolidated from 4 identical rules
+   (CSS dedup, 2026-07-01). Diverge by pulling a selector out, not by re-copying. */
+.pmd-prompt-close,
+.pmd-clod-close,
+.pmd-save-as-close,
+.pmd-reference-close {
   background: transparent;
   border: none;
   cursor: pointer;
@@ -7033,12 +7014,13 @@ body:has(#comments-column:not([hidden])) :is(#editor, .pmd-pane-editor) .pmd-com
   color: var(--pmd-c-text);
   resize: vertical;
 }
-.pmd-prompt-footer {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-.pmd-prompt-btn {
+
+/* Shared scaffolding (modal button) — consolidated from 4 identical rules
+   (CSS dedup, 2026-07-01). Diverge by pulling a selector out, not by re-copying. */
+.pmd-prompt-btn,
+.pmd-clod-btn,
+.pmd-save-as-btn,
+.pmd-qc-add-btn {
   padding: 0.4rem 0.9rem;
   font-size: 0.9rem;
   border-radius: 4px;
@@ -7049,11 +7031,7 @@ body:has(#comments-column:not([hidden])) :is(#editor, .pmd-pane-editor) .pmd-com
   font-family: inherit;
 }
 .pmd-prompt-btn:hover { background: var(--pmd-c-button-hover); }
-.pmd-prompt-btn-primary {
-  background: var(--pmd-c-accent);
-  border-color: var(--pmd-c-accent);
-  color: var(--pmd-c-text-on-accent);
-}
+
 .pmd-prompt-btn-primary:hover { background: var(--pmd-c-accent-hover); }
 
 .pmd-settings-btn {
@@ -7069,15 +7047,7 @@ body:has(#comments-column:not([hidden])) :is(#editor, .pmd-pane-editor) .pmd-com
 }
 .pmd-settings-btn:hover { background: var(--pmd-c-button-hover); }
 
-/* Folder picker — read-only path display next to a Browse / Clear
-   pair. The path span ellipses on overflow so long absolute paths
-   don't stretch the settings dialog. */
-.pmd-settings-folder {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  flex-wrap: wrap;
-}
+
 /* Multi-folder list (file-search folders): a column of folder rows + an
    "+ Add folder" button. */
 .pmd-settings-folderlist {
@@ -7117,15 +7087,7 @@ body:has(#comments-column:not([hidden])) :is(#editor, .pmd-pane-editor) .pmd-com
 
 /* ---------------------------------------------- Clod configurator */
 
-.pmd-clod-overlay {
-  position: fixed;
-  inset: 0;
-  background: var(--pmd-c-overlay);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
+
 .pmd-clod-dialog {
   background: var(--pmd-c-bg);
   border-radius: 8px;
@@ -7137,19 +7099,19 @@ body:has(#comments-column:not([hidden])) :is(#editor, .pmd-pane-editor) .pmd-com
   flex-direction: column;
   font-family: var(--pmd-ui-font);
 }
-.pmd-clod-header {
+/* Shared scaffolding (modal header) — consolidated from 3 identical rules
+   (CSS dedup, 2026-07-01). Diverge by pulling a selector out, not by re-copying. */
+.pmd-clod-header,
+.pmd-save-as-header,
+.pmd-bulk-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0.85rem 1.25rem;
   border-bottom: 1px solid var(--pmd-c-divider);
 }
-.pmd-clod-header h2 { margin: 0; font-size: 1.05rem; font-weight: 600; }
-.pmd-clod-close {
-  background: transparent; border: none; cursor: pointer;
-  font-size: 1.6rem; line-height: 1; color: var(--pmd-c-text-muted);
-  padding: 0 0.25rem;
-}
+
+
 .pmd-clod-close:hover { color: var(--pmd-c-text); }
 .pmd-clod-tabs {
   display: flex;
@@ -7228,22 +7190,9 @@ body:has(#comments-column:not([hidden])) :is(#editor, .pmd-pane-editor) .pmd-com
   padding: 0.75rem 1.25rem;
   border-top: 1px solid var(--pmd-c-divider);
 }
-.pmd-clod-btn {
-  padding: 0.4rem 0.9rem;
-  font-size: 0.9rem;
-  border-radius: 4px;
-  border: 1px solid var(--pmd-c-border);
-  background: var(--pmd-c-bg);
-  color: var(--pmd-c-text);
-  cursor: pointer;
-  font-family: inherit;
-}
+
 .pmd-clod-btn:hover { background: var(--pmd-c-button-hover); }
-.pmd-clod-btn-primary {
-  background: var(--pmd-c-accent);
-  border-color: var(--pmd-c-accent);
-  color: var(--pmd-c-text-on-accent);
-}
+
 .pmd-clod-btn-primary:hover { background: var(--pmd-c-accent-hover); }
 
 /* AI thinking placeholder — faded purple background to match the
@@ -7256,15 +7205,7 @@ body:has(#comments-column:not([hidden])) :is(#editor, .pmd-pane-editor) .pmd-com
   color: var(--pmd-c-text-muted);
 }
 
-.pmd-save-as-overlay {
-  position: fixed;
-  inset: 0;
-  background: var(--pmd-c-overlay);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
+
 
 /* ─── Crash-recovery sidebar ─────────────────────────────────────── */
 
@@ -7397,11 +7338,7 @@ body.pmd-recovery-active:not(.pmd-multi-doc) #app {
   color: var(--pmd-c-text);
 }
 
-.pmd-recovery-sidebar-row-btn-open {
-  background: var(--pmd-c-accent);
-  border-color: var(--pmd-c-accent);
-  color: var(--pmd-c-text-on-accent);
-}
+
 .pmd-recovery-sidebar-row-btn-open:hover {
   background: var(--pmd-c-accent-hover);
 }
@@ -7428,7 +7365,12 @@ body.pmd-recovery-active:not(.pmd-multi-doc) #app {
   cursor: pointer;
   color: var(--pmd-c-text);
 }
-.pmd-recovery-sidebar-done:hover {
+/* Shared scaffolding (surface hover) — consolidated from 4 identical rules
+   (CSS dedup, 2026-07-01). Diverge by pulling a selector out, not by re-copying. */
+.pmd-recovery-sidebar-done:hover,
+.pmd-pane-chip-stack:hover,
+.pmd-pane-open:hover,
+.pmd-route-btn:hover {
   background: var(--pmd-c-surface);
 }
 
@@ -7451,29 +7393,11 @@ body.pmd-recovery-active.pmd-multi-doc #app {
   font-family: var(--pmd-ui-font);
 }
 
-.pmd-save-as-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.85rem 1.25rem;
-  border-bottom: 1px solid var(--pmd-c-divider);
-}
 
-.pmd-save-as-header h2 {
-  margin: 0;
-  font-size: 1.05rem;
-  font-weight: 600;
-}
 
-.pmd-save-as-close {
-  background: transparent;
-  border: none;
-  font-size: 1.6rem;
-  line-height: 1;
-  cursor: pointer;
-  color: var(--pmd-c-text-muted);
-  padding: 0 0.25rem;
-}
+
+
+
 
 .pmd-save-as-close:hover {
   color: var(--pmd-c-text);
@@ -7512,10 +7436,7 @@ body.pmd-recovery-active.pmd-multi-doc #app {
   color: var(--pmd-c-text);
 }
 
-.pmd-save-as-input:focus {
-  outline: 2px solid var(--pmd-c-accent);
-  outline-offset: -1px;
-}
+
 
 .pmd-save-as-options:empty {
   display: none;
@@ -7587,11 +7508,7 @@ body.pmd-recovery-active.pmd-multi-doc #app {
   padding-bottom: 0.75rem;
   border-bottom: 1px solid var(--pmd-c-divider-faint);
 }
-.pmd-save-as-preset {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-}
+
 .pmd-save-as-preset-btn {
   width: 100%;
 }
@@ -7629,41 +7546,19 @@ body.pmd-recovery-active.pmd-multi-doc #app {
   border-top: 1px solid var(--pmd-c-divider-faint);
 }
 
-.pmd-save-as-btn {
-  padding: 0.4rem 0.9rem;
-  font-size: 0.9rem;
-  border-radius: 4px;
-  border: 1px solid var(--pmd-c-border);
-  background: var(--pmd-c-bg);
-  color: var(--pmd-c-text);
-  cursor: pointer;
-  font-family: inherit;
-}
+
 
 .pmd-save-as-btn:hover {
   background: var(--pmd-c-button-hover);
 }
 
-.pmd-save-as-btn-primary {
-  background: var(--pmd-c-accent);
-  border-color: var(--pmd-c-accent);
-  color: var(--pmd-c-text-on-accent);
-}
+
 
 .pmd-save-as-btn-primary:hover {
   background: var(--pmd-c-accent-hover);
 }
 
-/* ─── Quick Card — Add dialog ─────────────────────────────────────── */
-.pmd-qc-add-overlay {
-  position: fixed;
-  inset: 0;
-  background: var(--pmd-c-overlay);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
+
 .pmd-qc-add-dialog {
   background: var(--pmd-c-bg);
   border-radius: 8px;
@@ -7678,22 +7573,14 @@ body.pmd-recovery-active.pmd-multi-doc #app {
   padding: 0.85rem 1.25rem;
   border-bottom: 1px solid var(--pmd-c-divider);
 }
-.pmd-qc-add-header h2 {
-  margin: 0;
-  font-size: 1.05rem;
-  font-weight: 600;
-}
+
 .pmd-qc-add-body {
   padding: 1rem 1.25rem;
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
 }
-.pmd-qc-add-field {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-}
+
 .pmd-qc-add-field-label {
   font-size: 0.85rem;
   color: var(--pmd-c-text-secondary);
@@ -7707,10 +7594,7 @@ body.pmd-recovery-active.pmd-multi-doc #app {
   background: var(--pmd-c-bg);
   color: var(--pmd-c-text);
 }
-.pmd-qc-add-input:focus {
-  outline: 2px solid var(--pmd-c-accent);
-  outline-offset: -1px;
-}
+
 .pmd-qc-add-chips {
   display: flex;
   flex-wrap: wrap;
@@ -7760,10 +7644,7 @@ body.pmd-recovery-active.pmd-multi-doc #app {
   background: transparent;
   color: var(--pmd-c-text-muted);
 }
-.pmd-qc-add-suggestion:hover {
-  background: var(--pmd-c-hover);
-  color: var(--pmd-c-text);
-}
+
 .pmd-qc-add-error {
   font-size: 0.82rem;
   color: var(--pmd-c-danger);
@@ -7786,24 +7667,11 @@ body.pmd-recovery-active.pmd-multi-doc #app {
   gap: 0.5rem;
   padding-top: 0.25rem;
 }
-.pmd-qc-add-btn {
-  padding: 0.4rem 0.9rem;
-  font-size: 0.9rem;
-  border-radius: 4px;
-  border: 1px solid var(--pmd-c-border);
-  background: var(--pmd-c-bg);
-  color: var(--pmd-c-text);
-  cursor: pointer;
-  font-family: inherit;
-}
+
 .pmd-qc-add-btn:hover {
   background: var(--pmd-c-button-hover);
 }
-.pmd-qc-add-btn-primary {
-  background: var(--pmd-c-accent);
-  border-color: var(--pmd-c-accent);
-  color: var(--pmd-c-text-on-accent);
-}
+
 .pmd-qc-add-btn-primary:hover {
   background: var(--pmd-c-accent-hover);
 }
@@ -7927,7 +7795,7 @@ body.pmd-recovery-active.pmd-multi-doc #app {
 .pmd-qc-manage-row-active,
 .pmd-qc-manage-row-active:hover { background: var(--pmd-c-accent-soft); }
 .pmd-qc-manage-row-check { margin-top: 0.2rem; cursor: pointer; }
-.pmd-qc-manage-row-main { min-width: 0; flex: 1 1 auto; }
+
 .pmd-qc-manage-row-name {
   font-size: 0.9rem;
   font-weight: 500;
@@ -7941,7 +7809,7 @@ body.pmd-recovery-active.pmd-multi-doc #app {
   font-size: 0.75rem;
   color: var(--pmd-c-text-muted);
 }
-.pmd-qc-manage-row-tags { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
 .pmd-qc-manage-row-src { flex: 0 0 auto; max-width: 45%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pmd-qc-manage-detail {
   flex: 1 1 auto;
@@ -7962,11 +7830,7 @@ body.pmd-recovery-active.pmd-multi-doc #app {
   flex: 1 1 0;
   min-height: 0;
 }
-.pmd-qc-manage-field {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-}
+
 .pmd-qc-manage-field-label {
   font-size: 0.78rem;
   font-weight: 600;
@@ -8014,11 +7878,7 @@ body.pmd-recovery-active.pmd-multi-doc #app {
   cursor: pointer;
 }
 .pmd-qc-manage-btn:hover { background: var(--pmd-c-button-hover); }
-.pmd-qc-manage-primary {
-  background: var(--pmd-c-accent);
-  border-color: var(--pmd-c-accent);
-  color: var(--pmd-c-text-on-accent);
-}
+
 .pmd-qc-manage-primary:hover { background: var(--pmd-c-accent-hover); }
 .pmd-qc-manage-danger { color: var(--pmd-c-danger); }
 /* Armed state of the two-click delete (confirmButton): solid danger fill,
@@ -8099,14 +7959,18 @@ body.pmd-recovery-active.pmd-multi-doc #app {
   color: var(--pmd-c-drop);
   border-color: var(--pmd-c-drop);
 }
-.pmd-qcs-badge-settings {
+/* Shared scaffolding (accent outline) — consolidated from 6 identical rules
+   (CSS dedup, 2026-07-01). Diverge by pulling a selector out, not by re-copying. */
+.pmd-qcs-badge-settings,
+.pmd-qcs-badge-file,
+.pmd-learn-session-remembered:hover,
+.pmd-learn-session-context:hover,
+.pmd-learn-manage-link:hover,
+.pmd-pairing-star[aria-pressed='true'] {
   color: var(--pmd-c-accent);
   border-color: var(--pmd-c-accent);
 }
-.pmd-qcs-badge-file {
-  color: var(--pmd-c-accent);
-  border-color: var(--pmd-c-accent);
-}
+
 .pmd-qcs-badge-fileobject {
   color: var(--pmd-c-text-secondary);
   border-color: var(--pmd-c-text-secondary);
@@ -8299,18 +8163,8 @@ body.pmd-recovery-active.pmd-multi-doc #app {
 .pmd-bulk-dialog.pmd-bulk-busy {
   pointer-events: none;
 }
-.pmd-bulk-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.85rem 1.25rem;
-  border-bottom: 1px solid var(--pmd-c-divider);
-}
-.pmd-bulk-header h2 {
-  margin: 0;
-  font-size: 1.05rem;
-  font-weight: 600;
-}
+
+
 .pmd-bulk-close {
   appearance: none;
   background: transparent;
@@ -8328,11 +8182,7 @@ body.pmd-recovery-active.pmd-multi-doc #app {
   flex-direction: column;
   gap: 0.9rem;
 }
-.pmd-bulk-field {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-}
+
 .pmd-bulk-field-label {
   font-size: 0.78rem;
   font-weight: 600;
@@ -8426,12 +8276,7 @@ body.pmd-recovery-active.pmd-multi-doc #app {
   font-size: 0.85rem;
   padding: 0.3rem 0;
 }
-.pmd-clean-prot-row,
-.pmd-clean-prot-addrow {
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
-}
+
 .pmd-clean-prot-addrow {
   flex-wrap: wrap;
 }
@@ -8514,15 +8359,7 @@ body.pmd-recovery-active.pmd-multi-doc #app {
   padding: 0.4rem;
 }
 
-.pmd-reference-overlay {
-  position: fixed;
-  inset: 0;
-  background: var(--pmd-c-overlay);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
+
 
 .pmd-reference-dialog {
   background: var(--pmd-c-bg);
@@ -8551,15 +8388,7 @@ body.pmd-recovery-active.pmd-multi-doc #app {
   font-weight: 600;
 }
 
-.pmd-reference-close {
-  background: transparent;
-  border: none;
-  font-size: 1.6rem;
-  line-height: 1;
-  cursor: pointer;
-  color: var(--pmd-c-text-muted);
-  padding: 0 0.25rem;
-}
+
 
 .pmd-reference-close:hover {
   color: var(--pmd-c-text);
@@ -8580,10 +8409,7 @@ body.pmd-recovery-active.pmd-multi-doc #app {
   background: var(--pmd-c-bg);
   color: var(--pmd-c-text);
 }
-.pmd-reference-search-input:focus {
-  outline: 2px solid var(--pmd-c-accent);
-  outline-offset: 1px;
-}
+
 
 .pmd-reference-body {
   overflow-y: auto;
@@ -9061,10 +8887,7 @@ body.pmd-multi-nav-empty.pmd-multi-doc #status-bar {
 .pmd-select-speech-row:hover {
   background: var(--pmd-c-hover);
 }
-.pmd-select-speech-row:focus-visible {
-  outline: 2px solid var(--pmd-c-accent);
-  outline-offset: 1px;
-}
+
 .pmd-select-speech-row-indicator {
   flex: 0 0 1.25rem;
   text-align: center;
@@ -9226,10 +9049,7 @@ body.pmd-multi-nav-empty.pmd-multi-doc #status-bar {
 .pmd-pane-focused {
   box-shadow: inset 0 3px 0 0 var(--pmd-c-accent);
 }
-.pmd-pane-focused .pmd-pane-chip {
-  background: var(--pmd-c-accent);
-  color: var(--pmd-c-text-on-accent);
-}
+
 .pmd-pane-focused .pmd-pane-chip-name {
   color: var(--pmd-c-text-on-accent);
 }
@@ -9334,7 +9154,7 @@ body.pmd-multi-nav-empty.pmd-multi-doc #status-bar {
   color: var(--pmd-c-text-muted);
   cursor: pointer;
 }
-.pmd-pane-chip-stack:hover { background: var(--pmd-c-surface); }
+
 .pmd-pane-chip-stack[hidden] { display: none; }
 .pmd-pane-chip-expand {
   flex: 0 0 auto;
@@ -9417,12 +9237,7 @@ body.pmd-multi-nav-empty.pmd-multi-doc #status-bar {
 }
 .pmd-pane-chip-dropdown-row:hover { background: var(--pmd-c-surface); }
 .pmd-pane-chip-dropdown-row.pmd-active { font-weight: 600; }
-.pmd-pane-chip-dropdown-name {
-  flex: 1 1 auto;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
+
 .pmd-pane-chip-dropdown-close {
   flex: 0 0 auto;
   background: transparent;
@@ -9531,19 +9346,11 @@ body.pmd-multi-nav-empty.pmd-multi-doc #status-bar {
   color: var(--pmd-c-text);
   cursor: pointer;
 }
-.pmd-pane-open:hover { background: var(--pmd-c-surface); }
+
 
 /* ---- Routing prompt overlay ---- */
 
-.pmd-route-overlay {
-  position: fixed;
-  inset: 0;
-  background: var(--pmd-c-overlay);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
+
 .pmd-route-dialog {
   background: var(--pmd-c-bg);
   border-radius: 8px;
@@ -9640,7 +9447,7 @@ body.pmd-multi-nav-empty.pmd-multi-doc #status-bar {
 }
 .pmd-route-btn strong { font-size: 0.9rem; }
 .pmd-route-btn span { color: var(--pmd-c-text-muted); }
-.pmd-route-btn:hover { background: var(--pmd-c-surface); }
+
 .pmd-route-cancel {
   align-self: flex-end;
   background: transparent;
@@ -9685,10 +9492,7 @@ body.pmd-multi-nav-empty.pmd-multi-doc #status-bar {
   font-family: inherit;
   box-sizing: border-box;
 }
-.pmd-text-prompt-input:focus {
-  outline: 2px solid var(--pmd-c-accent);
-  outline-offset: -1px;
-}
+
 /* Multiline (`<textarea>`) variant — fixed minimum height so the user
    sees a few lines of context for alt-text-style use cases. */
 textarea.pmd-text-prompt-input {
@@ -9779,10 +9583,7 @@ textarea.pmd-text-prompt-input {
   box-sizing: border-box;
   resize: vertical;
 }
-.pmd-learn-create-input:focus {
-  outline: 2px solid var(--pmd-c-accent);
-  outline-offset: -1px;
-}
+
 .pmd-learn-create-note {
   font-size: 0.78rem;
   color: var(--pmd-c-error);
@@ -9896,10 +9697,7 @@ textarea.pmd-text-prompt-input {
   font-family: inherit;
 }
 .pmd-learn-session-show:hover { background: var(--pmd-c-accent-hover); }
-.pmd-learn-session-hint {
-  font-size: 0.75rem;
-  color: var(--pmd-c-text-muted);
-}
+
 .pmd-learn-session-grade {
   flex: 0 1 11rem;
   border-radius: 6px;
@@ -9920,12 +9718,12 @@ textarea.pmd-text-prompt-input {
   border-radius: 3px;
   padding: 0 0.3em;
 }
-.pmd-learn-session-forgot:hover { border-color: var(--pmd-c-error); color: var(--pmd-c-error); }
-.pmd-learn-session-remembered:hover { border-color: var(--pmd-c-accent); color: var(--pmd-c-accent); }
+
+
 /* Secondary action — navigates to the source rather than grading, so
    it reads quieter than the two grade buttons. */
 .pmd-learn-session-context { color: var(--pmd-c-text-secondary); }
-.pmd-learn-session-context:hover { border-color: var(--pmd-c-accent); color: var(--pmd-c-accent); }
+
 .pmd-learn-session-done {
   flex: 1 1 auto;
   padding: 2.25rem 1.5rem;
@@ -10032,7 +9830,7 @@ textarea.pmd-text-prompt-input {
   background: var(--pmd-c-bg);
   color: var(--pmd-c-text);
 }
-.pmd-learn-manage-filter:focus { outline: 2px solid var(--pmd-c-accent); outline-offset: -1px; }
+
 .pmd-learn-manage-susp {
   display: flex;
   align-items: center;
@@ -10103,10 +9901,7 @@ textarea.pmd-text-prompt-input {
   border: 1px solid var(--pmd-c-border-soft);
   color: var(--pmd-c-text-muted);
 }
-.pmd-learn-manage-text {
-  flex: 1 1 auto;
-  min-width: 0;
-}
+
 .pmd-learn-manage-front {
   font-size: 0.88rem;
   color: var(--pmd-c-text);
@@ -10157,7 +9952,7 @@ textarea.pmd-text-prompt-input {
   border-color: var(--pmd-c-border-soft);
   color: var(--pmd-c-text);
 }
-.pmd-learn-manage-delete:hover { color: var(--pmd-c-error); border-color: var(--pmd-c-error); }
+
 /* Link (icon-only) action on unanchored cards. */
 .pmd-learn-manage-link {
   display: inline-flex;
@@ -10165,7 +9960,7 @@ textarea.pmd-text-prompt-input {
   font-size: 0.95rem;
   padding: 0.2rem 0.4rem;
 }
-.pmd-learn-manage-link:hover { color: var(--pmd-c-accent); border-color: var(--pmd-c-accent); }
+
 .pmd-learn-manage-delete.is-armed {
   color: var(--pmd-c-text-on-accent);
   background: var(--pmd-c-error);
@@ -10366,10 +10161,7 @@ html.pmd-emphasis-box .pmd-pane-editor .pmd-emphasis {
   grid-row: 1;
   min-width: 1.6rem;
 }
-#ribbon .pmd-timer-start[aria-pressed="true"] {
-  background: var(--pmd-c-accent);
-  color: var(--pmd-c-text-on-accent);
-}
+
 
 /* Presets — col 4 row 1 (9), col 3 row 2 (6), col 4 row 2 (3). */
 #ribbon .pmd-timer-preset {
@@ -10447,10 +10239,7 @@ html.pmd-emphasis-box .pmd-pane-editor .pmd-emphasis {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
-.pmd-timer-durations-unit {
-  color: var(--pmd-c-text-muted);
-  font-size: 0.75rem;
-}
+
 
 /* Prep-label style — driven by `data-prep-label` on the panel.
    - 'both' (default): A: / N: prefix + blue / red color.
@@ -10634,10 +10423,7 @@ html.pmd-emphasis-box .pmd-pane-editor .pmd-emphasis {
   cursor: pointer;
   transition: none; /* state morphs read better instant (dropzone A/B) */
 }
-.pmd-voice-pill:hover {
-  background: var(--pmd-c-hover);
-  color: var(--pmd-c-text);
-}
+
 body.pmd-multi-doc .pmd-voice-pill {
   bottom: calc(var(--status-bar-height) + var(--pmd-pane-footer-height) + 0.5rem);
 }
@@ -11266,12 +11052,7 @@ body.pmd-mobile-tablet .pmd-mobile-sheet {
   gap: 0.3rem;
   flex: 0 1 16rem;
 }
-.pmd-msettings-stepper,
-.pmd-msettings-reader-row {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-}
+
 .pmd-msettings-stepper span:first-child {
   flex: 1 1 auto;
 }
@@ -11289,10 +11070,7 @@ body.pmd-mobile-tablet .pmd-mobile-sheet {
   min-width: 3.2rem;
   text-align: center;
 }
-.pmd-msettings-reader-row input[type='text'] {
-  flex: 1 1 auto;
-  min-width: 0;
-}
+
 .pmd-msettings-reader-row input[type='number'] {
   width: 4.5rem;
 }
@@ -11799,12 +11577,7 @@ body.pmd-multi-doc .pmd-cardcutter-trim {
   font-size: 0.82rem;
   cursor: pointer;
 }
-.pmd-send-target-name {
-  flex: 1 1 auto;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
+
 .pmd-send-target-count {
   flex: 0 0 auto;
   min-width: 1.1em;
@@ -11913,15 +11686,7 @@ body.pmd-multi-doc .pmd-cardcutter-trim {
   color: var(--pmd-c-text-muted);
 }
 
-/* ====================================================================
-   Card sharing — settings editors (Pairing tab)
-   ==================================================================== */
-.pmd-pairing-owncode {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  flex-wrap: wrap;
-}
+
 .pmd-pairing-owncode-value {
   padding: 0.2rem 0.45rem;
   border-radius: 6px;
@@ -11950,11 +11715,7 @@ body.pmd-multi-doc .pmd-cardcutter-trim {
   color: var(--pmd-c-text-muted);
   font-size: 0.8rem;
 }
-.pmd-pairing-row {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-}
+
 .pmd-pairing-name {
   flex: 0 0 8rem;
 }
@@ -11991,14 +11752,8 @@ body.pmd-multi-doc .pmd-cardcutter-trim {
   color: var(--pmd-c-text-muted);
   cursor: pointer;
 }
-.pmd-pairing-star:hover:not(:disabled) {
-  background: var(--pmd-c-hover);
-  color: var(--pmd-c-text);
-}
-.pmd-pairing-star[aria-pressed='true'] {
-  color: var(--pmd-c-accent);
-  border-color: var(--pmd-c-accent);
-}
+
+
 .pmd-pairing-star[aria-pressed='true'] svg {
   fill: currentColor;
 }
@@ -12014,11 +11769,7 @@ body.pmd-multi-doc .pmd-cardcutter-trim {
   border: 1px solid var(--pmd-c-border-soft);
   border-radius: 8px;
 }
-.pmd-pairing-group-header {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-}
+
 .pmd-pairing-group-header .pmd-pairing-name {
   flex: 1 1 auto;
 }

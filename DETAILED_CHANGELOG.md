@@ -7,6 +7,22 @@ in each release, see `CHANGELOG.md`.
 
 ## Unreleased
 
+- **CSS dedup: 28 copy-pasted rule groups consolidated to grouped selectors**
+  (`src/editor/style.css`, −249 lines / −7 KB minified). The audit's dedup map
+  found ~90 rules whose bodies are exact duplicates across feature families —
+  the 7× modal overlay, 9× input focus ring, 8× accent-fill CTA, 8× hover
+  highlight, plus modal headers/buttons/close, layout utilities, category
+  chips, and more. Each group is now ONE rule with a grouped selector list and
+  a comment stating the shared role ("diverge by pulling a selector out, not
+  by re-copying"). Pure CSS change — no base classes added, no TS touched
+  (that's the future modal-helper refactor's job). Every consolidation was
+  machine-verified first: member bodies byte-identical, or identical up to
+  declaration order with no duplicate properties (9 groups were order-scrambled
+  copies). Consolidated rules live at their first member's original position;
+  feature-specific overrides (`:hover`, `-primary`, z-index) all remain later
+  in the file. The read-mode `:is()` consolidation suggestion was deliberately
+  deferred.
+
 - **Color-compliance pass: ~100 hardcoded colors tokenized** (`src/editor/style.css`,
   `benchmark-ui.ts`, `window-coordination.ts`). Audited the whole codebase
   against ARCHITECTURE.md §15 ("a hardcoded color anywhere is a bug") via a
