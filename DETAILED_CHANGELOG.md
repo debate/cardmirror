@@ -7,6 +7,12 @@ in each release, see `CHANGELOG.md`.
 
 ## Unreleased
 
+- **Relay test harnesses preserved in-repo** (`dev/relay-contract.mjs`
+  NEW, `dev/relay-load.mjs` NEW). The 20-check wire-contract suite (the
+  old-client compatibility gate for any relay change) and the SSE/POST
+  load client used for the capacity study and the hardening acceptance
+  runs, previously session-local scripts.
+
 - **Relay hardening: blocking DB work moved off the event loop**
   (`relay/server.py`, `relay/Dockerfile`). Load-testing found the
   single-worker relay wedged permanently at ~200 POST/s: the async
