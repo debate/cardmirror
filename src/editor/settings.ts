@@ -398,6 +398,16 @@ export interface Settings {
    *  `data-annotation-shapes` attribute on the document root;
    *  style.css consumes it. */
   annotationShapes: boolean;
+  /** Subtle visual cue telling background color (shading) apart from
+   *  highlighting in the editor: a faint 4px dot grid over each
+   *  shaded run, in a mix of its own fill. Off (default) keeps the
+   *  two visually identical. Resolved into a `data-shading-cue`
+   *  attribute on the document root; style.css consumes it,
+   *  branching on `data-shading-band` for dark fills. A hairline
+   *  "plate edge" variant was prototyped and cut — it collides with
+   *  boxed-emphasis borders. Display-only — never affects the file
+   *  or exports. */
+  distinguishShading: boolean;
   /** Accessibility: render the nav pane's Analytic entries in italics
    *  so they differ from sibling entries by shape, not color alone.
    *  The color cue is also entirely absent in dark mode (nav text is
@@ -1147,6 +1157,7 @@ export interface ShrinkProtection {
 export type HeadingMode = 'strict' | 'respect' | 'demolish';
 const HEADING_MODES: HeadingMode[] = ['strict', 'respect', 'demolish'];
 
+
 /** What Create Reference does with highlighted text in the copied
  *  excerpt: convert to the grey background (default), convert to a
  *  background of the same color (like the Convert Highlighting to
@@ -1209,6 +1220,7 @@ const DEFAULTS: Settings = {
   reduceMotion: 'auto',
   colorVisionFriendly: false,
   annotationShapes: false,
+  distinguishShading: false,
   navAnalyticItalics: false,
   disableCursorBlink: false,
   accessibilityTreeEnabled: false,
@@ -2094,6 +2106,16 @@ export const SETTING_METADATA: SettingMeta[] = [
     section: 'Document typography',
   },
   {
+    key: 'distinguishShading',
+    label: 'Distinguish background color from highlighting',
+    description:
+      'When on, background color gets a faint dot grid over its fill so it can be told apart from highlighting at a glance. Off by default — the two stay visually identical. Display-only — the file and exports are untouched.',
+    kind: 'toggle',
+    category: 'appearance',
+    section: 'Document typography',
+    aliases: ['dot grid', 'shading cue', 'background color cue', 'dotted background'],
+  },
+  {
     key: 'showCharacterStyles',
     label: 'Show character styles',
     description:
@@ -2904,6 +2926,7 @@ function sanitize(s: Settings): Settings {
     showCursorColorNames: !!s.showCursorColorNames,
     colorVisionFriendly: !!s.colorVisionFriendly,
     annotationShapes: !!s.annotationShapes,
+    distinguishShading: !!s.distinguishShading,
     navAnalyticItalics: !!s.navAnalyticItalics,
     overrideShadingSlots: sanitizeColorSlots(
       s.overrideShadingSlots,

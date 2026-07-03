@@ -2466,6 +2466,14 @@ function applyAnnotationShapes(on: boolean): void {
   else document.documentElement.removeAttribute('data-annotation-shapes');
 }
 
+/** Background-color cue: `data-shading-cue="dots"` gates the faint
+ *  dot grid on `span[data-shading]` in style.css, which mixes the
+ *  dot color from the span's own `--sh` fill. */
+function applyDistinguishShading(on: boolean): void {
+  if (on) document.documentElement.setAttribute('data-shading-cue', 'dots');
+  else document.documentElement.removeAttribute('data-shading-cue');
+}
+
 /** Timer panel edge: html class consumed by style.css — 'right'
  *  moves #timer-panel past the ribbon's right stack via flex order. */
 function applyTimerPosition(pos: 'left' | 'right'): void {
@@ -2687,6 +2695,7 @@ settings.subscribe((s) => {
   applyReduceMotion(s.reduceMotion);
   applyColorVision(s.colorVisionFriendly);
   applyAnnotationShapes(s.annotationShapes);
+  applyDistinguishShading(s.distinguishShading);
   applyNavAnalyticItalics(s.navAnalyticItalics);
   applyTimerPosition(s.timerPosition);
   applyCursorBlink(s.disableCursorBlink);
@@ -2904,6 +2913,7 @@ applyIconSet(settings.get('iconSet'));
 applyReduceMotion(settings.get('reduceMotion'));
 applyColorVision(settings.get('colorVisionFriendly'));
 applyAnnotationShapes(settings.get('annotationShapes'));
+applyDistinguishShading(settings.get('distinguishShading'));
 applyNavAnalyticItalics(settings.get('navAnalyticItalics'));
 applyTimerPosition(settings.get('timerPosition'));
 applyPillVisibility(); // default-off dropzone pill + quick-card cluster, at boot

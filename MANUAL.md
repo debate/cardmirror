@@ -415,7 +415,9 @@ warnings, your custom rules), and regular **Shrink (Mod-8)** and **Regrow
 CardMirror directly supports both **highlighting** and **background
 color**. Highlighting and background color appear the same but operations
 affecting one don't affect the other, allowing you to perform bulk edits on
-your document that leave some things unaffected. As an example, you might
+your document that leave some things unaffected. (If you'd like to tell
+them apart at a glance, **Settings → Appearance → Distinguish background
+color from highlighting** adds a subtle display-only cue.) As an example, you might
 want to recut an opponent's card and keep their highlighting, but in a
 different color from the color you'd normally read; you can do this by
 turning their highlighting into background color so it isn't affected by
@@ -1606,6 +1608,11 @@ How things look. None of these change the file — only your view (see
   lines).
 - **Style colors** — the color of Analytic and Undertag text (the same
   control as Accessibility → Color overrides → Document text).
+- **Distinguish background color from highlighting** — overlays a
+  deliberately faint dot grid on background color so it can be told
+  apart from highlighting at a glance. Off by default — the two stay
+  visually identical. Display-only; the file and anything you copy or
+  export are untouched.
 - **Show character styles** — show the cite / underline / emphasis
   buttons in the ribbon.
 

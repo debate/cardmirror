@@ -90,6 +90,29 @@ in each release, see `CHANGELOG.md`.
   the default composition, each option axis, cite collection, the
   heading-assembly rules, and the empty-selection guard.
 
+- **Background-color cue: faint dot grid** (`settings.ts`, `index.ts`,
+  `marks.ts`, `style.css`).
+  New Appearance toggle `distinguishShading` (default off) rendering a
+  subtle visual distinction between `shading` and `highlight` marks,
+  which are otherwise deliberately identical: a faint 4px
+  radial-gradient dot grid over each shaded run. Resolved into
+  `data-shading-cue="dots"` on the document root (the attribute-swap
+  pattern); style.css gates the treatment on
+  `.ProseMirror [data-shading-band]` spans. The dot color is
+  `color-mix`ed from the span's own fill toward the existing
+  `--pmd-c-band-fg-*` tokens, reusing the shading luminance-band
+  machinery — light fills get slightly darker dots (89/11), dark
+  fills flip toward white (80/20) so navy and black fills stay
+  legible. To expose the fill to CSS, the shading `toDOM` now also
+  emits `--sh: #hex` alongside the literal `background-color` (kept
+  for clipboard consumers; `parseDOM` reads `data-shading`, so
+  round-trip is unaffected — verified by the existing mark-fidelity
+  suite). Dot-grid phase resets at span boundaries within a run;
+  accepted over `background-attachment: fixed`, which costs scroll
+  repaints on large docs. A 1px top "plate edge" variant was
+  prototyped against a live mockup and cut: boxed emphasis draws 1px
+  borders around runs, so a hairline reads as a stray box fragment.
+
 - **Fix: condense-on-paste scoped to the cursor, not the paste**
   (`paste-plugin.ts`).
   With `condenseOnPaste` on, both F2 paths (Electron's

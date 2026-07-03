@@ -2915,6 +2915,34 @@ body.pmd-override-shading [data-shading] {
 .ProseMirror [data-shading-band="light"] { color: var(--pmd-c-band-fg-light); }
 .ProseMirror [data-shading-band="dark"]  { color: var(--pmd-c-band-fg-dark); }
 
+/* Background-color cue (Appearance → "Distinguish background color
+   from highlighting"): an optional faint dot grid on shading spans
+   so the immutable background reads apart from highlight ink.
+   `data-shading-cue="dots"` on :root gates it (attribute absent =
+   off). The dot color mixes from the span's own fill — `--sh`,
+   emitted by the shading toDOM — toward the band foreground, so
+   light fills get slightly darker dots and dark fills lighter ones.
+   A texture (rather than any border/edge treatment) is deliberate:
+   boxed emphasis already draws 1px borders around runs, so a
+   hairline would read as a stray box fragment. Display-only: app
+   CSS, never in the doc or clipboard HTML. */
+:root[data-shading-cue="dots"] .ProseMirror [data-shading-band="light"] {
+  background-image: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--sh) 89%, var(--pmd-c-band-fg-light)) 0.65px,
+    transparent 0.95px
+  );
+  background-size: 4px 4px;
+}
+:root[data-shading-cue="dots"] .ProseMirror [data-shading-band="dark"] {
+  background-image: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--sh) 80%, var(--pmd-c-band-fg-dark)) 0.65px,
+    transparent 0.95px
+  );
+  background-size: 4px 4px;
+}
+
 /* Hyperlinks in the editor pick up the themed link color. The
    `!important` beats the canonical `0563C1` font_color marks Word
    stamps onto hyperlink runs at import time — those marks emit

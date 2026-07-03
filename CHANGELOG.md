@@ -30,6 +30,13 @@ see `DETAILED_CHANGELOG.md`.
   background (default), a background in the same color as the highlight,
   kept as highlights, or removed. The existing Gray-50% body text option
   moved into the same section.
+- **Tell background color apart from highlighting.** A new Appearance
+  setting, **Distinguish background color from highlighting**, overlays
+  a deliberately faint dot grid on background color. Off by default —
+  the two stay visually identical, since reading as ordinary
+  highlighting is the point of background color. The dots adapt to any
+  fill color and both themes, and are display-only: your file,
+  clipboard, and exports are untouched.
 
 ### Fixed
 

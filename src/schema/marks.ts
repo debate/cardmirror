@@ -356,10 +356,14 @@ export const marks: { [name: string]: MarkSpec } = {
       // text in the themed text color — white in dark mode — on a
       // bright yellow bg, which is unreadable. The band attribute
       // forces black/white based on the shading's luminance.
+      // `--sh` mirrors the fill so the optional shading-cue CSS (the
+      // plate-edge / dot-grid treatments under `data-shading-cue`)
+      // can `color-mix` from it; the literal background-color stays
+      // for clipboard consumers that read inline styles.
       return [
         'span',
         {
-          style: `background-color: #${color}`,
+          style: `background-color: #${color}; --sh: #${color}`,
           'data-shading': color,
           'data-shading-band': colorBand(color),
         },
