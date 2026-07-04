@@ -157,6 +157,7 @@ import { tableEditingPlugin, columnResizingPlugin } from './table-plugins.js';
 import { buildPastePlugin } from './paste-plugin.js';
 import { buildImageNodeFromBlob, insertImageNode } from './image-insert.js';
 import { imageContextMenuPlugin } from './image-context-menu-plugin.js';
+import { editorNodeViews } from './image-resize-nodeview.js';
 import { linkContextMenuPlugin } from './link-context-menu-plugin.js';
 import { wordSelectionPlugin } from './word-selection-plugin.js';
 import { typeOverBoundaryPlugin } from './type-over-boundary.js';
@@ -4153,6 +4154,7 @@ function mountView(doc: PMNode, threads: Thread[] = []): void {
   });
   view = new EditorView(editorEl, {
     state,
+    nodeViews: editorNodeViews,
     editable: () => !settings.get('readMode'),
     // Browser's built-in spellcheck stays OFF — `editorSpellcheck` is
     // served by the custom viewport checker (viewport-spellcheck.ts),

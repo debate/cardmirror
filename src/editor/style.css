@@ -2537,6 +2537,7 @@ code {
    placeholder also gets a tinted background since its
    selected-vs-unselected outline contrast is otherwise marginal. */
 img[data-pmd-image].ProseMirror-selectednode,
+.pmd-image-wrap.ProseMirror-selectednode,
 .pmd-image-placeholder.ProseMirror-selectednode {
   outline: 2px solid var(--pmd-c-accent);
   outline-offset: 2px;
@@ -2544,6 +2545,61 @@ img[data-pmd-image].ProseMirror-selectednode,
 .pmd-image-placeholder.ProseMirror-selectednode {
   background: var(--pmd-c-drop-soft);
 }
+
+/* Resizable-image wrapper NodeView. Inline-block so it flows with text
+   like the bare <img> it replaces; `position: relative` anchors the
+   eight resize handles. `line-height: 0` trims the descender gap the
+   wrapper would otherwise add below the image. */
+.pmd-image-wrap {
+  position: relative;
+  display: inline-block;
+  line-height: 0;
+  vertical-align: middle;
+}
+
+/* Word-style resize handles — created only while the image is
+   selected (see image-resize-nodeview.ts), so unselected images add no
+   handle DOM. Corners are white circles; edges are pill-shaped
+   rectangles. Both use a subtle grey outline. */
+.pmd-image-handle {
+  position: absolute;
+  background: #fff;
+  border: 1px solid #9a9a9a;
+  box-sizing: border-box;
+  z-index: 6;
+}
+/* Corners: white circles. */
+.pmd-image-handle-nw,
+.pmd-image-handle-ne,
+.pmd-image-handle-se,
+.pmd-image-handle-sw {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+}
+/* Edges: pill rectangles — corner radius = half the short side (the
+   rectangle's thickness), giving fully rounded ends. Horizontal edges
+   (n / s) are wide and thin; vertical edges (e / w) are tall and thin. */
+.pmd-image-handle-n,
+.pmd-image-handle-s {
+  width: 16px;
+  height: 6px;
+  border-radius: 3px;
+}
+.pmd-image-handle-e,
+.pmd-image-handle-w {
+  width: 6px;
+  height: 16px;
+  border-radius: 3px;
+}
+.pmd-image-handle-nw { top: -6px; left: -6px; cursor: nwse-resize; }
+.pmd-image-handle-n  { top: -3px; left: calc(50% - 8px); cursor: ns-resize; }
+.pmd-image-handle-ne { top: -6px; right: -6px; cursor: nesw-resize; }
+.pmd-image-handle-e  { top: calc(50% - 8px); right: -3px; cursor: ew-resize; }
+.pmd-image-handle-se { bottom: -6px; right: -6px; cursor: nwse-resize; }
+.pmd-image-handle-s  { bottom: -3px; left: calc(50% - 8px); cursor: ns-resize; }
+.pmd-image-handle-sw { bottom: -6px; left: -6px; cursor: nesw-resize; }
+.pmd-image-handle-w  { top: calc(50% - 8px); left: -3px; cursor: ew-resize; }
 
 /* Placeholder span shown in place of unsupported image formats
    (EMF / WMF / TIFF). Visual styling lives here so it can be
@@ -4265,6 +4321,7 @@ html.pmd-nav-flat .pmd-nav-type-analytic:hover .pmd-nav-label {
 
 /* Images are never read-aloud content — hide them in read mode. */
 .pmd-read-mode img[data-pmd-image],
+.pmd-read-mode .pmd-image-wrap,
 .pmd-read-mode .pmd-image-placeholder { display: none; }
 
 /* Run-separator widget. The plugin inserts a `<span class="pmd-rm-
