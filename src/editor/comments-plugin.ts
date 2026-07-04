@@ -68,7 +68,7 @@ export const commentsKey = new PluginKey<CommentsState>('comments');
 
 /** Meta-payload shape for transactions that mutate the comments
  *  state. The plugin's `apply` reads these. */
-type CommentsMeta =
+export type CommentsMeta =
   | { type: 'load'; threads: Thread[] }
   | { type: 'add'; thread: Thread }
   | { type: 'reply'; threadId: string; comment: Comment }
@@ -76,6 +76,7 @@ type CommentsMeta =
   | { type: 'delete-thread'; threadId: string }
   | { type: 'delete-comment'; threadId: string; commentId: string }
   | { type: 'gc'; threads: Thread[]; tombstone: Thread[] }
+  | { type: 'sync-load'; threads: Thread[] }
   | { type: 'set-visible'; visible: boolean };
 
 export const commentsPlugin: Plugin<CommentsState> = new Plugin<CommentsState>({
@@ -151,6 +152,21 @@ export const commentsPlugin: Plugin<CommentsState> = new Plugin<CommentsState>({
             }
           }
           return { ...prev, threads };
+        }
+        case 'sync-load': {
+          // Collab-session refresh: the shared thread map is the source
+          // of truth. Unlike `load` this PRESERVES the tombstone parking
+          // — a thread whose mark is locally gone stays parked (with its
+          // content refreshed, so a later undo-resurrect shows partner
+          // replies), and a thread absent from the map was deleted
+          // remotely, which beats parking.
+          const threads = new Map<string, Thread>();
+          const tombstone = new Map<string, Thread>();
+          for (const t of meta.threads) {
+            if (prev.tombstone.has(t.id)) tombstone.set(t.id, t);
+            else threads.set(t.id, t);
+          }
+          return { ...prev, threads, tombstone };
         }
         case 'set-visible':
           return { ...prev, visible: meta.visible };
@@ -243,7 +259,31 @@ function collectLiveThreadIds(doc: PMNode): Set<string> {
  *  `seedCommentIdCounter`) rather than seeded from `Date.now()`, whose
  *  ~1.7e12 values overflow int32 into ids Word can't represent. */
 let commentIdCounter = 0;
+let sessionRandomIds = false;
+const issuedSessionIds = new Set<string>();
+
+/** Collab sessions switch id allocation to random: two peers advancing
+ *  the same small-integer counter WILL collide on concurrent new
+ *  comments (same map key → one thread clobbers the other on merge).
+ *  Random ids stay in Word's int32 `w:id` range, capped below int32
+ *  max with headroom so the counter can keep incrementing after the
+ *  session ends without overflowing. */
+export function setCommentIdSessionMode(on: boolean): void {
+  sessionRandomIds = on;
+  if (!on) issuedSessionIds.clear();
+}
+
 export function newCommentId(): string {
+  if (sessionRandomIds) {
+    for (;;) {
+      const id = String(1_000_000 + Math.floor(Math.random() * 1_999_000_000));
+      if (!issuedSessionIds.has(id)) {
+        issuedSessionIds.add(id);
+        bumpCommentIdCounter(id);
+        return id;
+      }
+    }
+  }
   commentIdCounter += 1;
   return String(commentIdCounter);
 }
@@ -267,6 +307,17 @@ function bumpCommentIdCounter(id: string): void {
 export function loadThreads(state: EditorState, threads: Thread[]): Transaction {
   seedCommentIdCounter(threads);
   return state.tr.setMeta(commentsKey, { type: 'load', threads }).setMeta('addToHistory', false);
+}
+
+/** Apply a `sync-load` transaction — collab refresh from the shared
+ *  thread map. Keeps tombstones (see the apply case); still seeds the
+ *  id counter so counter-mode allocation after the session ends can't
+ *  collide with partner-created ids. */
+export function syncLoadThreads(state: EditorState, threads: Thread[]): Transaction {
+  seedCommentIdCounter(threads);
+  return state.tr
+    .setMeta(commentsKey, { type: 'sync-load', threads })
+    .setMeta('addToHistory', false);
 }
 
 /** Read-only accessor — the side column UI calls this to render. */

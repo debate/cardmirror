@@ -7,6 +7,26 @@ in each release, see `CHANGELOG.md`.
 
 ## Unreleased
 
+- **Collab M2 (coediting branch): comment-thread sync**
+  (`collab/collab-comments.ts` NEW, `comments-plugin.ts`,
+  `collab-ui.ts`, tests). Field symptom: comment paint synced (the
+  `comment_range` mark rides the doc CRDT) but thread content lives in
+  plugin state and never left the machine — the partner's comments
+  pane stayed empty. Threads now mirror into a `comments` root LoroMap
+  on the session doc (same flush timer, same E2E encryption): nested
+  per-thread map keyed by comment id, so concurrent replies MERGE
+  rather than LWW-clobbering whole threads; edits are LWW per comment;
+  root deletion beats a concurrent reply. Outbound, a session plugin
+  mirrors the `commentsKey` mutation metas (scoped to the session view
+  — other panes can't leak comments into the room); inbound imports
+  dispatch a new `sync-load` refresh that, unlike `load`, PRESERVES
+  the GC tombstone parking (orphan parking stays local so undo can
+  still resurrect; only explicit deletes touch the shared map). Hosts
+  seed their existing threads before the first flush; joiners pull the
+  map after the session doc lands. Comment ids switch to random
+  Word-compatible int32s during sessions — two peers advancing the
+  same small-int counter WOULD collide on concurrent new comments.
+
 - **Collab M2 (coediting branch): formatting-fusion heal — provenance-
   tagged shrink sizes + session invariant plugin** (`schema/marks.ts`,
   `ribbon-commands.ts`, `collab/collab-invariants.ts` NEW,

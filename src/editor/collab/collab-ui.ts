@@ -22,6 +22,8 @@ import { promptForText } from '../text-prompt.js';
 import { markSyncOrigin } from '../sync-origin.js';
 import { setCollabPluginSource, setCollabTransactionTagger } from './collab-hooks.js';
 import { collabInvariantHealPlugin } from './collab-invariants.js';
+import { installCommentsSync, type CommentsSyncHandle } from './collab-comments.js';
+import { setCommentIdSessionMode } from '../comments-plugin.js';
 import { collabEnabled, collabDevRelay } from './collab-gate.js';
 import { decodeShareCode } from './collab-crypto.js';
 import { RoomsClient } from './room-client.js';
@@ -82,13 +84,20 @@ function collabTagger(tr: Parameters<typeof markSyncOrigin>[0]): void {
   }
 }
 
-function installSeams(session: CollabSession): void {
+let commentsSync: CommentsSyncHandle | null = null;
+
+function installSeams(session: CollabSession, deps: CollabUiDeps): void {
   setCollabTransactionTagger(collabTagger);
+  commentsSync = installCommentsSync(session.loroDoc, () => deps.getView());
+  // Concurrent new comments must not collide on the shared map key —
+  // both peers advance the same small-int counter otherwise.
+  setCommentIdSessionMode(true);
   setCollabPluginSource({
     plugins: () => [
       ...session.plugins(),
       LoroUndoPlugin({ doc: session.loroDoc }),
       collabInvariantHealPlugin(),
+      commentsSync!.plugin,
     ],
     ownsUndo: () => true,
     undo: loroUndo,
@@ -99,6 +108,9 @@ function installSeams(session: CollabSession): void {
 function clearSeams(): void {
   setCollabTransactionTagger(null);
   setCollabPluginSource(null);
+  commentsSync?.dispose();
+  commentsSync = null;
+  setCommentIdSessionMode(false);
 }
 
 function sessionCallbacks(deps: CollabUiDeps) {
@@ -155,7 +167,10 @@ export async function startSessionFlow(deps: CollabUiDeps): Promise<void> {
       callbacks: sessionCallbacks(deps),
     });
     active = { session, shareCode };
-    installSeams(session);
+    installSeams(session, deps);
+    // Seed before start(): the first flush then carries the host's
+    // existing comment threads alongside the seeded doc.
+    commentsSync!.seedFromView(view);
     deps.refreshPlugins();
     session.start();
     updateChip({ connected: true, queuedUpdates: 0 });
@@ -202,10 +217,13 @@ export async function joinSessionFlow(deps: CollabUiDeps): Promise<void> {
       callbacks: sessionCallbacks(deps),
     });
     active = { session, shareCode: code.trim() };
-    installSeams(session);
+    installSeams(session, deps);
     // Fresh unsaved doc; buildEditorPlugins now includes the binding,
     // which replaces the empty content from the session state.
     deps.newSessionDoc();
+    // The join snapshot already carries the host's thread map — land it
+    // in the fresh pane's plugin state.
+    commentsSync!.pull();
     session.start();
     updateChip({ connected: true, queuedUpdates: 0 });
     showToast('Joined the session');
