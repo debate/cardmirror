@@ -933,8 +933,7 @@ Assemble a speech document by sending cards into it:
    away, leaving what you'll deliver.
 
 The **dropzone** is a holding shelf: press **Mod-`` ` ``** to send a card
-there and pull it back later — useful for parking evidence while you
-rearrange.
+there and pull it back later — useful for parking common evidence temporarily.
 
 ### Saving a send doc
 
