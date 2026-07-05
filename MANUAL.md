@@ -1983,7 +1983,18 @@ CardMirror is in active development. Planned, but not built yet:
   corpus. For now, the [Search Everything palette](#5-finding-things)
   searches files by name and lets you dive into one at a time.
 - **Transclusion** — live references to a card that lives in another file.
-- **Real-time collaboration.**
+- **Real-time collaboration (co-editing)** — *early preview, desktop
+  only.* Live shared editing of a document is built and being
+  field-tested, but it is **off by default and experimental**: it can
+  desync or need restarting, and there is no setting for it yet — it
+  turns on only if you deliberately enable it from the developer
+  console. A proper on-switch will arrive with the finished feature, and
+  it will never run in the web version (which has no server-backed
+  features). When it is on, you invite a partner through card sharing
+  (the Send pill), edit together live — it keeps syncing across offline
+  stretches, laptop sleep, and flaky venue wifi — and everyone keeps
+  their own copy when the session ends. Everything is end-to-end
+  encrypted; the relay only ever holds ciphertext.
 - **Numbered and bulleted lists**.
 - **Robust screen-reader support and more accessibility presets** —
   fuller keyboard/ARIA semantics, plus high-contrast and colorblind

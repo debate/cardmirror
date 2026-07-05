@@ -414,7 +414,9 @@ acronym marking.
 The Word-style image resize handles were contributed by
 [Neo Cai](https://github.com/caineoyuan). The multi-doc nav rail's
 per-document outline close and vertical resize were contributed by
-[cora](https://github.com/coralynnkc).
+[cora](https://github.com/coralynnkc). The find bar's viewport
+clamping on narrow windows was contributed by
+[Shreeram Modi](https://github.com/shreerammodi).
 
 The app's interface icons are from the
 [Untitled UI free icons](https://www.untitledui.com/free-icons),

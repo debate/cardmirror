@@ -239,11 +239,17 @@ the shared core; only the thin edges differ.
 | File I/O | interface | local FS | File System Access API |
 | Read-mode input lockdown | logic | OS-level | best-effort |
 | Cross-app capture, auto-update | | ✓ | — |
+| Card sharing, co-editing (server-backed) | | ✓ | — |
 
 The desktop edition (Electron) is the tournament-day driver and primary
-daily tool; it's fully offline. The web edition exists for collaboration
-and for access from machines that can't install software, and is
-explicitly not for tournament use.
+daily tool; it's fully offline. The web edition exists for access from
+machines that can't install software, and is explicitly not for
+tournament use. It is deliberately capability-limited: the web edition
+has **no server-dependent features**. Both networked capabilities are
+desktop-only — card sharing's crypto and keystore are Electron-main-only
+(a browser tab has no keypair), and co-editing is hard-closed on a
+browser host by construction (§18) — so a browser tab never opens a
+network session.
 
 ## 7. Multi-doc workspace
 
@@ -671,7 +677,71 @@ platform-knowledge and declarative-material fit is well grounded; the
   plugin.ts`), never a `comment_range` mark, so a card's grounding cannot
   leak into a shared file by construction.
 
-## 18. Roadmap and non-goals
+## 18. Collaboration sessions (co-editing) — early preview
+
+**Status: early preview. Dormant by default, desktop-only, and gated
+behind a developer-console flag; it may break.** Co-editing ships in the
+build but is unreachable without deliberately opening the gate — there
+is no user-facing setting yet. Treat this section as documenting a
+feature under active field-testing, not a finished subsystem.
+
+**Gating and reach.** `collab-gate.ts`'s `collabEnabled()` is the single
+chokepoint every co-editing surface consults (ribbon commands, the
+Send/Receive pills, the home-screen Sessions list, the session flows).
+It hard-closes on a **browser host** before reading any flag, so the web
+edition categorically has no co-editing (see §6); on desktop it stays
+closed unless a build sets `VITE_COLLAB=1` or a developer flips
+`localStorage['pmd-collab']='1'`. Flipping it on for a real release is a
+code change here — an env var can't reach a packaged app — the same
+posture as the pairing entitlement flag.
+
+**CRDT core.** The shared document is a Loro CRDT (`loro-crdt` +
+`loro-prosemirror`), chosen over Yjs in a recorded bake-off because Yjs
+lost highlight-comment spans on concurrent merges where Loro's Peritext
+marks preserved them. The ProseMirror doc binds to the Loro doc through
+`LoroSyncPlugin`/`LoroUndoPlugin`; the schema's inclusive-vs-exclusive
+mark rules map to Loro's mark `expand` behavior via `configTextStyle`.
+
+**Transport: rooms relay.** Peers exchange encrypted CRDT updates
+through a small "rooms" service (the same relay that carries card
+sharing, currently served from the scouting backend). The wire contract
+is six endpoints — create room, post/get updates, post snapshot, post
+presence, stream (SSE) — with per-update and per-room size caps and a
+7-day GC. **Everything is end-to-end encrypted**: the relay only ever
+stores and forwards ciphertext (X25519 sealed-box room keys carried in
+the share code), and by policy never logs or inspects update bodies.
+Server-side gating (`RELAY_GATING`) rides the same `_authorize`
+entitlement seam as card sharing, so turning co-editing auth on is a
+pure env flip; a subscription lapse blocks *starting* new sessions but a
+3-day grace keeps live sessions working.
+
+**Sync discipline (why it survives a tournament network).** The session
+layer (`collab-session.ts`) is built for connectivity that comes and
+goes: a durable send queue holds updates across outages and posts them
+exactly once on recovery; `lastSentVersion`/`ackedVersion` frontiers
+gate flushes so nothing is sent twice or dropped; oversized payloads
+ship as cap-sized update chunks (no snapshot detour); and a **delivery
+cursor advances only from server-confirmed catch-up pages, never from a
+pushed stream frame** — a shed or duplicated frame can't create a
+permanent gap. A periodic catch-up, a self-echo watchdog (restart the
+stream when your own posts stop echoing), and a room-history audit
+(re-post everything this replica holds if compaction dropped it)
+together recover a stuck peer with no human intervention. Two desync
+studies (heavy-editing-under-chaos, then surgical network-disruption)
+drove this to convergence across every tested pathology.
+
+**Editor plugin stack** (assembled only after the gate opens):
+`LoroSyncPlugin` + `LoroUndoPlugin` for the CRDT binding; a transaction
+tagger that stamps sync-origin so read mode still admits a partner's
+remote edits; `collabInvariantHealPlugin` and `collabRepairPlugin`
+(prosemirror-tables `fixTables`, a schema-derived exclusive-marks sweep
+run on *every* peer, and a container first-child invariant, structural
+parts leader-gated); comment-thread sync; and presence cursors with
+partner name flags and an AI-lease marker. The marks sweep uses a total
+priority order (cite > emphasis > underline) so a concurrent
+underline-vs-emphasis merge can never leave a schema-illegal run.
+
+## 19. Roadmap and non-goals
 
 ### Planned
 
@@ -699,8 +769,11 @@ platform-knowledge and declarative-material fit is well grounded; the
   to override the *visible* rhythm per paragraph type. The CSS hooks
   exist; the stored OOXML values stay data, the per-type setting is
   presentation.
-- **Real-time collaboration** (transclusion v2 and shared editing) —
-  needs backend/sync infrastructure; deferred past v1.
+- **Real-time collaboration.** Shared editing now exists as a dormant,
+  desktop-only **early preview** (§18) — not yet a shipped, user-facing
+  feature. What remains for GA: a real on-switch (retiring the console
+  gate), the entitlement/gating flip, and broader field-hardening.
+  Live **transclusion v2** over the same sync layer is still deferred.
 - **Fuller screen-reader support and accessibility presets** (§15) —
   complete keyboard/ARIA semantics, high-contrast and colorblind palettes,
   and a document accessibility checker, on top of the per-user

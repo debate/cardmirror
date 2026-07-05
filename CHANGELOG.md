@@ -20,11 +20,16 @@ see `DETAILED_CHANGELOG.md`.
   support asks you to check for errors — packaged builds previously
   had no way to open it on Windows or Linux.
 
-### Preview — collaboration sessions (off by default)
+### Preview — collaboration sessions (desktop only, off by default)
 
-This build carries an early preview of real-time collaboration,
-currently being field-tested and disabled by default; it will be
-announced properly when it turns on. What's in it:
+This build carries an **early preview** of real-time collaboration. It
+is experimental and **may break** — expect rough edges, and know that a
+session can occasionally desync or need restarting while we field-test
+it. It runs only in the **desktop app** (the web version has no
+server-backed features), and it stays off until you deliberately turn
+it on from the developer console — there is no setting for it yet. We'll
+announce it properly, with a real on-switch, once it's ready. What's in
+the preview:
 
 - **Collaboration sessions.** Start a session on the document you have
   open; a partner joins and you edit together live. Built for
@@ -55,6 +60,11 @@ announced properly when it turns on. What's in it:
   rows have different numbers of cells (Word allows this) is now padded
   to a clean rectangle on import, so row and column editing behaves
   predictably instead of misaligning.
+
+- **Find bar stays on screen on narrow windows.** On a small or
+  narrow window the find bar could extend past the edge and clip its
+  controls; it now stays within the viewport. (Thanks to
+  [Shreeram Modi](https://github.com/shreerammodi).)
 
 ### Changed
 

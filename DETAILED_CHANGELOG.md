@@ -7,6 +7,28 @@ in each release, see `CHANGELOG.md`.
 
 ## Unreleased
 
+- **Collab: co-editing is categorically desktop-only (web has no
+  server-dependent capabilities)** (`collab-gate.ts`, `collab-ui.ts`,
+  test). The web edition now cannot run co-editing under any
+  circumstance: `collabEnabled()` hard-closes on a browser host
+  (`getHost().kind === 'browser'`) BEFORE consulting either the
+  build-time `VITE_COLLAB` flag or the runtime
+  `localStorage['pmd-collab']` console flip, so neither can open a
+  server-backed session in a browser. This makes explicit a guarantee
+  the architecture mostly already held — card sharing's crypto and
+  keystore are Electron-main-only, so pairing is inert on the web — by
+  closing the one remaining server-backed feature a console flag could
+  otherwise switch on in a browser tab. Defense-in-depth: `start`- and
+  `resumeSessionFlow` also early-return on a closed gate (join already
+  did), so no entry point can reach the relay from the web build even
+  if a caller is added later. A future Tauri desktop host reports a
+  non-`browser` kind and is treated like Electron. `collab-gate.test.ts`
+  pins all four cases (browser + flag → off, browser + `VITE_COLLAB` →
+  off, desktop + flag → on, desktop + no flag → off, i.e. still dormant
+  by default on desktop). Developer testing of the collab UI now happens
+  in the Electron dev build (or headless in the harnesses), not a
+  browser tab.
+
 - **Relay auth messaging is accurate about what's required.** Both the
   co-editing session-start 401 and the card-sharing relay-401
   (previously a dev-only console warning, now a throttled user toast)
@@ -18,9 +40,10 @@ in each release, see `CHANGELOG.md`.
   (`collab-ui.ts`, test). With subscription gating live (§5.4: paid
   accounts initiate sessions, free accounts join), a free user's
   "Start Collaboration Session" gets a relay 401 on room creation — it
-  now surfaces an actionable "requires a Debate Decoded subscription —
-  connect your account in Settings" message (with a self-host relay-
-  token hedge, since a 401 is ambiguous), instead of a raw "rooms
+  now surfaces an actionable message (final wording per the entry above:
+  "starting a session requires a relay — connect your Debate Decoded
+  account or set up your own relay", since a self-hosted relay is a
+  valid path and a 401 is ambiguous anyway) instead of a raw "rooms
   request failed: 401". Join/resume 401s get the credentials message;
   non-401 failures keep their reason. Server-side gating was already a
   pure env flip (rooms `POST /rooms` is send-gated through the same
