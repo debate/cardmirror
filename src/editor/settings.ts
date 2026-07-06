@@ -2869,6 +2869,43 @@ export const SETTING_METADATA: SettingMeta[] = [
   },
 ];
 
+/** Host / state lookups needed to decide which toggles are actionable right
+ *  now — passed in (rather than read from a live host module) so the
+ *  derivation stays pure and unit-testable. */
+export interface ToggleEnv {
+  /** `getHost().kind` — 'electron' | 'browser' | … */
+  hostKind: string;
+  /** Whether this is the Windows desktop (Verbatim Flow host). */
+  isWindows: boolean;
+  /** Current value lookup, used to hide toggles whose dependency / reveal
+   *  condition isn't met (toggling them would be a silent no-op). */
+  get: (key: keyof Settings) => unknown;
+}
+
+/** The boolean settings that can be toggled directly from the command bar:
+ *  every `kind: 'toggle'` row, minus those hidden from search, gated off on
+ *  this host, or currently inert because a `dependsOn` / `revealWhen`
+ *  condition isn't met. Derived from SETTING_METADATA so the command bar's
+ *  "Toggle …" list tracks the registry automatically — adding or removing a
+ *  toggle setting adds or removes its command with no extra wiring.
+ *
+ *  (If a specific `kind: 'toggle'` setting should NOT be command-bar
+ *  toggleable in the future, the cleanest lever is to add an opt-out flag to
+ *  SettingMeta and filter it here; for now the set is exactly the visible
+ *  toggles.) */
+export function toggleableSettingMetas(env: ToggleEnv): SettingMeta[] {
+  return SETTING_METADATA.filter(
+    (m) =>
+      m.kind === 'toggle' &&
+      !m.searchHidden &&
+      (!m.electronOnly || env.hostKind === 'electron') &&
+      (!m.windowsOnly || env.isWindows) &&
+      (!m.webOnly || env.hostKind === 'browser') &&
+      (!m.revealWhen || env.get(m.revealWhen) === true) &&
+      (!m.dependsOn || !!env.get(m.dependsOn)),
+  );
+}
+
 /** Origin info handed to settings subscribers. `remote` is true when
  *  the change arrived from ANOTHER window via the cross-window storage
  *  event, rather than a `set()` in this window. Subscribers that drive

@@ -34,7 +34,13 @@ import { Slice, type Node as PMNode } from 'prosemirror-model';
 import { undo, redo } from 'prosemirror-history';
 import { icon } from './icons';
 import { schema } from '../schema/index.js';
-import { settings, SETTING_METADATA, type SettingsCategory } from './settings.js';
+import {
+  settings,
+  SETTING_METADATA,
+  toggleableSettingMetas,
+  type Settings,
+  type SettingsCategory,
+} from './settings.js';
 import { CATEGORY_TABS, visibleCategoryTabs, type SettingsTarget } from './settings-categories.js';
 import { appVersion } from './install-info.js';
 import { getHost, getElectronHost, isWindowsHost } from './host/index.js';
@@ -250,7 +256,7 @@ export interface QuickCardSearchOptions {
 /** A unified palette row — a quick card, dropzone item, command,
  *  settings shortcut, a file, or an object within a file. */
 interface PaletteResult {
-  source: 'quickcard' | 'dropzone' | 'command' | 'settings' | 'file' | 'fileobject';
+  source: 'quickcard' | 'dropzone' | 'command' | 'settingtoggle' | 'settings' | 'file' | 'fileobject';
   name: string;
   /** Right-aligned secondary text: card tags / command keybinding /
    *  the settings tab / the file's subfolder / a cite's owning tag. */
@@ -261,6 +267,8 @@ interface PaletteResult {
   sliceJson?: unknown;
   /** Command to run (command source). */
   commandId?: RibbonCommandId;
+  /** Boolean setting to flip in place (settingtoggle source). */
+  toggleSettingKey?: keyof Settings;
   /** Settings deep-link (settings source). */
   settingsTarget?: SettingsTarget;
   /** Absolute path to open (file source). */
@@ -399,6 +407,58 @@ function searchCommandSource(query: string): PaletteResult[] {
     snippet: null,
     commandId: id,
   }));
+}
+
+/** Setting-toggle source — a "Toggle <label>" command for every boolean
+ *  (`kind: 'toggle'`) setting, derived from SETTING_METADATA so the list
+ *  tracks the registry with zero upkeep (see `toggleableSettingMetas`).
+ *  Selecting one flips the value in place (no dialog). Searchable both under
+ *  the `c` (commands) prefix and in everything-search, so "toggle x" surfaces
+ *  it the way the user reaches for it; an empty query lists them all (parity
+ *  with the command source's browse-all behavior). */
+function searchSettingToggleSource(query: string): PaletteResult[] {
+  const tokens = query.toLowerCase().split(/\s+/).filter(Boolean);
+  const metas = toggleableSettingMetas({
+    hostKind: getHost().kind,
+    isWindows: isWindowsHost(),
+    get: (k) => settings.get(k),
+  });
+  // Haystack: "toggle <label> <aliases> on off enable disable". The leading
+  // "toggle" makes a bare `toggle` query list them all (discovery); the
+  // on/off/enable/disable words match however the user phrases the intent.
+  const haystack = (m: (typeof metas)[number]): string => {
+    const parts = ['toggle', m.label.toLowerCase(), 'on off enable disable'];
+    if (m.aliases && m.aliases.length) parts.push(m.aliases.join(' '));
+    return parts.join(' ');
+  };
+  const matched =
+    tokens.length === 0 ? metas : metas.filter((m) => tokens.every((t) => haystack(m).includes(t)));
+  // Rank by first-token position within the LABEL (a match only via
+  // "toggle"/synonyms sorts last), then alphabetically — same scheme as the
+  // command source.
+  const t0 = tokens[0];
+  const rank = (m: (typeof metas)[number]): number => {
+    if (!t0) return 0;
+    const i = m.label.toLowerCase().indexOf(t0);
+    return i === -1 ? Infinity : i;
+  };
+  const sorted = [...matched].sort((a, b) => {
+    const d = rank(a) - rank(b);
+    if (d !== 0) return d;
+    return a.label.localeCompare(b.label);
+  });
+  return sorted.map((m) => {
+    const on = settings.get(m.key) === true;
+    return {
+      source: 'settingtoggle' as const,
+      name: `Toggle ${m.label}`,
+      // Current state so the user knows what selecting it will do.
+      meta: `${categoryLabel(m.category)} · ${on ? 'On' : 'Off'}`,
+      matchedName: true,
+      snippet: null,
+      toggleSettingKey: m.key,
+    };
+  });
 }
 
 /** Whether the dropzone is on — gates its `d` prefix, hint, and
@@ -549,6 +609,8 @@ function badgeText(r: PaletteResult): string {
       return 'DZ';
     case 'command':
       return 'CMD';
+    case 'settingtoggle':
+      return 'TOG';
     case 'settings':
       return 'SET';
     case 'file':
@@ -577,6 +639,8 @@ function enterVerb(source: PaletteResult['source']): string {
   switch (source) {
     case 'command':
       return 'run';
+    case 'settingtoggle':
+      return 'toggle';
     case 'settings':
       return 'open';
     case 'file':
@@ -872,7 +936,9 @@ class QuickCardSearchUI {
           : 'The dropzone is empty.';
       }
     } else if (prefix === 'c') {
-      this.results = searchCommandSource(query);
+      // Commands include the auto-generated setting toggles, so the `c`
+      // prefix covers "Toggle <setting>" the way the user searches commands.
+      this.results = [...searchCommandSource(query), ...searchSettingToggleSource(query)];
       this.emptyText = 'No matching commands.';
     } else if (prefix === 's') {
       this.results = searchSettingsSource(query);
@@ -897,6 +963,7 @@ class QuickCardSearchUI {
         ...searchQuickCardSource(query),
         ...(dropzoneOn() ? searchDropzoneSource(query) : []),
         ...searchCommandSource(query),
+        ...searchSettingToggleSource(query),
         ...searchSettingsSource(query),
         ...(this.fileList && filePins
           ? searchFiles(filterFilesByFormatSetting(this.fileList), query).map((f) =>
@@ -1418,6 +1485,21 @@ class QuickCardSearchUI {
       const id = result.commandId!;
       this.close();
       this.runCommand(id);
+      return;
+    }
+    // Setting toggle: flip the boolean in place and confirm with a toast.
+    // The settings subscriber propagates the change to the live view / other
+    // windows, so there's nothing else to wire here.
+    if (result.source === 'settingtoggle') {
+      const key = result.toggleSettingKey!;
+      this.close();
+      settings.set(key, (settings.get(key) !== true) as never);
+      // Report the ACTUAL post-set value: a subscriber may reject/revert the
+      // change (e.g. the workspace switch's confirm-and-revert), so read it
+      // back rather than trusting the intended flip.
+      const applied = settings.get(key) === true;
+      const label = SETTING_METADATA.find((m) => m.key === key)?.label ?? String(key);
+      showToast(`${label}: ${applied ? 'On' : 'Off'}`);
       return;
     }
     // Settings: close the palette, then open the dialog to the tab and
