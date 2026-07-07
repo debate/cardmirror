@@ -106,6 +106,36 @@ describe('resolveCmirCandidates — root base tries each root', () => {
     const c = resolveCmirCandidates(DOC2, 'Impacts/Src.cmir', 'root', [PARENT, R1]);
     expect(c[0]).toBe('/Users/x/Dropbox/Debate/Impacts/Src.cmir');
   });
+  it('an exact absolute-path match is tried first, over the root heuristic', () => {
+    // source_abs points at the OtherLib copy; the doc-root heuristic would
+    // otherwise prefer R1. The exact absolute match must win (local copy vs.
+    // shared original).
+    const c = resolveCmirCandidates(
+      DOC2,
+      'Impacts/Src.cmir',
+      'root',
+      [R1, R2],
+      '/Users/x/OtherLib/Impacts/Src.cmir',
+    );
+    expect(c[0]).toBe('/Users/x/OtherLib/Impacts/Src.cmir');
+  });
+  it("another machine's absolute path (outside these roots) is ignored → falls back to relative", () => {
+    const c = resolveCmirCandidates(
+      DOC2,
+      'Impacts/Src.cmir',
+      'root',
+      [R1, R2],
+      '/Users/alice/Debate/Impacts/Src.cmir',
+    );
+    expect(c).toEqual([
+      '/Users/x/Dropbox/Debate/Impacts/Src.cmir',
+      '/Users/x/OtherLib/Impacts/Src.cmir',
+    ]);
+  });
+  it('a hostile absolute path outside every root is not a candidate', () => {
+    const c = resolveCmirCandidates(DOC2, 'Impacts/Src.cmir', 'root', [R1, R2], '/etc/passwd.cmir');
+    expect(c).not.toContain('/etc/passwd.cmir');
+  });
   it('root base keeps each candidate scoped to its own root (no escape)', () => {
     // A malicious root-relative ref with .. is rejected under every root.
     expect(resolveCmirCandidates(DOC2, '../../../etc/passwd.cmir', 'root', [R1, R2])).toEqual([]);

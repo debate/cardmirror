@@ -642,8 +642,9 @@ async function safeResolveCmirPath(
   sourceRef: string,
   refBase: 'doc' | 'root',
   rootList: string[],
+  sourceAbs: string,
 ): Promise<string | null> {
-  const candidates = resolveCmirCandidates(docPath, sourceRef, refBase, rootList);
+  const candidates = resolveCmirCandidates(docPath, sourceRef, refBase, rootList, sourceAbs);
   const allowedBases = refBase === 'root' ? rootList : [...rootList, path.dirname(docPath)];
   const realBases: string[] = [];
   for (const b of allowedBases) {
@@ -676,21 +677,41 @@ function normalizeRefArgs(
   sourceRef: unknown,
   base: unknown,
   roots: unknown,
-): { docPath: string; sourceRef: string; refBase: 'doc' | 'root'; rootList: string[] } | null {
+  sourceAbs: unknown,
+): {
+  docPath: string;
+  sourceRef: string;
+  refBase: 'doc' | 'root';
+  rootList: string[];
+  sourceAbs: string;
+} | null {
   if (typeof docPath !== 'string' || typeof sourceRef !== 'string') return null;
   const refBase: 'doc' | 'root' = base === 'root' ? 'root' : 'doc';
   const rootList = Array.isArray(roots)
     ? roots.filter((r): r is string => typeof r === 'string')
     : [];
-  return { docPath, sourceRef, refBase, rootList };
+  return {
+    docPath,
+    sourceRef,
+    refBase,
+    rootList,
+    sourceAbs: typeof sourceAbs === 'string' ? sourceAbs : '',
+  };
 }
 
 ipcMain.handle(
   'host:read-cmir-file',
-  async (_event, docPath: unknown, sourceRef: unknown, base: unknown, roots: unknown) => {
-    const a = normalizeRefArgs(docPath, sourceRef, base, roots);
+  async (
+    _event,
+    docPath: unknown,
+    sourceRef: unknown,
+    base: unknown,
+    roots: unknown,
+    sourceAbs: unknown,
+  ) => {
+    const a = normalizeRefArgs(docPath, sourceRef, base, roots, sourceAbs);
     if (!a) return null;
-    const real = await safeResolveCmirPath(a.docPath, a.sourceRef, a.refBase, a.rootList);
+    const real = await safeResolveCmirPath(a.docPath, a.sourceRef, a.refBase, a.rootList, a.sourceAbs);
     if (!real) return null;
     try {
       const bytes = await fs.readFile(real);
@@ -706,10 +727,17 @@ ipcMain.handle(
  *  outside the allowed roots. */
 ipcMain.handle(
   'host:resolve-cmir-path',
-  async (_event, docPath: unknown, sourceRef: unknown, base: unknown, roots: unknown) => {
-    const a = normalizeRefArgs(docPath, sourceRef, base, roots);
+  async (
+    _event,
+    docPath: unknown,
+    sourceRef: unknown,
+    base: unknown,
+    roots: unknown,
+    sourceAbs: unknown,
+  ) => {
+    const a = normalizeRefArgs(docPath, sourceRef, base, roots, sourceAbs);
     if (!a) return null;
-    return safeResolveCmirPath(a.docPath, a.sourceRef, a.refBase, a.rootList);
+    return safeResolveCmirPath(a.docPath, a.sourceRef, a.refBase, a.rootList, a.sourceAbs);
   },
 );
 

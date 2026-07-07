@@ -356,6 +356,16 @@ export const nodes: { [name: string]: NodeSpec } = {
         default: '',
         validate: (v: unknown) => typeof v === 'string',
       },
+      /** The absolute path the ref was created against, used ONLY as a resolve
+       *  tie-breaker: if this exact path still exists here (and inside an allowed
+       *  root), it's the definitively-intended file — a local copy vs. the shared
+       *  original, or a same-machine refresh. Machine-specific, so it silently
+       *  doesn't match on another teammate's machine and resolution falls back to
+       *  the relative `source_ref`. */
+      source_abs: {
+        default: '',
+        validate: (v: unknown) => typeof v === 'string',
+      },
       /** Hash of the children AS LAST PULLED from source. The zone is "edited"
        *  when the current children hash differs — that's how local
        *  contextualisation is detected without breaking the link. */
@@ -399,6 +409,7 @@ export const nodes: { [name: string]: NodeSpec } = {
             source_content_hash: dom.getAttribute('data-source-content-hash') ?? '',
             last_refreshed: Number.isFinite(lr) ? lr : 0,
             source_label: dom.getAttribute('data-source-label') ?? '',
+            source_abs: dom.getAttribute('data-source-abs') ?? '',
             source_origin: dom.getAttribute('data-source-origin') ?? '',
           };
         },
@@ -414,6 +425,7 @@ export const nodes: { [name: string]: NodeSpec } = {
         'data-source-content-hash': String(node.attrs['source_content_hash'] ?? ''),
         'data-last-refreshed': String(node.attrs['last_refreshed'] ?? 0),
         'data-source-label': String(node.attrs['source_label'] ?? ''),
+        'data-source-abs': String(node.attrs['source_abs'] ?? ''),
         'data-source-origin': String(node.attrs['source_origin'] ?? ''),
       },
       0,

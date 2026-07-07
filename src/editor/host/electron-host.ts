@@ -174,12 +174,14 @@ interface ElectronAPI {
     sourceRef: string,
     base: 'doc' | 'root',
     roots: string[],
+    sourceAbs?: string,
   ): Promise<{ bytes: Uint8Array; name: string } | null>;
   resolveCmirPath(
     docPath: string,
     sourceRef: string,
     base: 'doc' | 'root',
     roots: string[],
+    sourceAbs?: string,
   ): Promise<string | null>;
   saveAs(
     suggestedName: string,
@@ -521,8 +523,9 @@ export class ElectronHost implements Host {
     sourceRef: string,
     base: 'doc' | 'root',
     roots: string[],
+    sourceAbs = '',
   ): Promise<{ bytes: Uint8Array; name: string } | null> {
-    const result = await api().readCmirFile(docPath, sourceRef, base, roots);
+    const result = await api().readCmirFile(docPath, sourceRef, base, roots, sourceAbs);
     if (!result) return null;
     return {
       bytes: result.bytes instanceof Uint8Array ? result.bytes : new Uint8Array(result.bytes),
@@ -537,8 +540,9 @@ export class ElectronHost implements Host {
     sourceRef: string,
     base: 'doc' | 'root',
     roots: string[],
+    sourceAbs = '',
   ): Promise<string | null> {
-    return api().resolveCmirPath(docPath, sourceRef, base, roots);
+    return api().resolveCmirPath(docPath, sourceRef, base, roots, sourceAbs);
   }
 
   async saveAs(

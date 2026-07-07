@@ -86,6 +86,7 @@ export function buildLiveZoneAttrs(
     source_ref: chosen.ref,
     source_ref_base: chosen.base,
     source_heading_id: headingId,
+    source_abs: sourceAbsPath,
     source_content_hash: hash,
     last_refreshed: Date.now(),
     source_label: crumbLabel(sourceName, section.headingLabel),
@@ -160,6 +161,7 @@ export async function refreshZoneAtPos(
     String(node.attrs['source_ref'] ?? ''),
     node.attrs['source_ref_base'] === 'root' ? 'root' : 'doc',
     String(node.attrs['source_heading_id'] ?? ''),
+    String(node.attrs['source_abs'] ?? ''),
   );
   if (!outcome.ok || !outcome.result) return outcome;
 
@@ -195,6 +197,7 @@ export async function refreshZoneAtPos(
       source_ref: String(live.attrs['source_ref'] ?? ''),
       source_ref_base: (live.attrs['source_ref_base'] === 'root' ? 'root' : 'doc') as SourceRefBase,
       source_heading_id: String(live.attrs['source_heading_id'] ?? ''),
+      source_abs: String(live.attrs['source_abs'] ?? ''),
       source_content_hash: hash,
       last_refreshed: Date.now(),
       source_label: crumbLabel(outcome.sourceName ?? '', outcome.result.headingLabel),

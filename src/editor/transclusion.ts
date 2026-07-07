@@ -33,6 +33,9 @@ export interface TransclusionAttrs {
   source_ref: string;
   source_ref_base: SourceRefBase;
   source_heading_id: string;
+  /** Absolute path the ref was created against — a machine-local resolve
+   *  tie-breaker (see the node spec). '' when unknown. */
+  source_abs: string;
   /** Hash of the children as last pulled from source (edit detection). */
   source_content_hash: string;
   last_refreshed: number;
@@ -126,6 +129,7 @@ export function createTransclusionNode(
       source_ref: attrs.source_ref ?? '',
       source_ref_base: attrs.source_ref_base ?? 'doc',
       source_heading_id: attrs.source_heading_id ?? '',
+      source_abs: attrs.source_abs ?? '',
       source_content_hash: attrs.source_content_hash ?? '',
       last_refreshed: attrs.last_refreshed ?? 0,
       source_label: attrs.source_label ?? '',

@@ -7696,7 +7696,8 @@ setOpenSourceOpener((targetView, pos) => {
   }
   const base = node.attrs['source_ref_base'] === 'root' ? 'root' : 'doc';
   const roots = (settings.get('fileSearchRoots') as string[] | undefined) ?? [];
-  void electron.resolveCmirPath(docPath, sourceRef, base, roots).then((abs) => {
+  const sourceAbs = String(node.attrs['source_abs'] ?? '');
+  void electron.resolveCmirPath(docPath, sourceRef, base, roots, sourceAbs).then((abs) => {
     if (!abs) {
       showToast('Source file not found.');
       return;

@@ -158,8 +158,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     sourceRef: string,
     base: 'doc' | 'root',
     roots: string[],
+    sourceAbs = '',
   ) =>
-    ipcRenderer.invoke('host:read-cmir-file', docPath, sourceRef, base, roots) as Promise<{
+    ipcRenderer.invoke('host:read-cmir-file', docPath, sourceRef, base, roots, sourceAbs) as Promise<{
       bytes: Uint8Array;
       name: string;
     } | null>,
@@ -172,10 +173,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
     sourceRef: string,
     base: 'doc' | 'root',
     roots: string[],
+    sourceAbs = '',
   ) =>
-    ipcRenderer.invoke('host:resolve-cmir-path', docPath, sourceRef, base, roots) as Promise<
-      string | null
-    >,
+    ipcRenderer.invoke(
+      'host:resolve-cmir-path',
+      docPath,
+      sourceRef,
+      base,
+      roots,
+      sourceAbs,
+    ) as Promise<string | null>,
 
   saveAs: (
     suggestedName: string,

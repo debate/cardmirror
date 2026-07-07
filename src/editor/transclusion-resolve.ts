@@ -73,6 +73,7 @@ export async function resolveTransclusion(
   sourceRef: string,
   base: SourceRefBase,
   headingId: string,
+  sourceAbs = '',
 ): Promise<ResolveOutcome> {
   const electron = getElectronHost();
   if (!electron) return { ok: false, reason: 'not-desktop' };
@@ -82,7 +83,7 @@ export async function resolveTransclusion(
   const roots = (settings.get('fileSearchRoots') as string[] | undefined) ?? [];
   let file: { bytes: Uint8Array; name: string } | null;
   try {
-    file = await electron.readCmirFile(docPath, sourceRef, base, roots);
+    file = await electron.readCmirFile(docPath, sourceRef, base, roots, sourceAbs);
   } catch {
     file = null;
   }

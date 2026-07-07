@@ -42,6 +42,7 @@ export function resolveCmirCandidates(
   sourceRef: string,
   base: SourceRefBase,
   roots: readonly string[],
+  sourceAbs?: string,
 ): string[] {
   if (!docPath || !sourceRef) return [];
   const cleanRoots = roots.filter((r) => typeof r === 'string' && r !== '');
@@ -50,6 +51,14 @@ export function resolveCmirCandidates(
     if (path.extname(abs).toLowerCase() !== '.cmir') return;
     if (allowed.some((b) => isWithin(b, abs))) out.push(abs);
   };
+  // Tier 0: the exact absolute path the ref was created against, if it still
+  // stays inside an allowed root or the doc's own folder. Tried first (the
+  // caller checks existence), so a local copy vs. the shared original — and a
+  // same-machine refresh — resolve to the definitively-intended file. Silently
+  // absent on another teammate's machine, where resolution falls back below.
+  if (sourceAbs && path.isAbsolute(sourceAbs)) {
+    consider(sourceAbs, [...cleanRoots, path.dirname(docPath)]);
+  }
   if (base === 'root') {
     // Tie-break when the same relative path exists under more than one root:
     // prefer the root that also contains the transcluding doc (teammates share
