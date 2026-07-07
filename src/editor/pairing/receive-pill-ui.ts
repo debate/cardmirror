@@ -225,7 +225,7 @@ export class ReceivePillController {
     if (total === 0) {
       const empty = document.createElement('li');
       empty.className = 'pmd-receive-empty';
-      empty.textContent = 'No cards received yet. Share your code so others can send you cards.';
+      empty.textContent = "You haven't received anything yet.";
       this.listEl.appendChild(empty);
       return;
     }
