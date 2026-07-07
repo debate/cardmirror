@@ -41,6 +41,7 @@ import {
 import { dropzoneStore, deriveDropzoneLabel, type DropzoneItem } from './dropzone-store.js';
 import { TYPE_TO_LEVEL } from './headings.js';
 import { nearestValidInsertPos } from './insert-position.js';
+import { flattenZonesInSlice } from './transclusion.js';
 import { schema } from '../schema/index.js';
 import { setIcon } from './icons';
 import { readModePlugin } from './read-mode-plugin.js';
@@ -386,7 +387,9 @@ export class DropzoneController {
     } catch {
       return;
     }
-    const rewritten = rewriteHeadingIds(slice);
+    // A shelf item is a frozen paste — flatten any live zone it carries so it
+    // can't drop a wrong-doc live link into whatever doc is focused.
+    const rewritten = rewriteHeadingIds(flattenZonesInSlice(slice));
     // In read mode there's no editing caret to target, so a click appends to
     // the bottom of the doc rather than the cursor.
     const inReadMode = readModePlugin.getState(view.state)?.on === true;

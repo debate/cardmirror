@@ -77,6 +77,29 @@ export async function resolveTransclusion(
   if (!sourceRef) return { ok: false, reason: 'no-source-ref' };
 
   const roots = (settings.get('fileSearchRoots') as string[] | undefined) ?? [];
+  const first = await resolveOnce(electron, docPath, sourceRef, base, headingId, sourceAbs, roots);
+  if (first.ok || !sourceAbs) return first;
+  // The exact `source_abs` file was chosen first (Tier 0) but didn't yield the
+  // section — it was deleted+replaced, or isn't the intended file. Retry WITHOUT
+  // it so the relative resolution (which the abs tie-breaker shadowed) gets a
+  // chance. (Doesn't cover two RELATIVE candidates where only the second has the
+  // heading — a rarer multi-root case left for a follow-up.)
+  if (first.reason === 'heading-missing' || first.reason === 'parse-failed') {
+    const second = await resolveOnce(electron, docPath, sourceRef, base, headingId, '', roots);
+    if (second.ok) return second;
+  }
+  return first;
+}
+
+async function resolveOnce(
+  electron: NonNullable<ReturnType<typeof getElectronHost>>,
+  docPath: string,
+  sourceRef: string,
+  base: SourceRefBase,
+  headingId: string,
+  sourceAbs: string,
+  roots: string[],
+): Promise<ResolveOutcome> {
   let file: { bytes: Uint8Array; name: string } | null;
   try {
     file = await electron.readCmirFile(docPath, sourceRef, base, roots, sourceAbs);

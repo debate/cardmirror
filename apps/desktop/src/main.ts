@@ -688,7 +688,7 @@ function normalizeRefArgs(
   if (typeof docPath !== 'string' || typeof sourceRef !== 'string') return null;
   const refBase: 'doc' | 'root' = base === 'root' ? 'root' : 'doc';
   const rootList = Array.isArray(roots)
-    ? roots.filter((r): r is string => typeof r === 'string')
+    ? roots.filter((r): r is string => typeof r === 'string' && r !== '')
     : [];
   return {
     docPath,

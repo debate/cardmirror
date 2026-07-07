@@ -54,7 +54,17 @@ import { freshHeadingIds } from './drag-controller.js';
 import { condenseBranchC, condenseMerge } from './condense.js';
 import { buildImageNodeFromBlob, insertImageNode } from './image-insert.js';
 import { getViewDocPath } from './transclusion-doc-path.js';
-import { fragmentHasZone, stampZoneOrigins, resolvePastedZones } from './transclusion.js';
+import { fragmentHasZone, stampZoneOrigins, resolvePastedZones, flattenZones } from './transclusion.js';
+
+/** True when the current selection (the paste destination) sits inside a live
+ *  zone — where a pasted zone would otherwise nest. */
+function pasteLandsInsideZone(view: EditorView): boolean {
+  const $from = view.state.selection.$from;
+  for (let d = $from.depth; d > 0; d--) {
+    if ($from.node(d).type.name === 'transclusion_ref') return true;
+  }
+  return false;
+}
 
 /**
  * Build a Slice representing `text` as plain inline content, splitting
@@ -368,14 +378,16 @@ export function buildPastePlugin(ctx: PastePluginCtx): Plugin<PluginState> {
       },
       transformPasted(slice, view) {
         const out = freshHeadingIds(unwrapSingleCellTables(slice));
-        // A zone pasted from another document can't trust its doc-relative
-        // source_ref here → freeze it to an unlinked snapshot (Re-pick relinks).
         if (!fragmentHasZone(out.content)) return out;
-        return new Slice(
-          resolvePastedZones(out.content, getViewDocPath(view)),
-          out.openStart,
-          out.openEnd,
-        );
+        // A zone can't nest inside another zone: if the paste lands INSIDE a
+        // zone, flatten to plain content regardless of origin. Otherwise apply
+        // the origin rule — a zone pasted from another document can't trust its
+        // doc-relative source_ref, so it freezes to plain content; a same-doc
+        // paste keeps the live link.
+        const resolved = pasteLandsInsideZone(view)
+          ? flattenZones(out.content)
+          : resolvePastedZones(out.content, getViewDocPath(view));
+        return new Slice(resolved, out.openStart, out.openEnd);
       },
       handlePaste(view, event, slice) {
         // Clipboard image paste — screenshots, copy-image from a

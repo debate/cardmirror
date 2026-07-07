@@ -19,6 +19,7 @@ import { closeHistory } from 'prosemirror-history';
 import { schema } from '../schema/index.js';
 import { rewriteHeadingIds } from './drag-controller.js';
 import { nearestValidInsertPos } from './insert-position.js';
+import { flattenZonesInSlice } from './transclusion.js';
 import { normalizeSelectionForSend } from './send-normalize.js';
 import { getSpeechDocResolver } from './speech-doc-registry.js';
 import { getElectronHost } from './host/index.js';
@@ -246,7 +247,9 @@ export function insertSpeechSlice(
         liveFrom = liveTo = liveState.selection.from;
       }
     }
-    const rewritten = rewriteHeadingIds(slice);
+    // A speech doc is a compiled artifact — flatten any live zone to plain
+    // content rather than carry a link into it.
+    const rewritten = rewriteHeadingIds(flattenZonesInSlice(slice));
     let tr = liveState.tr;
     tr.replaceRange(liveFrom, liveTo, rewritten);
     const sliceEndPos = tr.mapping.map(liveTo);

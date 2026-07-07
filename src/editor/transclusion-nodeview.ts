@@ -268,7 +268,11 @@ class TransclusionView implements NodeView {
         this.transient = null;
         this.refreshStatusText();
         // The dispatch replaced the node → a fresh NodeView renders the update.
-      } else if (outcome.reason === 'cancelled') {
+      } else if (outcome.reason === 'cancelled' || outcome.reason === 'ambiguous') {
+        // 'ambiguous' = the zone moved or was re-picked/detached while this
+        // refresh was in flight; the zone itself is fine, so don't flag it
+        // unreachable (that chip would stick). No error chrome.
+        this.transient = null;
         this.refreshStatusText();
       } else {
         this.transient = outcome.reason === 'not-desktop' ? 'web' : 'unreachable';
@@ -290,6 +294,17 @@ class TransclusionView implements NodeView {
     if (!transclusionSupported()) {
       // Re-pick needs the picker + file reads, both desktop-only.
       showToast(refreshFailMessage('not-desktop'));
+      return;
+    }
+    // Re-picking replaces the zone's content, so confirm first when it's edited —
+    // symmetric with Refresh (which prompts before discarding local edits).
+    if (
+      isZoneEdited(this.node) &&
+      typeof window !== 'undefined' &&
+      !window.confirm(
+        'Re-picking the source will replace your local edits to this live zone. Continue?',
+      )
+    ) {
       return;
     }
     rePickZoneAtPos(this.view, pos);

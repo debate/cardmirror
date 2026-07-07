@@ -127,6 +127,10 @@ export function computeHeadingRange(
   doc.nodesBetween(entry.pos + node.nodeSize, doc.content.size, (n, pos) => {
     if (to !== doc.content.size) return false;
     const t = n.type.name;
+    // A live zone is an opaque unit: don't descend into it, or its transcluded
+    // child headings (a pocket/hat zone holds hat/block headings) would be
+    // mistaken for this section's boundary and truncate it mid-zone.
+    if (t === 'transclusion_ref') return false;
     if (t in TYPE_TO_LEVEL && TYPE_TO_LEVEL[t]! <= targetLevel) {
       to = pos;
       return false;

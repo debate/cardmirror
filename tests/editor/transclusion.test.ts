@@ -55,6 +55,31 @@ function fixture(): PMNode {
   ]);
 }
 
+describe('extractSection — opaque zones (no truncation)', () => {
+  it('a section containing a live zone is not truncated by the zone’s child headings', () => {
+    // A zone targeting a hat holds hat/block-level children; the boundary walk
+    // must treat the zone as an opaque unit and NOT stop inside it, or the zone
+    // and everything after it is silently lost.
+    const zone = createTransclusionNode(
+      schema,
+      { source_ref: 'S.cmir', source_ref_base: 'doc', source_heading_id: 'zh' },
+      Fragment.fromArray([heading('hat', 'ZoneHat', 'zh-child'), card('ZoneCard', 'zc')]),
+    );
+    const src = doc([
+      heading('block', 'B1', 'b1'),
+      zone,
+      card('AfterZone', 'after'),
+      heading('block', 'B2', 'b2'),
+      card('T3', 't3'),
+    ]);
+    const json = JSON.stringify(extractSection(src, 'b1')!.content.toJSON());
+    expect(json).toContain('ZoneHat'); // the zone is kept whole, not truncated
+    expect(json).toContain('AfterZone'); // content after the zone survives
+    expect(json).not.toContain('"B2"'); // still stops at the next equal-level block
+    expect(json).not.toContain('"T3"');
+  });
+});
+
 describe('extractSection — the resolution rule (returns child content)', () => {
   it('block target: contents below the header, header excluded, stops at next equal level', () => {
     const frag = extractSection(fixture(), idB1)!.content;

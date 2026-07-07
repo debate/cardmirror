@@ -31,7 +31,7 @@
 import type { Node as PMNode } from 'prosemirror-model';
 import { schema } from '../schema/index.js';
 import { stampMissingHeadingIds } from '../schema/ids.js';
-import { splitInCardAnalytics } from '../schema/migrate.js';
+import { splitInCardAnalytics, flattenNestedZones } from '../schema/migrate.js';
 import type { Thread } from '../editor/comments-plugin.js';
 import { gzip, gzipAsync, gunzip, isGzip } from './codec.js';
 
@@ -182,8 +182,8 @@ export function parseNative(bytes: Uint8Array): ParseNativeResult {
   // analytic_unit). `nodeFromJSON` builds the now-invalid node without
   // validating; this rewrites it into a trailing analytic_unit before the doc
   // reaches the editor. See `schema/migrate.ts`.
-  const doc = splitInCardAnalytics(
-    stampMissingHeadingIds(schema.nodeFromJSON(file.doc)),
+  const doc = flattenNestedZones(
+    splitInCardAnalytics(stampMissingHeadingIds(schema.nodeFromJSON(file.doc))),
   );
   return {
     doc,

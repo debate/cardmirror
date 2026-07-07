@@ -263,7 +263,12 @@ export function replaceZoneAtPos(
   const newNode = createTransclusionNode(view.state.schema, attrs, content);
   const tr = view.state.tr.replaceWith(targetPos, targetPos + node.nodeSize, newNode);
   tr.setMeta('addToHistory', true);
-  view.dispatch(tr.scrollIntoView());
+  try {
+    view.dispatch(tr.scrollIntoView());
+  } catch {
+    // The view was torn down (e.g. its pane closed while the picker was open).
+    return false;
+  }
   return true;
 }
 

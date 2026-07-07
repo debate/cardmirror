@@ -9,6 +9,7 @@ import type { EditorView } from 'prosemirror-view';
 import { schema } from '../../schema/index.js';
 import { rewriteHeadingIds } from '../drag-controller.js';
 import { nearestValidInsertPos } from '../insert-position.js';
+import { flattenZonesInSlice } from '../transclusion.js';
 import { readModePlugin } from '../read-mode-plugin.js';
 import { READ_MODE_DRAG_META } from '../reading-marker.js';
 import { inboxStore, type InboxItem } from './inbox-store.js';
@@ -26,7 +27,9 @@ export function insertReceivedItem(view: EditorView, item: InboxItem, atEnd: boo
   } catch {
     return false;
   }
-  const rewritten = rewriteHeadingIds(slice);
+  // A received card comes from another machine — flatten any live zone so it
+  // can't carry a link that would resolve against the wrong file here.
+  const rewritten = rewriteHeadingIds(flattenZonesInSlice(slice));
   const inReadMode = readModePlugin.getState(view.state)?.on === true;
   // Snap to the nearest valid drop target for this content (where a drag would
   // drop it) so a received card never splits the card the caret is in.

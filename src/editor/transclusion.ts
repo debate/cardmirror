@@ -252,6 +252,15 @@ export function flattenZones(frag: Fragment): Fragment {
   return Fragment.fromArray(out);
 }
 
+/** Slice wrapper around flattenZones — unwrap any zones a captured slice carries
+ *  before inserting it into a (foreign) doc. A no-op when the slice has no zone.
+ *  Used by the "captured slice → insert" transfer paths (dropzone shelf, pairing
+ *  inbox, send-to-speech), which are all effectively cross-doc. */
+export function flattenZonesInSlice(slice: Slice): Slice {
+  if (!fragmentHasZone(slice.content)) return slice;
+  return new Slice(flattenZones(slice.content), slice.openStart, slice.openEnd);
+}
+
 /** Rebuild a fragment, applying `fn` to every zone node at any depth (children
  *  are mapped first, so a fn that rewrites attrs sees already-mapped content). */
 function mapZones(frag: Fragment, fn: (node: PMNode) => PMNode): Fragment {
@@ -294,7 +303,16 @@ export function resolvePastedZones(frag: Fragment, destDocPath: string | null): 
     const origin = String(node.attrs['source_origin'] ?? '');
     const sameDoc = origin !== '' && destDocPath != null && origin === destDocPath;
     if (sameDoc) {
-      out.push(node.type.create({ ...node.attrs, source_origin: '' }, node.content, node.marks));
+      // Keep the live link; clear the transient stamp AND recompute the content
+      // hash — freshHeadingIds (run before us) rewrote the child ids, which would
+      // otherwise make an unedited copy read as "edited".
+      out.push(
+        node.type.create(
+          { ...node.attrs, source_origin: '', source_content_hash: contentHash(node.content) },
+          node.content,
+          node.marks,
+        ),
+      );
     } else {
       // Cross-doc (or unknown origin) → drop the link, splice the cached cards in.
       node.content.forEach((c) => out.push(c));
@@ -436,12 +454,16 @@ export function chooseSourceRef(
   sourceAbs: string,
   roots: readonly string[],
 ): { ref: string; base: SourceRefBase } | null {
-  for (const root of roots) {
-    if (!root) continue;
-    if (isWithinPure(root, docPath) && isWithinPure(root, sourceAbs)) {
-      const ref = rootRelative(root, sourceAbs);
-      if (ref && ref !== '.') return { ref, base: 'root' };
-    }
+  // Prefer the DEEPEST (most-specific) root that contains both the doc and the
+  // source — the desktop resolver orders roots deepest-first, so anchoring the
+  // stored ref to the same root keeps it resolving correctly on a teammate's
+  // machine (nested roots otherwise produce a doubled-prefix, non-portable ref).
+  const matching = roots
+    .filter((r) => r && isWithinPure(r, docPath) && isWithinPure(r, sourceAbs))
+    .sort((a, b) => b.length - a.length);
+  for (const root of matching) {
+    const ref = rootRelative(root, sourceAbs);
+    if (ref && ref !== '.') return { ref, base: 'root' };
   }
   const rel = relativeSourceRef(docPath, sourceAbs);
   return rel ? { ref: rel, base: 'doc' } : null;

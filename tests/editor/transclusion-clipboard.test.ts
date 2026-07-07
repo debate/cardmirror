@@ -4,7 +4,7 @@
  * since the doc-relative source_ref can't be trusted in the new location.
  */
 import { describe, expect, it } from 'vitest';
-import { Fragment, Node as PMNode } from 'prosemirror-model';
+import { Fragment, Node as PMNode, Slice } from 'prosemirror-model';
 import { schema, newHeadingId } from '../../src/schema/index.js';
 import {
   createTransclusionNode,
@@ -13,8 +13,11 @@ import {
   resolvePastedZones,
   fragmentHasZone,
   flattenZones,
+  flattenZonesInSlice,
   isTransclusionNode,
+  isZoneEdited,
 } from '../../src/editor/transclusion.js';
+import { flattenNestedZones } from '../../src/schema/migrate.js';
 
 function card(tag: string, body: string): PMNode {
   return schema.nodes['card']!.createChecked(null, [
@@ -63,6 +66,21 @@ describe('clipboard live-zone handling', () => {
     expect(String(z.attrs['source_origin'])).toBe('');       // stamp cleared
   });
 
+  it('same-doc paste recomputes the content hash (no spurious "edited")', () => {
+    // A zone whose stored hash is stale vs its content (mimics the freshHeadingIds
+    // id-rewrite that runs before resolvePastedZones on paste).
+    const content = Fragment.fromArray([card('A', 'a')]);
+    const z = createTransclusionNode(
+      schema,
+      { source_ref: 'S.cmir', source_ref_base: 'doc', source_heading_id: 'H', source_content_hash: 'STALE' },
+      content,
+    );
+    const stamped = stampZoneOrigins(Fragment.fromArray([z]), '/lib/Doc.cmir');
+    const kept = resolvePastedZones(stamped, '/lib/Doc.cmir').child(0);
+    expect(isTransclusionNode(kept)).toBe(true);
+    expect(isZoneEdited(kept)).toBe(false); // hash recomputed to match content
+  });
+
   it('cross-doc paste unwraps the zone to plain cards (no link left)', () => {
     const stamped = stampZoneOrigins(
       Fragment.fromArray([zone([card('A', 'a'), card('B', 'b')])]),
@@ -85,5 +103,25 @@ describe('clipboard live-zone handling', () => {
     const flat = flattenZones(Fragment.fromArray([card('C', 'c'), inner]));
     expect(count(flat)).toEqual({ zones: 0, cards: 2 });
     expect(flat.textBetween(0, flat.size, ' ')).toContain('inner-ev');
+  });
+
+  it('flattenZonesInSlice unwraps zones a captured slice carries', () => {
+    const s = new Slice(Fragment.fromArray([card('C', 'c'), zone([card('Z', 'z-ev')])]), 0, 0);
+    const out = flattenZonesInSlice(s);
+    expect(count(out.content)).toEqual({ zones: 0, cards: 2 });
+    expect(out.content.textBetween(0, out.content.size, ' ')).toContain('z-ev');
+  });
+
+  it('flattenNestedZones (load migration) unwraps a zone-in-zone, keeping the outer', () => {
+    const inner = zone([card('Inner', 'inner-ev')]);
+    const outer = zone([card('C', 'c'), inner]); // a zone containing a nested zone
+    const migrated = flattenNestedZones(schema.nodes['doc']!.create(null, [outer, card('Sib', 's')]));
+    let zones = 0;
+    migrated.descendants((n) => {
+      if (isTransclusionNode(n)) zones++;
+      return true;
+    });
+    expect(zones).toBe(1); // only the outer zone survives
+    expect(migrated.textContent).toContain('inner-ev');
   });
 });

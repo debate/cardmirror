@@ -50,6 +50,54 @@ export function splitInCardAnalytics(doc: PMNode): PMNode {
   return doc.type.create(doc.attrs, Fragment.fromArray(out), doc.marks);
 }
 
+/**
+ * Flatten any zones nested INSIDE a live zone. A `transclusion_ref` is live only
+ * in the document it was created in; a zone nested inside another (possible in
+ * docs saved before this invariant, or synced from such a peer) is unwrapped to
+ * its plain snapshot while the top-level zone stays live. Mirrors the create /
+ * refresh flatten so old docs heal on load. (Zones only ever appear at the doc
+ * root or inside another zone, so a doc-level walk that recurses into zone
+ * content is complete.)
+ */
+export function flattenNestedZones(doc: PMNode): PMNode {
+  let changed = false;
+  const out: PMNode[] = [];
+  doc.forEach((child) => {
+    if (child.type.name === 'transclusion_ref') {
+      const flat = unwrapZonesIn(child.content);
+      if (flat !== child.content) {
+        changed = true;
+        out.push(child.type.create(child.attrs, flat, child.marks));
+      } else {
+        out.push(child);
+      }
+    } else {
+      out.push(child);
+    }
+  });
+  if (!changed) return doc;
+  return doc.type.create(doc.attrs, Fragment.fromArray(out), doc.marks);
+}
+
+/** Recursively replace every `transclusion_ref` in a fragment with its content
+ *  (any depth). Returns the same fragment when there was nothing to unwrap. */
+function unwrapZonesIn(frag: Fragment): Fragment {
+  let changed = false;
+  const out: PMNode[] = [];
+  frag.forEach((child) => {
+    const inner = child.content.size ? unwrapZonesIn(child.content) : child.content;
+    const node = inner === child.content ? child : child.type.create(child.attrs, inner, child.marks);
+    if (node.type.name === 'transclusion_ref') {
+      changed = true;
+      node.content.forEach((c) => out.push(c));
+    } else {
+      if (node !== child) changed = true;
+      out.push(node);
+    }
+  });
+  return changed ? Fragment.fromArray(out) : frag;
+}
+
 function cardHasAnalytic(card: PMNode): boolean {
   let found = false;
   card.forEach((c) => {
