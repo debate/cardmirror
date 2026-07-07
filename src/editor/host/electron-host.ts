@@ -183,6 +183,14 @@ interface ElectronAPI {
     roots: string[],
     sourceAbs?: string,
   ): Promise<string | null>;
+  writeSourceAnchor(
+    docPath: string,
+    sourceRef: string,
+    base: 'doc' | 'root',
+    roots: string[],
+    sourceAbs: string,
+    bytes: Uint8Array,
+  ): Promise<{ ok: true; name: string } | { ok: false; reason: string }>;
   saveAs(
     suggestedName: string,
     bytes: Uint8Array,
@@ -543,6 +551,20 @@ export class ElectronHost implements Host {
     sourceAbs = '',
   ): Promise<string | null> {
     return api().resolveCmirPath(docPath, sourceRef, base, roots, sourceAbs);
+  }
+
+  /** Write an anchored `.docx` back over its source so a raw Word file becomes a
+   *  refreshable live-zone source. Main re-checks containment (same boundary as
+   *  reading), refuses non-`.docx`, and writes atomically. ElectronHost-only. */
+  async writeSourceAnchor(
+    docPath: string,
+    sourceRef: string,
+    base: 'doc' | 'root',
+    roots: string[],
+    sourceAbs: string,
+    bytes: Uint8Array,
+  ): Promise<{ ok: true; name: string } | { ok: false; reason: string }> {
+    return api().writeSourceAnchor(docPath, sourceRef, base, roots, sourceAbs, bytes);
   }
 
   async saveAs(

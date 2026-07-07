@@ -59,6 +59,7 @@ import {
   buildLiveZoneAttrs,
   buildZoneErrorMessage,
 } from './transclusion-actions.js';
+import type { TransclusionAttrs } from './transclusion.js';
 import { AUTOFILL_IGNORE_ATTRS } from './autofill-ignore.js';
 import { insertSpeechSlice } from './speech-doc-send.js';
 import { quickCardsStore, distinctTags, normalizeTag } from './quick-cards-store.js';
@@ -66,6 +67,7 @@ import { dropzoneStore } from './dropzone-store.js';
 import { searchQuickCards } from './quick-cards-match.js';
 import { parseNative } from '../native/index.js';
 import { fromDocx } from '../import/index.js';
+import { ensureHeadingAnchor } from '../anchor-docx.js';
 import {
   extractFile,
   searchFiles,
@@ -1657,7 +1659,7 @@ class QuickCardSearchUI {
       result.fileRange &&
       this.inFile
     ) {
-      this.insertLiveZoneFromFileObject(result);
+      void this.insertLiveZoneFromFileObject(result);
       return;
     }
     let slice: Slice;
@@ -1704,25 +1706,42 @@ class QuickCardSearchUI {
   /** Build and insert a live zone from a selected header inside the dived-into
    *  file. Snapshots the section now (the file is already parsed), computes a
    *  portable source ref, and guards against direct self-embedding. */
-  private insertLiveZoneFromFileObject(result: PaletteResult): void {
+  private async insertLiveZoneFromFileObject(result: PaletteResult): Promise<void> {
     const view = this.view;
     if (!view || !this.inFile || !result.fileRange) return;
-    const headingNode = this.inFile.doc.nodeAt(result.fileRange.from);
+    const inFile = this.inFile;
+    const headingNode = inFile.doc.nodeAt(result.fileRange.from);
     const headingId =
       headingNode && typeof headingNode.attrs['id'] === 'string' ? headingNode.attrs['id'] : '';
     const roots = (settings.get('fileSearchRoots') as string[] | undefined) ?? [];
     const outcome = buildLiveZoneAttrs(
       schema,
-      this.inFile.doc,
+      inFile.doc,
       headingId,
-      this.inFile.name,
+      inFile.name,
       this.docPath,
-      this.inFile.path,
+      inFile.path,
       roots,
     );
     if (!outcome.ok || !outcome.attrs) {
       showToast(buildZoneErrorMessage(outcome.reason));
       return;
+    }
+    // A `.docx` source can only refresh if the heading carries a stable
+    // `pmd-heading` bookmark. If it doesn't, offer to add one (a tiny bookmark,
+    // nothing else changes); if that can't happen, refuse rather than create a
+    // zone that could never refresh. `.cmir` sources already carry stable ids.
+    if (inFile.path.toLowerCase().endsWith('.docx')) {
+      const ready = await this.ensureDocxSourceAnchor(
+        result.fileRange.from,
+        headingId,
+        headingNode?.textContent ?? '',
+        outcome.attrs,
+        roots,
+      );
+      if (!ready) return; // messaged inside
+      // The palette may have closed while we awaited the read/confirm/write.
+      if (!this.root || this.view !== view) return;
     }
     if (this.rePickTarget != null) {
       // Re-pick source: re-target the existing zone in place (one-shot → close).
@@ -1740,6 +1759,90 @@ class QuickCardSearchUI {
     insertZoneAtSelection(view, outcome.attrs, outcome.content);
     showToast(`Inserted live zone "${outcome.headingLabel}".`);
     this.input.focus();
+  }
+
+  /** Ensure a `.docx` source's picked heading carries a `pmd-heading` bookmark
+   *  so the live zone can refresh from it. Reads the file, re-derives the
+   *  heading's source-paragraph index (a provenance re-parse — node positions
+   *  are stable across parses even though a raw Word file's heading ids aren't),
+   *  injects a single bookmark in-memory, and — only when a write is actually
+   *  needed — confirms before writing it back atomically. Returns true when the
+   *  file is anchored (safe to create the zone); false, with a toast, when it
+   *  can't be, so we never create a zone that could never refresh. */
+  private async ensureDocxSourceAnchor(
+    headingPos: number,
+    headingId: string,
+    expectedText: string,
+    attrs: TransclusionAttrs,
+    roots: string[],
+  ): Promise<boolean> {
+    const electron = getElectronHost();
+    if (!electron || !this.docPath) {
+      showToast('Live zones from Word files need the desktop app.');
+      return false;
+    }
+    const sourceAbs = attrs.source_abs ?? '';
+    const file = await electron.readCmirFile(
+      this.docPath,
+      attrs.source_ref,
+      attrs.source_ref_base,
+      roots,
+      sourceAbs,
+    );
+    if (!file) {
+      showToast('Couldn’t read the source file to prepare it for live updates.');
+      return false;
+    }
+    // Re-parse WITH provenance and find the picked heading at the same position
+    // (structure is identical across parses); look up its source-paragraph index.
+    const prov = new Map<string, number>();
+    let freshDoc: PMNode;
+    try {
+      freshDoc = await fromDocx(file.bytes, prov);
+    } catch {
+      showToast('Couldn’t read the Word source file.');
+      return false;
+    }
+    const freshHeading = freshDoc.nodeAt(headingPos);
+    const freshId =
+      freshHeading && typeof freshHeading.attrs['id'] === 'string' ? freshHeading.attrs['id'] : '';
+    const srcPara = freshId ? prov.get(freshId) : undefined;
+    if (srcPara == null) {
+      showToast('This Word heading can’t be tracked for live updates — save the source as .cmir.');
+      return false;
+    }
+    const anchor = await ensureHeadingAnchor(file.bytes, srcPara, headingId, expectedText);
+    if (!anchor.ok) {
+      showToast('This Word file can’t be prepared as a live source — save it as .cmir.');
+      return false;
+    }
+    if (!anchor.added) return true; // already anchored — nothing to write.
+    // A new bookmark must be written back — get explicit consent first, since
+    // this modifies a file the user may share.
+    const consented =
+      typeof window !== 'undefined' &&
+      window.confirm(
+        `Add a live-update anchor to “${this.inFile?.name ?? 'this Word file'}”?\n\n` +
+          'This writes a small bookmark to the Word file so this section can be ' +
+          'refreshed later. Nothing else in the file changes.',
+      );
+    if (!consented) {
+      showToast('Live zone not created — the Word file was left unchanged.');
+      return false;
+    }
+    const written = await electron.writeSourceAnchor(
+      this.docPath,
+      attrs.source_ref,
+      attrs.source_ref_base,
+      roots,
+      sourceAbs,
+      anchor.bytes,
+    );
+    if (!written.ok) {
+      showToast('Couldn’t write to the Word file (it may be read-only or open in Word).');
+      return false;
+    }
+    return true;
   }
 
   // ── Inline tag filter (Tab) ───────────────────────────────────────

@@ -47,9 +47,14 @@ describe('resolveCmirRef — REJECTED cases (traversal / scope)', () => {
   it('absolute ref OUTSIDE every root → null', () => {
     expect(resolveCmirRef(DOC, '/etc/passwd.cmir', [ROOT])).toBeNull();
   });
-  it('non-.cmir extension → null (even inside root)', () => {
-    expect(resolveCmirRef(DOC, '../Impacts/Src.docx', [ROOT])).toBeNull();
+  it('unsupported extension → null (only .cmir / .docx are sources)', () => {
     expect(resolveCmirRef(DOC, 'Src.txt', [])).toBeNull();
+    expect(resolveCmirRef(DOC, 'Src.pdf', [])).toBeNull();
+  });
+  it('.docx inside a root is an allowed source (raw Word files get anchored)', () => {
+    expect(resolveCmirRef(DOC, '../Impacts/Src.docx', [ROOT])).toBe(
+      '/Users/x/Dropbox/Debate/Impacts/Src.docx',
+    );
   });
   it('empty / malformed inputs → null', () => {
     expect(resolveCmirRef('', 'Src.cmir', [])).toBeNull();
@@ -148,7 +153,12 @@ describe('resolveCmirCandidates — root base tries each root', () => {
       '/Users/x/Dropbox/Debate/Impacts/Src.cmir',
     ]);
   });
-  it('non-.cmir is dropped under root base too', () => {
-    expect(resolveCmirCandidates(DOC2, 'Impacts/Src.docx', 'root', [R1])).toEqual([]);
+  it('.docx is kept under root base (it is a valid live-zone source)', () => {
+    expect(resolveCmirCandidates(DOC2, 'Impacts/Src.docx', 'root', [R1])).toEqual([
+      '/Users/x/Dropbox/Debate/Impacts/Src.docx',
+    ]);
+  });
+  it('a genuinely unsupported extension is still dropped under root base', () => {
+    expect(resolveCmirCandidates(DOC2, 'Impacts/Src.txt', 'root', [R1])).toEqual([]);
   });
 });

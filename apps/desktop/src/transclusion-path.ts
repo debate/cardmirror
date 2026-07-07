@@ -48,7 +48,10 @@ export function resolveCmirCandidates(
   const cleanRoots = roots.filter((r) => typeof r === 'string' && r !== '');
   const out: string[] = [];
   const consider = (abs: string, allowed: string[]): void => {
-    if (path.extname(abs).toLowerCase() !== '.cmir') return;
+    // Live zones can transclude from a `.cmir` OR a `.docx` source (both are
+    // pickable in the file search); the renderer parses each format on read.
+    const ext = path.extname(abs).toLowerCase();
+    if (ext !== '.cmir' && ext !== '.docx') return;
     if (allowed.some((b) => isWithin(b, abs))) out.push(abs);
   };
   // Tier 0: the exact absolute path the ref was created against, if it still

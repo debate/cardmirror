@@ -41,7 +41,13 @@ function inferContentType(path: string): string {
  * importer so inline pictures round-trip with their bytes embedded as
  * base64 in the resulting `image` nodes.
  */
-export async function fromDocx(bytes: Uint8Array | ArrayBuffer): Promise<PMNode> {
+export async function fromDocx(
+  bytes: Uint8Array | ArrayBuffer,
+  /** When provided, is filled with `headingId → srcPara` for every heading —
+   *  the provenance the `.docx` source-anchor injector needs. Omitted on the
+   *  normal import path (zero extra cost). */
+  provenanceOut?: Map<string, number>,
+): Promise<PMNode> {
   const docx = await Docx.load(bytes);
   const documentXml = await docx.readText('word/document.xml');
   if (!documentXml) throw new Error('docx is missing word/document.xml');
@@ -67,10 +73,17 @@ export async function fromDocx(bytes: Uint8Array | ArrayBuffer): Promise<PMNode>
   // Word tolerates ragged tables (rows with differing cell counts); the
   // editor's table plumbing assumes rectangular ones. Repair on the way in.
   return repairDoc(
-    importDoc(documentXml, relsXml, mediaParts, stylesXml, {
-      footnotes: importNotes(footnotesXml, footnotesRelsXml, 'w:footnotes', 'w:footnote'),
-      endnotes: importNotes(endnotesXml, endnotesRelsXml, 'w:endnotes', 'w:endnote'),
-    }),
+    importDoc(
+      documentXml,
+      relsXml,
+      mediaParts,
+      stylesXml,
+      {
+        footnotes: importNotes(footnotesXml, footnotesRelsXml, 'w:footnotes', 'w:footnote'),
+        endnotes: importNotes(endnotesXml, endnotesRelsXml, 'w:endnotes', 'w:endnote'),
+      },
+      provenanceOut,
+    ),
   );
 }
 

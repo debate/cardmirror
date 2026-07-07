@@ -22,7 +22,7 @@
 import type { Mark, Node as PMNode, NodeType } from 'prosemirror-model';
 import type { FootnoteContent } from '../schema/footnotes.js';
 import { schema } from '../schema/index.js';
-import { idFromBookmarkName, newHeadingId } from '../schema/ids.js';
+import { idFromBookmarkName, newHeadingId, HEADING_TYPE_NAMES } from '../schema/ids.js';
 import { normalizeUnderlineMarks } from '../editor/named-style-normalizer-plugin.js';
 import { bytesToBase64 } from '../ooxml/base64.js';
 import {
@@ -32,6 +32,7 @@ import {
   parseXml,
   serializeXmlNodes,
   textContent,
+  bodyParagraphsInOrder,
   type XmlNode,
 } from '../ooxml/parse.js';
 import {
@@ -64,6 +65,12 @@ interface ParaInfo {
    *  Used for `<w:tbl>` → `table` nodes, which are pre-assembled
    *  into PM form during the body walk. */
   rawNode?: PMNode;
+  /** 0-based index of this paragraph's source `<w:p>` in body-paragraph order
+   *  (via `bodyParagraphsInOrder`). Set only when the caller requested heading
+   *  provenance (see `importDoc`'s `provenanceOut`); used to bookmark a raw
+   *  `.docx` heading so a live zone can refresh from it. Undefined otherwise
+   *  and on `__rawNode__` (table) entries, which never carry headings. */
+  srcPara?: number;
 }
 
 /** rId → relationship target map from word/_rels/document.xml.rels. */
@@ -140,6 +147,11 @@ export function importDoc(
     footnotes?: Map<string, FootnoteContent>;
     endnotes?: Map<string, FootnoteContent>;
   } | null = null,
+  /** When provided, is filled with `headingId → srcPara` (0-based source
+   *  paragraph index) for every heading — the provenance the source-anchor
+   *  injector needs to bookmark a raw `.docx` heading. Omitted on the normal
+   *  open/import path so it stays zero-cost. */
+  provenanceOut?: Map<string, number>,
 ): PMNode {
   const rels = relsXml ? parseRels(relsXml) : {};
   const ctx: ImportContext = {
@@ -163,11 +175,19 @@ export function importDoc(
 
   const bodyChildren = childrenOf(body, 'w:body');
   ctx.legacy = planLegacy(bodyChildren, ctx.styles);
+  // Only when provenance is requested: map each source <w:p> to its body-order
+  // index, built from the SAME helper the injector uses so the two agree on
+  // "which paragraph is the Nth". Keyed by object identity of the parsed node.
+  const paraIndex = provenanceOut
+    ? new Map<XmlNode, number>(bodyParagraphsInOrder(bodyChildren).map((n, i) => [n, i]))
+    : null;
   const paragraphs: ParaInfo[] = [];
   const collectBlocks = (children: ReturnType<typeof childrenOf>): void => {
     for (const node of children) {
       if ('w:p' in node) {
-        paragraphs.push(parseParagraph(node, ctx));
+        const info = parseParagraph(node, ctx);
+        if (paraIndex) info.srcPara = paraIndex.get(node) ?? -1;
+        paragraphs.push(info);
       } else if ('w:tbl' in node) {
         const tableNode = parseTable(node, ctx);
         if (tableNode) {
@@ -192,7 +212,7 @@ export function importDoc(
   };
   collectBlocks(bodyChildren);
 
-  return normalizeUnderlineMarks(assembleDoc(paragraphs));
+  return normalizeUnderlineMarks(assembleDoc(paragraphs, provenanceOut));
 }
 
 function parseRels(relsXml: string): RelMap {
@@ -1228,7 +1248,10 @@ function resolveNodeType(pStyle: string | null, ctx: ImportContext, pPr: XmlNode
  * boundary is implicit in the paragraph sequence; we promote it to a
  * schema node for editor-side ergonomics.
  */
-function assembleDoc(paragraphs: ParaInfo[]): PMNode {
+function assembleDoc(
+  paragraphs: ParaInfo[],
+  provenance?: Map<string, number>,
+): PMNode {
   const docNodes: PMNode[] = [];
   let i = 0;
   while (i < paragraphs.length) {
@@ -1244,8 +1267,10 @@ function assembleDoc(paragraphs: ParaInfo[]): PMNode {
 
     if (para.nodeType === 'analytic') {
       // Start an analytic_unit: analytic + undertag* + card_body*
+      const analyticAttrs = attrsForHeading(para.headingId);
+      recordProvenance(provenance, analyticAttrs.id, para);
       const analyticNode = schema.nodes['analytic']!.create(
-        withIndent(attrsForHeading(para.headingId), para),
+        withIndent(analyticAttrs, para),
         para.inlines,
       );
       const unitChildren: PMNode[] = [analyticNode];
@@ -1299,8 +1324,10 @@ function assembleDoc(paragraphs: ParaInfo[]): PMNode {
 
     if (para.nodeType === 'tag') {
       // Start a card: tag + undertag* + cite_paragraph? + card_body*
+      const tagAttrs = attrsForHeading(para.headingId);
+      recordProvenance(provenance, tagAttrs.id, para);
       const tagNode = schema.nodes['tag']!.create(
-        withIndent(attrsForHeading(para.headingId), para),
+        withIndent(tagAttrs, para),
         para.inlines,
       );
       const cardChildren: PMNode[] = [tagNode];
@@ -1360,9 +1387,14 @@ function assembleDoc(paragraphs: ParaInfo[]): PMNode {
       }
       i = j;
     } else {
-      // Standalone paragraph kind.
+      // Standalone paragraph kind (pocket/hat/block, or a fallback tag/analytic).
       const node = paragraphToNode(para);
-      if (node) docNodes.push(node);
+      if (node) {
+        if (HEADING_TYPE_NAMES.has(node.type.name)) {
+          recordProvenance(provenance, (node.attrs as { id?: string }).id, para);
+        }
+        docNodes.push(node);
+      }
       i++;
     }
   }
@@ -1396,6 +1428,19 @@ function hasCiteMark(inlines: readonly PMNode[]): boolean {
 
 function attrsForHeading(id: string | null): { id: string } {
   return { id: id ?? newHeadingId() };
+}
+
+/** Record `headingId → srcPara` for the source-anchor injector, when the caller
+ *  asked for provenance and we have both a heading id and a paragraph index.
+ *  No-op on the normal import path (`provenance` undefined). */
+function recordProvenance(
+  provenance: Map<string, number> | undefined,
+  headingId: string | undefined,
+  para: ParaInfo,
+): void {
+  if (provenance && headingId && para.srcPara != null && para.srcPara >= 0) {
+    provenance.set(headingId, para.srcPara);
+  }
 }
 
 /** Merge per-paragraph round-trip attrs (indent + spacing) onto a

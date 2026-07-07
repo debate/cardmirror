@@ -122,6 +122,34 @@ function escAttr(s: string): string {
 }
 
 /**
+ * Body paragraphs in the exact order the importer visits them: document
+ * order, descending into `<w:sdt>` content but NOT into `<w:tbl>` (heading
+ * paragraphs never originate from table cells, so the importer's
+ * `collectBlocks` doesn't descend into tables either — this must mirror it).
+ *
+ * The 0-based index into this list is the `srcPara` provenance the source-
+ * anchor injector uses to locate a heading's paragraph. The importer builds
+ * that index from THIS same helper, so the two views of "which paragraph is
+ * the Nth" can never drift — see `ensureHeadingAnchor` in `src/anchor-docx.ts`.
+ */
+export function bodyParagraphsInOrder(bodyChildren: XmlNode[]): XmlNode[] {
+  const out: XmlNode[] = [];
+  const walk = (nodes: XmlNode[]): void => {
+    for (const node of nodes) {
+      if ('w:p' in node) {
+        out.push(node);
+      } else if ('w:sdt' in node) {
+        const content = findChild(children(node, 'w:sdt'), 'w:sdtContent');
+        if (content) walk(children(content, 'w:sdtContent'));
+      }
+      // <w:tbl>, <w:sectPr>, etc. — not a body paragraph; skip.
+    }
+  };
+  walk(bodyChildren);
+  return out;
+}
+
+/**
  * Get the text content of a node by recursively concatenating all
  * #text children.
  */

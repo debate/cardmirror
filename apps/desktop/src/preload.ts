@@ -184,6 +184,28 @@ contextBridge.exposeInMainWorld('electronAPI', {
       sourceAbs,
     ) as Promise<string | null>,
 
+  /** Write an anchored `.docx` back over its source (a raw Word file gaining a
+   *  single `pmd-heading` bookmark so a live zone can refresh from it). Same
+   *  main-process containment boundary as reading; main refuses non-`.docx`
+   *  targets and writes atomically. Resolves the outcome, never throws. */
+  writeSourceAnchor: (
+    docPath: string,
+    sourceRef: string,
+    base: 'doc' | 'root',
+    roots: string[],
+    sourceAbs: string,
+    bytes: Uint8Array,
+  ) =>
+    ipcRenderer.invoke(
+      'host:write-source-anchor',
+      docPath,
+      sourceRef,
+      base,
+      roots,
+      sourceAbs,
+      bytes,
+    ) as Promise<{ ok: true; name: string } | { ok: false; reason: string }>,
+
   saveAs: (
     suggestedName: string,
     bytes: Uint8Array,

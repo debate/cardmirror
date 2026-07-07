@@ -741,6 +741,72 @@ ipcMain.handle(
   },
 );
 
+/** Write an anchored `.docx` back over its source so a raw Word file becomes a
+ *  refreshable live-zone source. The `bytes` are the renderer's surgical
+ *  injector output — the original file with a single `pmd-heading` bookmark
+ *  added. This side re-enforces the SAME containment boundary as reading (never
+ *  writes outside the allowed roots), refuses anything but a `.docx`, and writes
+ *  atomically (temp + fsync + rename) so a crash can't tear the source. It only
+ *  ever persists caller bytes to a resolved-safe path — it never constructs the
+ *  content, so a hostile ref can't be used to overwrite arbitrary files. */
+ipcMain.handle(
+  'host:write-source-anchor',
+  async (
+    _event,
+    docPath: unknown,
+    sourceRef: unknown,
+    base: unknown,
+    roots: unknown,
+    sourceAbs: unknown,
+    bytes: unknown,
+  ): Promise<{ ok: true; name: string } | { ok: false; reason: string }> => {
+    const a = normalizeRefArgs(docPath, sourceRef, base, roots, sourceAbs);
+    if (!a) return { ok: false, reason: 'bad-args' };
+    let buf: Buffer;
+    try {
+      buf = bytesToBuffer(bytes);
+    } catch {
+      return { ok: false, reason: 'bad-args' };
+    }
+    if (buf.byteLength === 0 || buf.byteLength > MAX_CMIR_READ_BYTES) {
+      return { ok: false, reason: 'bad-args' };
+    }
+    const real = await safeResolveCmirPath(
+      a.docPath,
+      a.sourceRef,
+      a.refBase,
+      a.rootList,
+      a.sourceAbs,
+    );
+    if (!real) return { ok: false, reason: 'unresolved' };
+    // The resolver admits `.cmir` and `.docx`; only ever rewrite a `.docx`
+    // (a `.cmir` already carries stable ids and must not be touched here).
+    if (path.extname(real).toLowerCase() !== '.docx') return { ok: false, reason: 'not-docx' };
+    // Stage a sibling temp in the SAME directory, derived from the VALIDATED
+    // `real` (never renderer strings, so the target can't be redirected between
+    // resolve and rename), fsync for durability, then rename over the original.
+    const tmpPath = `${real}.cmir-anchor.tmp`;
+    try {
+      const fh = await fs.open(tmpPath, 'w');
+      try {
+        await fh.writeFile(buf);
+        await fh.sync();
+      } finally {
+        await fh.close();
+      }
+      await fs.rename(tmpPath, real);
+      return { ok: true, name: path.basename(real) };
+    } catch {
+      try {
+        await fs.unlink(tmpPath);
+      } catch {
+        /* best-effort cleanup of the temp file */
+      }
+      return { ok: false, reason: 'write-failed' };
+    }
+  },
+);
+
 // Bulk-convert support: recursively list files of a given extension
 // under a directory, and write bytes to an arbitrary path. Used by the
 // home-screen .docx↔.cmir bulk converter.

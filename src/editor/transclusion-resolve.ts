@@ -7,8 +7,11 @@
  * reason and the caller keeps rendering from cache (TRANSCLUSION_PLAN.md §3.1).
  * On web there is no filesystem, so this always reports `not-desktop`.
  */
+import type { Node as PMNode } from 'prosemirror-model';
 import { getElectronHost } from './host/index.js';
 import { parseNative } from '../index.js';
+import { fromDocx } from '../import/index.js';
+import { fileFormat } from './file-search.js';
 import { settings } from './settings.js';
 import {
   extractSection,
@@ -108,9 +111,16 @@ async function resolveOnce(
   }
   if (!file) return { ok: false, reason: 'source-unreadable' };
 
-  let doc;
+  let doc: PMNode;
   try {
-    doc = parseNative(file.bytes).doc;
+    // Parse by the source's own format. A `.docx` re-imports through the docx
+    // importer (which reads pmd-heading-* bookmarks back as stable heading ids,
+    // so a CardMirror-exported .docx re-locates the section on refresh); a
+    // `.cmir` goes through the native reader.
+    doc =
+      fileFormat(file.name) === 'docx'
+        ? await fromDocx(file.bytes)
+        : parseNative(file.bytes).doc;
   } catch {
     return { ok: false, reason: 'parse-failed', sourceName: file.name };
   }
