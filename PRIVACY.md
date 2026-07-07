@@ -232,15 +232,3 @@ release notes.
 
 Questions about this policy or your data? Contact us at **ant981228@gmail.com**
 or by opening an issue at **https://github.com/ant981228/cardmirror**.
-
-<!--
-MAINTAINER NOTES (remove before publishing, or keep as an HTML comment — it will
-not render on GitHub):
-  • Confirm the "Last updated" date when you publish.
-  • This describes the shipping product as of the date above. If you ship the
-    session-chat feature, add a clause: in-session chat rides the same
-    end-to-end encryption and session-scoped retention as co-editing (deleted on
-    End session / after 7 idle days; never stored in readable form).
-  • This is an accurate engineering description, not legal advice. Have counsel
-    review before relying on it, especially if you market to schools or the EU/UK.
--->
