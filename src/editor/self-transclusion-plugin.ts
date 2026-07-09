@@ -14,51 +14,11 @@
  * No document mutation, no history, no dirty flag — decorations only.
  */
 
-import { Plugin, PluginKey, NodeSelection, TextSelection } from 'prosemirror-state';
-import { Decoration, DecorationSet, type EditorView } from 'prosemirror-view';
+import { Plugin, PluginKey, NodeSelection } from 'prosemirror-state';
+import { Decoration, DecorationSet } from 'prosemirror-view';
 import type { Node as PMNode } from 'prosemirror-model';
 import { contentHash } from './transclusion.js';
 import { isSelfRef, makeProjectionResolver } from './self-transclusion.js';
-
-// ---- Mouse selection ACROSS a live view -----------------------------------
-// A live view's projection is a non-editable island, so a NATIVE drag / shift-
-// click selection stops at its boundary — the browser can't extend a selection
-// across it. We can't override the selection MID-drag (the browser re-resets it
-// every mousemove → flicker), so we let native selection run and, once the
-// gesture ENDS, fix the range up to span any view it crossed. `anchor` is the
-// gesture's start (drag origin, or the existing anchor for a shift-click);
-// `head` is where it ended.
-
-/** Whether a live view lies within [a, b] — the trigger to fix the range up. */
-function rangeCrossesSelfRef(doc: PMNode, a: number, b: number): boolean {
-  const from = Math.min(a, b);
-  const to = Math.max(a, b);
-  if (from >= to) return false;
-  let found = false;
-  doc.nodesBetween(from, to, (node) => {
-    if (isSelfRef(node)) found = true;
-    return !found;
-  });
-  return found;
-}
-
-/** Set an exact anchor→head TextSelection (spans a view `between` would clamp
- *  off). Deferred past the gesture so ProseMirror's own selection sync (which
- *  reads the native selection that stopped at the view) doesn't overwrite it. */
-function spanSelectionAcrossView(view: EditorView, anchor: number, head: number): void {
-  if ((view as unknown as { docView: unknown }).docView == null) return; // torn down
-  const size = view.state.doc.content.size;
-  if (anchor > size || head > size) return;
-  try {
-    const sel = TextSelection.create(view.state.doc, anchor, head);
-    if (!view.state.selection.eq(sel)) view.dispatch(view.state.tr.setSelection(sel));
-  } catch {
-    /* endpoints not selectable — leave the native selection as-is */
-  }
-}
-
-/** The in-flight mouse gesture's origin (module-level: only one at a time). */
-let mouseGesture: { view: EditorView; anchor: number } | null = null;
 
 export const selfRefPluginKey = new PluginKey<DecorationSet>('selfRefLiveRender');
 
@@ -121,38 +81,6 @@ export function makeSelfRefPlugin(): Plugin<DecorationSet> {
         if (e.shiftKey || e.metaKey || e.ctrlKey || e.altKey || e.button !== 0) return false;
         view.dispatch(view.state.tr.setSelection(NodeSelection.create(view.state.doc, nodePos)));
         return true;
-      },
-      handleDOMEvents: {
-        // Record the gesture's origin. A shift-click extends from the CURRENT
-        // anchor; a fresh press starts at the pressed position. Never preventing
-        // default — native selection runs; we only fix it up on release.
-        mousedown(view, event) {
-          const e = event as MouseEvent;
-          if (e.button !== 0 || e.metaKey || e.ctrlKey || e.altKey) {
-            mouseGesture = null;
-            return false;
-          }
-          const anchor = e.shiftKey
-            ? view.state.selection.anchor
-            : (view.posAtCoords({ left: e.clientX, top: e.clientY })?.pos ?? null);
-          mouseGesture = anchor == null ? null : { view, anchor };
-          return false;
-        },
-        mouseup(view, event) {
-          const g = mouseGesture;
-          mouseGesture = null;
-          if (!g || g.view !== view) return false;
-          const e = event as MouseEvent;
-          const head = view.posAtCoords({ left: e.clientX, top: e.clientY })?.pos;
-          if (head == null || head === g.anchor) return false;
-          if (!rangeCrossesSelfRef(view.state.doc, g.anchor, head)) return false;
-          // The drag / shift-click crossed a live view (native selection stopped at
-          // it). Defer so this lands AFTER ProseMirror finalizes the native
-          // selection, then span the view.
-          const { anchor } = g;
-          setTimeout(() => spanSelectionAcrossView(view, anchor, head), 0);
-          return false;
-        },
       },
     },
   });

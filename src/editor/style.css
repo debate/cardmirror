@@ -2568,14 +2568,12 @@ code {
 }
 .pmd-self-ref-body {
   padding-left: 2px;
-  /* The projection is a READ-ONLY, image-like unit: not individually selectable
-     (so a click can't start a native word-selection inside the cards) and
-     transparent to the pointer (so a drag-select isn't captured by the text —
-     it spans the whole view as one unit, the way it does over an image). The
-     view itself stays selectable, and the plugin highlights it while spanned. */
-  user-select: none;
-  -webkit-user-select: none;
-  pointer-events: none;
+  /* The projected cards render inside a SHADOW ROOT on this element (see the
+     NodeView): a document selection can't cross the shadow boundary, so the view
+     reads as one atomic, selection-opaque unit — an <img>/<hr>-like replaced
+     element — which is what makes every selection modality flow over it. No
+     user-select/pointer-events overrides here: the host is a normal selectable
+     atom, exactly like an image. */
 }
 /* The projected cards render real card DOM; suppress their own grey hover rail
    so the window's dotted green rail is the only one (mirrors .pmd-transclusion-
