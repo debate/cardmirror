@@ -55,12 +55,12 @@ const WORDS = ['impact', 'link', 'turns', 'warrant', 'solvency', 'uniqueness'];
 const ROLES: NumRole[] = ['none', 'number', 'sub'];
 const pick = <T>(rnd: () => number, xs: T[]): T => xs[Math.floor(rnd() * xs.length)]!;
 
-// Density caps. Live views resolve their projection recursively (a view can
-// project a section that holds other views), so a doc packed with cross-
-// referencing views makes each dispatch fan out super-linearly. Real docs never
-// approach this; cap it so the fuzz stresses correctness without going pathological.
-const MAX_VIEWS = 6;
-const MAX_COPIES = 6;
+// Density caps. Resolution is memoized (see resolveSelfProjection), so repeated
+// references no longer re-walk — but a genuinely BRANCHING reference graph still
+// MATERIALIZES exponential content (inlining is inherently O(output)). Real docs
+// never approach that; cap density to keep the fuzz doc bounded.
+const MAX_VIEWS = 15;
+const MAX_COPIES = 15;
 
 function card(tag: string, body: string, role: NumRole = 'none', restart = false): PMNode {
   return schema.nodes['card']!.createChecked({ numRole: role, numRestart: restart }, [

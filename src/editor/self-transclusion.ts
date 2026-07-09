@@ -55,13 +55,51 @@ export function resolveSelfProjection(
   headingId: string,
   visited: ReadonlySet<string> = new Set(),
 ): Projection {
+  // Per-pass memo: each distinct heading is resolved ONCE and reused, so a
+  // heading referenced repeatedly (a diamond, or the same embed inlined N times)
+  // isn't re-walked per occurrence — turning a potential exponential fan-out into
+  // linear. Cycles are broken by `onStack` (headings currently on the resolution
+  // path); `visited` seeds it so an explicit ancestor set is still honored.
+  return resolveMemo(doc, headingId, new Set(visited), new Map());
+}
+
+/**
+ * Memoized DFS core of `resolveSelfProjection`. `onStack` = the headings whose
+ * resolution is in progress on this path — a reference back into one is a cycle,
+ * dropped and flagged. `memo` = completed resolutions, reused across every
+ * reference in this pass. For an acyclic reference graph (every real doc) this is
+ * output-identical to a naive re-resolution; for the degenerate cyclic corner it
+ * still terminates and stays valid, breaking the cycle at a consistent point
+ * (resolution order) rather than a path-dependent one.
+ */
+function resolveMemo(
+  doc: PMNode,
+  headingId: string,
+  onStack: Set<string>,
+  memo: Map<string, Projection>,
+): Projection {
+  if (!headingId || onStack.has(headingId)) {
+    // Empty pointer, or a back-reference to a heading still being resolved: a
+    // cycle. Drop it and flag — rendering forever is the only alternative. Not
+    // memoized: the in-progress heading caches its real result when it completes.
+    return { content: Fragment.empty, missing: false, cycle: true };
+  }
+  const cached = memo.get(headingId);
+  if (cached) return cached;
+
   const section = extractSection(doc, headingId);
-  if (!section) return { content: Fragment.empty, missing: true, cycle: false };
-  const nextVisited = new Set(visited);
-  nextVisited.add(headingId);
+  if (!section) {
+    const miss: Projection = { content: Fragment.empty, missing: true, cycle: false };
+    memo.set(headingId, miss);
+    return miss;
+  }
+  onStack.add(headingId);
   const state = { cycle: false };
-  const content = inlineNestedRefs(doc, section.content, nextVisited, state);
-  return { content, missing: false, cycle: state.cycle };
+  const content = inlineNestedRefs(doc, section.content, onStack, memo, state);
+  onStack.delete(headingId);
+  const result: Projection = { content, missing: false, cycle: state.cycle };
+  memo.set(headingId, result);
+  return result;
 }
 
 /**
@@ -135,20 +173,14 @@ export function flattenSelfRefsInSlice(slice: Slice, sourceDoc: PMNode, freshId:
 function inlineNestedRefs(
   doc: PMNode,
   frag: Fragment,
-  visited: ReadonlySet<string>,
+  onStack: Set<string>,
+  memo: Map<string, Projection>,
   state: { cycle: boolean },
 ): Fragment {
   const out: PMNode[] = [];
   frag.forEach((node) => {
     if (isSelfRef(node)) {
-      const childId = String(node.attrs['source_heading_id'] ?? '');
-      if (!childId || visited.has(childId)) {
-        // Cycle (or self-pointer): drop it and flag. Rendering forever is the
-        // only alternative, so a dropped-with-notice is the right call.
-        state.cycle = true;
-        return;
-      }
-      const child = resolveSelfProjection(doc, childId, visited);
+      const child = resolveMemo(doc, String(node.attrs['source_heading_id'] ?? ''), onStack, memo);
       if (child.cycle) state.cycle = true;
       // A missing nested source contributes nothing (its own window elsewhere
       // shows "source not found"); a resolved one inlines its content.
@@ -156,7 +188,7 @@ function inlineNestedRefs(
       return;
     }
     if (node.content.size) {
-      out.push(node.type.create(node.attrs, inlineNestedRefs(doc, node.content, visited, state), node.marks));
+      out.push(node.type.create(node.attrs, inlineNestedRefs(doc, node.content, onStack, memo, state), node.marks));
       return;
     }
     out.push(node);

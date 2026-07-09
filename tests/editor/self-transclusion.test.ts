@@ -107,6 +107,45 @@ describe('resolveSelfProjection', () => {
     // A's card, then B's card (via A→B); B's ref back to A is dropped.
     expect(bodies(p.content)).toEqual(['a-ev', 'b-ev']);
   });
+
+  // Memoization (perf): a heading referenced repeatedly is resolved once, but its
+  // content is still MATERIALIZED per reference — the memo caches, it doesn't dedupe.
+  it('materializes a repeatedly-referenced heading once per reference', () => {
+    // H → M, M ; M → G, G ; G is one card. So H inlines M twice, each M inlines G
+    // twice → 4 copies of G's card.
+    const d = doc([
+      block('G', 'g'),
+      card('GC', 'g-ev'),
+      block('M', 'm'),
+      selfRef('g'),
+      selfRef('g'),
+      block('H', 'h'),
+      selfRef('m'),
+      selfRef('m'),
+      block('End', 'end'),
+    ]);
+    const p = resolveSelfProjection(d, 'h');
+    expect(p.cycle).toBe(false);
+    expect(bodies(p.content)).toEqual(['g-ev', 'g-ev', 'g-ev', 'g-ev']);
+  });
+
+  it('breaks a cycle even when the cyclic heading is also referenced off-cycle', () => {
+    // A → B ; B → A (cycle, dropped) AND B → C (inlined). The memoized DFS must
+    // still drop only the back-edge, not C.
+    const d = doc([
+      block('C', 'c'),
+      card('CC', 'c-ev'),
+      block('B', 'b'),
+      selfRef('a'),
+      selfRef('c'),
+      block('A', 'a'),
+      selfRef('b'),
+      block('End', 'end'),
+    ]);
+    const p = resolveSelfProjection(d, 'a');
+    expect(p.cycle).toBe(true);
+    expect(bodies(p.content)).toEqual(['c-ev']); // B's back-ref to A dropped; C kept
+  });
 });
 
 describe('flattenSelfRefs (.docx export) + .cmir round-trip', () => {
