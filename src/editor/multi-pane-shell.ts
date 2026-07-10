@@ -2607,10 +2607,14 @@ function buildDocRecord(
   const navEl = document.createElement('div');
   navEl.className = 'pmd-pane-nav-host';
 
+  // Resolve this record's uid up front so the editor state can be built for it.
+  // A session's collab binding attaches ONLY to its owning uid, so a pane opened
+  // during someone else's session stays independent (no document fusion).
+  const uid = opts.uid ?? newDocUid();
   const state = EditorState.create({
     doc,
     schema,
-    plugins: buildEditorPlugins(),
+    plugins: buildEditorPlugins(uid),
   });
 
   // Per-pane EditorView. dispatchTransaction keeps the slot's word
@@ -2786,7 +2790,7 @@ function buildDocRecord(
   setViewDocPath(view, typeof opts.handle === 'string' ? opts.handle : null);
 
   const record: DocRecord = {
-    uid: opts.uid ?? newDocUid(),
+    uid,
     filename,
     handle: opts.handle,
     format: opts.format,

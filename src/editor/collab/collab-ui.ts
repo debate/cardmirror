@@ -44,6 +44,10 @@ import { CollabSession } from './collab-session.js';
 export interface CollabUiDeps {
   getView(): EditorView | null;
   refreshPlugins(): void;
+  /** The `DocRecord.uid` of the document this session is being started/joined
+   *  for — captured at install so the binding plugins only ever attach to that
+   *  one doc's view (multi-pane fusion guard). */
+  getOwnerUid?(): string | null;
   /** Swap THIS window's editor to a fresh unsaved doc for a joined
    *  session — must never spawn a window (the binding installs into the
    *  current view; a spawned window would never get it — field bug on
@@ -161,6 +165,10 @@ function installWakeHooks(session: CollabSession): void {
 }
 
 function installSeams(session: CollabSession, deps: CollabUiDeps): void {
+  // The doc this session owns, captured now (the session's doc is focused at
+  // install time for host / join / resume). Only this uid's view gets the
+  // binding plugins — see CollabPluginSource.ownerUid.
+  const ownerUid = deps.getOwnerUid?.() ?? null;
   setCollabTransactionTagger(collabTagger);
   installWakeHooks(session);
   commentsSync = installCommentsSync(session.loroDoc, () => deps.getView());
@@ -178,6 +186,7 @@ function installSeams(session: CollabSession, deps: CollabUiDeps): void {
   // both peers advance the same small-int counter otherwise.
   setCommentIdSessionMode(true);
   setCollabPluginSource({
+    ownerUid,
     plugins: () => [
       ...session.plugins(),
       LoroUndoPlugin({ doc: session.loroDoc }),

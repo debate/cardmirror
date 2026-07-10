@@ -19,6 +19,12 @@
 import type { Command, Plugin, Transaction } from 'prosemirror-state';
 
 export interface CollabPluginSource {
+  /** The `DocRecord.uid` of the ONE document this session owns. Only that
+   *  document's view may receive the binding plugins — every other pane in a
+   *  multi-pane window must stay independent, or opening a second doc during a
+   *  session fuses it onto the session's shared LoroDoc. `buildEditorPlugins`
+   *  gates on `targetUid === ownerUid`. */
+  ownerUid: string | null;
   /** Binding plugins for the active session (sync, undo, cursors). */
   plugins(): Plugin[];
   /** True while the session owns undo — `history()` is excluded and
@@ -46,6 +52,19 @@ export function setCollabPluginSource(src: CollabPluginSource | null): void {
 
 export function collabPluginSource(): CollabPluginSource | null {
   return pluginSource;
+}
+
+/**
+ * The active session's binding plugins for the view identified by `targetUid`,
+ * or `[]`. THE multi-pane fusion guard: a session's plugins attach ONLY to its
+ * one owning doc's view (`ownerUid`). Every other pane — and the null/omitted
+ * uid — gets nothing, so opening a second document while a session is live can
+ * never bind that pane to the session's shared LoroDoc and overwrite it.
+ */
+export function collabPluginsFor(targetUid: string | null | undefined): Plugin[] {
+  const src = pluginSource;
+  if (src && targetUid != null && targetUid === src.ownerUid) return src.plugins();
+  return [];
 }
 
 /** Invite-join seam: the Receive pill (always-loaded pairing UI) hands a

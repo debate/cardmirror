@@ -146,7 +146,7 @@ import {
 import { flattenSelfRefs, flattenSelfRefsInSlice, fragmentHasSelfRef } from './self-transclusion.js';
 import { rememberLinkedCopy, clearLinkedCopy } from './clipboard-link-cache.js';
 import { makeTransclusionDivergencePlugin, transclusionDivergenceKey } from './transclusion-divergence-plugin.js';
-import { tagCollabTransaction, collabPluginSource, setCollabInviteJoiner, setCollabInviter } from './collab/collab-hooks.js';
+import { tagCollabTransaction, collabPluginSource, collabPluginsFor, setCollabInviteJoiner, setCollabInviter } from './collab/collab-hooks.js';
 import { learnHighlightPlugin, flashcardRangeAt } from './learn-highlight-plugin.js';
 import { repairHighlightPlugin } from './repair-highlight-plugin.js';
 import { aiWorkingPlugin } from './ai/ai-working-plugin.js';
@@ -1008,11 +1008,20 @@ setCollabInviter((target) => {
 });
 const collabDeps = {
   getView: () => view,
+  // The uid of the doc a session is being started/joined for = the focused
+  // doc's uid. Captured at install so the binding attaches only to that view.
+  getOwnerUid: () => activeDocIdentity().sessionUid,
   // The blessed same-view plugin swap (same pattern as the keybinding
   // settings subscriber): a session starting/ending changes the plugin
-  // stack, and buildEditorPlugins consults the collab plugin source.
+  // stack, and buildEditorPlugins consults the collab plugin source. Pass the
+  // focused doc's uid so the collab plugins are (re)attached only when the
+  // focused view is the session owner.
   refreshPlugins: () => {
-    if (view) view.updateState(view.state.reconfigure({ plugins: buildEditorPlugins() }));
+    if (view) {
+      view.updateState(
+        view.state.reconfigure({ plugins: buildEditorPlugins(activeDocIdentity().sessionUid) }),
+      );
+    }
   },
   // Name the (unsaved) session doc: window title, filename chip, and
   // the save-as default all follow currentDocFilename. No handle — the
@@ -3105,8 +3114,10 @@ settings.subscribe((s) => {
     lastRibbonOverrides = s.ribbonKeyOverrides;
     lastKeyboardMacros = s.keyboardMacros;
     if (view) {
+      // Focused doc's uid so a reconfigure keeps the collab binding only when
+      // the focused view is the session owner (multi-pane fusion guard).
       view.updateState(
-        view.state.reconfigure({ plugins: buildEditorPlugins() }),
+        view.state.reconfigure({ plugins: buildEditorPlugins(activeDocIdentity().sessionUid) }),
       );
     }
   }
@@ -4437,7 +4448,12 @@ function makeNewDocBody(): PMNode {
  * Exported so the multi-pane shell can build per-pane EditorViews
  * using the exact same plugin stack as the single-doc shell.
  */
-export function buildEditorPlugins(): Plugin[] {
+// `targetUid` = the DocRecord.uid of the view these plugins are being built for.
+// The active collab session's binding plugins attach ONLY when this is the
+// session-owning doc; every other pane (and the null/omitted case) stays
+// independent, so opening a second doc during a session can't fuse it onto the
+// session's shared LoroDoc. See CollabPluginSource.ownerUid.
+export function buildEditorPlugins(targetUid?: string | null): Plugin[] {
   const plugins: Plugin[] = [
     // First so its `editable` / read-mode tap-marker props win on the
     // mobile shell; a no-op everywhere else (the active flag is set
@@ -4610,8 +4626,11 @@ export function buildEditorPlugins(): Plugin[] {
   // A live collaboration session appends its binding plugins (sync,
   // undo manager, later cursors). Appended last: they carry no keymaps,
   // and every earlier filter/appendTransaction must see their output.
-  const collab = collabPluginSource();
-  if (collab) plugins.push(...collab.plugins());
+  // Scope the session binding to its ONE owning doc's view (collabPluginsFor
+  // returns [] for any non-owner / null uid). Without this, every pane built
+  // while a session is active binds to the session's shared LoroDoc and gets
+  // overwritten with the session doc (multi-pane document fusion).
+  plugins.push(...collabPluginsFor(targetUid));
   return plugins;
 }
 
@@ -4637,7 +4656,9 @@ function mountView(doc: PMNode, threads: Thread[] = []): void {
   const state = EditorState.create({
     doc,
     schema,
-    plugins: buildEditorPlugins(),
+    // Single-doc/mobile main view: its uid is the session-owner identity when a
+    // session is active on this window (matches getOwnerUid = currentDocUid).
+    plugins: buildEditorPlugins(currentDocUid),
   });
   view = new EditorView(editorEl, {
     state,
