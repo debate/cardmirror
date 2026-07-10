@@ -229,8 +229,17 @@ export class ThinkingTooltip {
 
     for (const [box, pills] of groups) {
       const rect = box.getBoundingClientRect();
-      const bandTop = Math.max(rect.top, topChromeBottom(), 0) + EDGE;
-      const bandBottom = Math.min(rect.bottom, window.innerHeight) - EDGE;
+      // Band top/bottom come from the SCROLL VIEWPORT (the visible editor area)
+      // — `#app` single-doc, `.pmd-pane-body` per pane — NOT the scrolled
+      // content box (`#editor` / `.pmd-pane-editor`), whose top slides negative
+      // as the doc scrolls. Using the content top made an off-top / near-top
+      // pill fall back to `topChromeBottom()` (the ribbon), which in multi-pane
+      // sits ABOVE the pane's doc-name chip — so pills piled onto that chip
+      // instead of the pane's content top. The left edge still hugs the content.
+      const viewport = (box.closest('#app, .pmd-pane-body') as HTMLElement | null) ?? box;
+      const vrect = viewport.getBoundingClientRect();
+      const bandTop = Math.max(vrect.top, topChromeBottom(), 0) + EDGE;
+      const bandBottom = Math.min(vrect.bottom, window.innerHeight) - EDGE;
       const dz = document.querySelector('.pmd-dropzone-root');
       const dropFloor = dz
         ? Math.min(dz.getBoundingClientRect().top - SEL_GAP, bandBottom)
