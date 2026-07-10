@@ -5,9 +5,28 @@ changes in each release, written for users of the editor. For
 in-depth rationale and implementation context behind each entry,
 see `DETAILED_CHANGELOG.md`.
 
-## Unreleased
+## 0.1.0-beta.11 — 2026-07-10
+
+> **Renamed — please read if you used "live zones."** The beta.10 "live zones"
+> feature has been **renamed to "linked copies"** and reworked into two distinct
+> things (a read-only **live view** and an editable **linked copy**). Your
+> existing documents keep working unchanged, but the names and menus are
+> different. See **"Live zones" are now "linked copies"** under *Changed* below.
 
 ### Added
+
+- **Real-time co-editing.** Share a document and work in it together, live.
+  Start a session (or invite a Card Sharing partner), hand your partner the
+  share code, and your edits, comments, and cursors sync as you type. It keeps
+  working offline — your changes sync back when you reconnect — and it survives
+  closing the app: reopen and rejoin from the **Sessions** list on the home
+  screen. In three-pane mode you can run several sessions at once, one per open
+  document, each showing its own collaborators in the pane footer. Starting,
+  naming, and leaving a session all confirm clearly so it's obvious which
+  document you're sharing. **Still experimental** — expect some rough edges,
+  and keep your own saved copies rather than relying on a session as your only
+  copy of a document. *(Desktop-only; it travels over the same
+  end-to-end-encrypted relay as Card Sharing.)*
 
 - **Show a section in more than one place — live views and linked copies.**
   CardMirror can now display one section of content wherever you need it, kept
@@ -24,17 +43,38 @@ see `DETAILED_CHANGELOG.md`.
   has moved on, so a stale copy is visible at a glance. Nothing is overwritten —
   it's a prompt to **Refresh**, and the badge clears once you do. Check on demand
   with *Check Linked Copy Sources for Updates*. The badge color is configurable
-  under Settings → Appearance → Style colors ("Linked-copy source-updated
-  badge"). *(For a copy from another file the check is desktop-only; a copy from
-  this document tracks its source live.)*
+  under Settings → Appearance. *(For a copy from another file the check is
+  desktop-only; a copy from this document tracks its source live.)*
+
+- **Automatic card numbering.** Number cards and their sub-parts automatically —
+  computed as you go and renumbered when you reorder. Turn it on from the
+  numbering cluster in the ribbon (or the command bar), and tune it in a new
+  **Card numbering** section under Settings → Appearance: independent formats for
+  the number and its substructure, a range of separators (period, dash, colon,
+  and more), optional capitalization, a configurable color, and separate indents.
+  It's display-only — your card text is never changed — and it round-trips
+  cleanly to Word.
 
 ### Changed
 
-- **"Live zones" are now "linked copies."** The old name conflated two different
-  things; "live" is now reserved for the truly-live read-only view, and the
-  editable, refreshable copy is a "linked copy." Commands and menus are renamed
-  accordingly ("embed" works as a search alias). Existing documents are
-  unaffected — only the wording changed.
+- **"Live zones" are now "linked copies" — and the feature was reworked.** In
+  beta.10, embedding a section from another file made a *live zone* (an editable
+  copy you could refresh). That is now split into two clearer things, and
+  renamed:
+  - A **live view** is a *new*, read-only window onto another section of the
+    *same* document — always showing the source's current content.
+  - A **linked copy** is your own editable, refreshable copy — this is what the
+    old "live zone" became, and it can now link to another file *or* to a
+    section of the current document.
+
+  Commands and menus use the new names ("embed" still works as a search alias),
+  and existing documents open unchanged — only the wording and structure moved.
+  If a tutorial or note says "live zones," read that as "linked copies."
+
+- **Zoom now goes up to 300%.** The maximum body-text zoom and whole-window
+  chrome scale were both raised from 200% to 300% (Settings → Appearance, the
+  zoom controls, or ⌘=/⌘−).
+
 ### Fixed
 
 - **⌘Q now actually quits on macOS.** Pressing ⌘Q — or choosing Quit from the
@@ -42,6 +82,13 @@ see `DETAILED_CHANGELOG.md`.
   instead of quitting. It now exits fully once any unsaved-changes prompts are
   handled. Backing out of a quit (Cancel, or a save that fails) still leaves
   the app running, the way macOS expects.
+
+- **The AI "Thinking…" pill is anchored correctly in three-pane mode.** While an
+  AI action ran, the "Thinking…" pill could pile up at the top of a pane —
+  overlapping the document bar — instead of sitting beside the text being worked
+  on. It now tracks the right spot in each pane.
+
+- **A partly-highlighted underline no longer darkens its unhighlighted part.**
 
 ## 0.1.0-beta.10 — 2026-07-07
 

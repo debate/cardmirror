@@ -5,7 +5,93 @@ behavior, rationale, and (where useful) the implementation context
 behind a change. For a shorter, jargon-free summary of what's new
 in each release, see `CHANGELOG.md`.
 
-## Unreleased
+## 0.1.0-beta.11 — 2026-07-10
+
+- **Real-time co-editing — now on by default, per-document** (`collab/collab-ui.ts`,
+  `collab/collab-hooks.ts`, `collab/collab-session.ts`, `collab/collab-cursors.ts`,
+  `collab/collab-comments.ts`, `collab/collab-persist.ts`, `collab/collab-gate.ts`,
+  `multi-pane-shell.ts`, `index.ts`, `text-prompt.ts`, `comments-plugin.ts`,
+  `home-screen.ts`, and many `tests/collab` suites). Co-editing ships enabled on
+  desktop — the build-time `VITE_COLLAB` / runtime `localStorage['pmd-collab']`
+  gate is removed; `collabEnabled()` is now just "desktop host, not browser." The
+  session model is fully **per-document**: one window can host N independent
+  sessions, one per open doc. A session is keyed by its owning `DocRecord.uid`
+  (`CollabPluginSource.ownerUid`), and `collabPluginsFor(targetUid)` hands a
+  session's binding plugins only to its own doc's view — so opening a second
+  document while a session is live can no longer bind that pane to the session's
+  LoroDoc and overwrite it (the multi-pane document-fusion bug, released beta.10).
+  The single `active` slot became a `Map<ownerUid, ActiveSession>`; cursors and
+  comments bind to the OWNER's view via `getViewForUid`, not the focused one, so
+  each doc's collaborators render in its own pane. **Per-slot footer copresence:**
+  each pane footer shows its visible doc's session status + presence dots, fed by
+  a zero-dependency copresence bridge in `collab-hooks` (provider + change
+  notifier) so the always-loaded shell reads session state without importing the
+  lazy collab module. **Lifecycle:** closing a co-edited doc is confirmed with a
+  session-aware dialog (Close-but-keep-resumable vs End/Leave), closing a pane
+  tears down only that doc's session, and per-doc comment-id allocation
+  (`setCommentIdSessionResolver`) replaced the window-global toggle so a
+  non-co-edited doc open beside a co-edited one keeps clean sequential comment
+  ids. **Mode-toggle hand-off:** the single↔three-pane toggle is a full reload, so
+  each live session's `{uid, roomId}` is captured + flushed before the reload and
+  auto-resumed into the reopened doc (`resumeSessionFlow(…, { existingDoc })`).
+  Start / close / end-leave confirmations share the unsaved-changes dialog's
+  route-style look with 1/2/3 keys (`promptForRouteChoice`). Also fixed: a shared
+  session is named after its OWNER doc (not the whole-window title, which in
+  multi-pane joins every open doc with " · "), and a persistence `clear()` race
+  where an in-flight write could resurrect a just-deleted session record. The
+  feature is shipped as **experimental** — some jank is expected, and users are
+  advised to keep independent saved copies rather than treat a session as their
+  only copy.
+
+- **Transclusion re-architecture: read-only live views + in-document linked
+  copies** (`schema/nodes.ts`, `transclusion.ts`, `transclusion-actions.ts`,
+  `transclusion-resolve.ts`, `transclusion-nodeview.ts`, `nav-panel.ts`,
+  `paste-plugin.ts`, `drag-controller.ts`, `index.ts`, `style.css`, and many
+  tests). The intra-document case was split from the single editable "living zone"
+  into two node types. A **live view** is a by-reference, READ-ONLY projection of
+  another section of the *same* document — resolved on a shared pass and memoized,
+  reflecting source edits live, with nesting + cycles handled. It's rendered as a
+  selectable content node (selects like text for send-to-speech; native drag /
+  shift-click / manual selection span the projection), gets nav-pane parity, and
+  never writes its source. A **linked copy** is the by-value editable snapshot —
+  what the old file-backed "live zone" became, now creatable linked to a file OR
+  to a section of the current document — and it flattens any embedded live views
+  to a flat snapshot on creation. See the divergence indicator entry below for the
+  source-changed badge.
+
+- **Automatic card numbering (display-only)** (`numbering.ts` NEW,
+  `numbering-plugin.ts` NEW, `numbering-commands.ts` NEW, `docx-numbering.ts` NEW,
+  `settings.ts`, `settings-ui.ts`, `index.html`, `style.css`, `docx` export/import,
+  tests). Card and sub-part numbers are computed at render time and at `.docx`
+  export from a stored skeleton (`numRole` / `numRestart` per card) — the card
+  text itself is never mutated. A ribbon numbering cluster (role / sub-role /
+  restart / visibility) plus a **Card numbering** settings section: independent
+  formats for the number and its substructure, separators (period, hyphen,
+  m-dash, n-dash, colon, double/triple hyphen), substructure capitalization, a
+  configurable glyph color linked to the accessibility color overrides, and
+  separate number vs substructure indents (also display-only). Numbers flow
+  through live views and round-trip through `.docx`.
+
+- **Zoom / chrome scale ceiling raised to 300%** (`settings.ts`, `index.ts`,
+  `mobile-shell.ts`, `settings-ui.ts`, `multi-pane-shell.ts`, `ribbon-commands.ts`).
+  The 200% maximum was raised to 300% and pulled into shared `ZOOM_MIN_PCT` /
+  `ZOOM_MAX_PCT` constants that every body-zoom clamp reads (single-doc
+  `clampZoom`, multi-pane per-pane zoom, the mobile slider, the default-zoom
+  setting) so single- and multi-pane can't drift; chrome (whole-window) scale got
+  its own `CHROME_SCALE_MIN_PCT` / `CHROME_SCALE_MAX_PCT` (also 50–300).
+
+- **AI "Thinking…" pill anchored per pane in three-pane** (`ai/thinking-tooltip.ts`).
+  The pill's vertical band was computed from the scrolled editor CONTENT box
+  (`#editor` / `.pmd-pane-editor`), whose top slides negative as the doc scrolls,
+  so an off-top / near-top pill fell back to the ribbon bottom — which in
+  multi-pane sits above the pane's doc-name chip, so pills piled onto it. The band
+  is now derived from the scroll VIEWPORT (`#app` single-doc, `.pmd-pane-body` per
+  pane), whose rect is the visible editor area (starting below the chip); the left
+  edge still hugs the content box.
+
+- **Partly-highlighted underline no longer darkens its unhighlighted part**
+  (`style.css`). A card underlined across a partly-highlighted span no longer
+  tints the un-highlighted portion.
 
 - **Live-zone divergence indicator** (`schema/nodes.ts`, `transclusion.ts`,
   `transclusion-actions.ts`, `transclusion-divergence.ts` NEW,
