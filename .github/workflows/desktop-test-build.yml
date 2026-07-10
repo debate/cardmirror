@@ -1,0 +1,59 @@
+name: Desktop test build
+
+# Branch- or manually-triggered desktop builds for TESTING: macOS `.dmg`
+# (arm64 + x64) and Windows `.exe`, uploaded as downloadable workflow
+# artifacts. Unlike the tag-triggered `release.yml`, this does NOT cut a
+# GitHub Release or publish anything (`--publish never`). A fast path to get
+# real installers of a feature branch onto testers' machines.
+#
+# Run via the push trigger below, or Actions tab → "Desktop test build" →
+# "Run workflow", or `gh workflow run desktop-test-build.yml --ref <branch>`.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [transclusion-followups]
+
+jobs:
+  build:
+    name: Build ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Install desktop dependencies
+        # apps/desktop intentionally isn't an npm workspace (electron-builder's
+        # internal install prunes hoisted dev-deps mid-build) — install it
+        # separately, mirroring release.yml / mac-test-build.yml.
+        run: npm --prefix apps/desktop ci
+
+      - name: Build desktop installer
+        # `--publish never` short-circuits electron-builder's default CI publish
+        # (our package.json has a publish block for the tag-triggered release).
+        run: npm --prefix apps/desktop run dist -- --publish never
+
+      - name: Upload installers
+        uses: actions/upload-artifact@v4
+        with:
+          name: cardmirror-${{ runner.os }}
+          # Only one of these globs matches per OS (dmg on mac, exe on win).
+          path: |
+            apps/desktop/release/*.dmg
+            apps/desktop/release/*.exe
+          if-no-files-found: error
+          retention-days: 14
