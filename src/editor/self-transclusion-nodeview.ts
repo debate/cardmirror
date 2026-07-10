@@ -215,9 +215,13 @@ class SelfRefView implements NodeView {
   }
 
   /** Ignore mutations to the chrome (glyph, menu, note); let PM manage
-   *  `contentDOM`. */
-  ignoreMutation(m: MutationRecord | { target: Node; type: string }): boolean {
-    return !this.contentDOM.contains(m.target as Node);
+   *  `contentDOM`. CRUCIALLY, never ignore a SELECTION mutation — that's how PM
+   *  reads a native drag/shift-click that crosses the view; ignoring it (because
+   *  the endpoint sits at/outside the boundary) is what made a manual selection
+   *  stop at the view's edge. */
+  ignoreMutation(m: MutationRecord | { type: 'selection'; target: Node }): boolean {
+    if (m.type === 'selection') return false;
+    return !this.contentDOM.contains((m as MutationRecord).target);
   }
 
   /** Keep glyph/menu clicks away from PM; everything on the content falls through
