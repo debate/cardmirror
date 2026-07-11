@@ -5,6 +5,82 @@ behavior, rationale, and (where useful) the implementation context
 behind a change. For a shorter, jargon-free summary of what's new
 in each release, see `CHANGELOG.md`.
 
+## 0.1.0-beta.12 — 2026-07-10
+
+Co-editing bug-fix release, driven by a multi-agent audit of the collaboration
+workflow (three-pane focus) plus field reports. The root class behind the
+three-pane failures: the invite-join and session-resume flows always ran the
+SINGLE-PANE `collabDeps` (module-singleton registrations in `collab-hooks.ts`),
+whose `newSessionDoc` (`replaceWithSessionDoc`) bails `false` under
+`multiDocActive` and whose `spawnJoinWindow` gates on `isPristineStarter` —
+single-pane module state that is stale garbage in the workspace.
+
+- **Three-pane invite accept: slot-picker session docs** (`multi-pane-shell.ts`
+  `createSessionDocIntoSlot`/`setFilenameForUid`, `index.ts`
+  `makeMultiPaneSessionDeps`, `collab/collab-ui.ts`). Joining in the workspace
+  now creates a fresh unsaved doc in a user-picked slot (the same slot picker
+  as Open) and binds the session to THAT doc's uid — the per-uid deps pattern
+  the mode-switch auto-resume already used. Previously the single-pane deps
+  either (K1) streamed the room's whole backlog and then bailed with a lying
+  "Join cancelled" (`replaceWithSessionDoc`'s `multiDocActive` guard), or (K2,
+  once the window had ever saved) spawned a second OS window whose multi-pane
+  boot dropped `payload.joinShareCode` on the floor and dead-ended the
+  empty-bytes payload in the file-open path ("This file is empty or hasn't
+  finished downloading…"). The single-pane deps' `spawnJoinWindow` is now also
+  hard-gated on `!multiDocActive`, and `routeInitialDocIntoWorkspace` handles a
+  `joinShareCode` payload by running the join through the slot-picker deps —
+  belt and suspenders for stale spawn payloads around a mode toggle.
+- **Three-pane home-screen resume** (`index.ts` homeCallbacks, ribbon
+  `collabJoinSession`, invite joiner registration). All three
+  join/resume entry points now pick deps per invocation:
+  `multiDocActive ? makeMultiPaneSessionDeps() : collabDeps`. Resuming from the
+  Sessions list in the workspace slot-picks like join; before, it always
+  failed with "Resume cancelled" through the same `multiDocActive` bail.
+- **Invites survive failed joins** (`receive-pill-ui.ts`, `collab-hooks.ts`,
+  `collab-ui.ts`). The Receive pill consumed the invite row — and the join flow
+  deleted the prefetched offline seed — on CLICK, before the join could
+  succeed, so every cancelled slot pick or network failure burned the share
+  code and forced a re-invite. `joinSessionWithCode` now returns
+  `Promise<boolean>`; the pill removes the row only on `true`, and
+  `deletePrefetch` moved after the join commits. A 410 (room ended) still
+  reports consumed — a dead invite should clear itself — and purges its seed.
+- **Strict join fails on tombstoned rooms** (`collab-session.ts` `catchUp`).
+  The 410 branch returned BEFORE the `rethrow` check, so `join()`'s strict
+  initial sync silently "succeeded" on an ended/expired room: blank doc,
+  "Joined the session" toast, synced chip, and a phantom resumable record
+  (audit-confirmed; reachable from any stale invite — the relay idle-GCs
+  rooms). Strict syncs now rethrow after `handleEnded()`; steady-state
+  catch-ups still swallow. `joinSessionWithCode` skips the offline-seed
+  fallback on 410 (an ended room is not an offline condition), and
+  `relayFailureMessage` gained a 410 branch ("That co-editing session has
+  ended — ask for a fresh invite…").
+- **Owner-uid drift fixed at the seam** (`collab-ui.ts` `installSeams`).
+  `installSeams` re-read `deps.getOwnerUid()` AFTER each flow's confirm dialog
+  and relay round-trip, so a focus change mid-flow registered/bound the
+  session onto whatever doc the user had since clicked into (multi-pane; the
+  start flow shares doc A's content but would bind to focused doc B). The
+  owner uid is now an explicit parameter captured at the moment that fixes the
+  target: start = the focused doc when Start was chosen; join/resume = the doc
+  `newSessionDoc()` just created.
+- **HTML-response guard in the rooms transport** (`room-client.ts`
+  `readJson`). Field bug (issue #11): a Securly school-content-filter agent
+  intercepted the renderer's `/relay/rooms/*` GETs with a 302 → HTML block
+  page (the desktop mailbox traffic runs in the main process and sails past
+  the PAC proxy, which is why card sharing worked while co-editing failed
+  with `Unexpected token '<', "<!DOCTYPE"…`). Every rooms-REST `res.json()`
+  now reads the body as text first and, on a parse failure, throws a
+  `RoomsError` naming the URL and classifying the payload ("returned a web
+  page instead of session data … a proxy, content filter, or wrong relay URL
+  is likely intercepting"). Regression tests: HTML-interceptor response in
+  `room-client.test.ts`, tombstoned-room join in `collab-session.test.ts`.
+- **Message fixes** (`collab-ui.ts`): the initiating-401 relay toast pointed
+  at "Settings → Card Sharing" (pane renamed in beta.11) — now
+  "Collaboration"; `guardReady`'s no-view toast said co-editing "needs a
+  single-document window" (a lie in three-pane, which supports several
+  sessions) — now "Open and focus a document to start a co-editing session,"
+  and join/resume no longer require an up-front view at all (an empty
+  workspace can join straight into a slot).
+
 ## 0.1.0-beta.11 — 2026-07-10
 
 - **Real-time co-editing — now on by default, per-document** (`collab/collab-ui.ts`,

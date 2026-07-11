@@ -1091,7 +1091,8 @@ a session yourself with **Start Collaboration Session** (in the ribbon's
 sharing and copies a one-off **share code** to your clipboard — hand it off
 however you like, and the other person joins with **Join Collaboration Session**
 and pastes it. (**Copy Session Share Code** re-copies it later.) CardMirror opens
-the shared document in a new window and syncs both of you up.
+the shared document in a new window — or, in the three-pane workspace, asks which
+pane it should open into — and syncs both of you up.
 
 **Editing together.** Everyone's cursor and selection show in their own color,
 and a presence indicator shows who's in the session. Comments sync too, and
@@ -1104,13 +1105,17 @@ message when they try to join, until someone leaves.
 **Offline and reconnecting.** Keep editing if your connection drops or your
 laptop sleeps: your changes queue up and sync the moment you're back online. You
 can even close the app — the session is saved, and you rejoin it later from the
-**Sessions** list on the home screen with your unsynced changes intact.
+**Sessions** list on the home screen with your unsynced changes intact. (In
+three-pane, reach the home screen with the **Home** button; rejoining asks which
+pane the document should open into.)
 
 **Several documents at once.** Each open document runs its own independent
 session, so you can co-edit more than one at the same time — several documents in
 a three-pane window (§7), or several separate single-document windows. In
 three-pane, each pane shows its own session's collaborators in its footer, and
-starting a session acts on the focused pane's document.
+starting a session acts on the focused pane's document. Accepting an invitation
+there works the same way as opening a file — you pick which pane the shared
+document opens into.
 
 **Ending or leaving.** **End or Leave Collaboration Session** stops your session:
 as the host you can end it for everyone, or as a guest leave it (each person

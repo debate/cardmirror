@@ -5,6 +5,49 @@ changes in each release, written for users of the editor. For
 in-depth rationale and implementation context behind each entry,
 see `DETAILED_CHANGELOG.md`.
 
+## 0.1.0-beta.12 — 2026-07-10
+
+Co-editing bug-fix release, focused on the three-pane workspace. (Co-editing
+remains **experimental** — keep your own saved copies.)
+
+### Fixed
+
+- **Accepting a co-editing invite works in three-pane.** Clicking **Join** in
+  the three-pane workspace now asks which pane the shared document should open
+  into and joins there — like opening a file. Before, it either downloaded the
+  whole document and then failed with a misleading "Join cancelled," or opened
+  a broken extra window that errored with "This file is empty or hasn't
+  finished downloading."
+
+- **Rejoining a session works in three-pane.** Resuming from the home screen's
+  **Sessions** list (reach it with the Home button) now asks for a pane the
+  same way, instead of failing with "Resume cancelled."
+
+- **A failed join no longer eats the invitation.** The SESSION row stays in
+  your Receive pill — with its share code — until you actually get into the
+  session, so a cancelled pane pick or a connection problem doesn't force the
+  host to re-invite you. (An invite whose session has already ended still
+  clears itself.)
+
+- **Joining an ended session now says so.** Joining or resuming a session the
+  host has ended (or that expired) reports "That co-editing session has ended"
+  instead of pretending to join: previously you'd get a blank document, a
+  "Joined the session" toast, and a phantom entry in your Sessions list.
+
+- **Clear error when a network filter blocks co-editing.** School content
+  filters (such as Securly), captive portals, and antivirus web-shields that
+  intercept the connection now produce a plain-language error naming the
+  blocked address, instead of the cryptic `Unexpected token '<'` message. If
+  you see it on a school-managed device, ask IT to allow
+  `scouting-assistant.up.railway.app`. (Thanks to Jacob for the diagnostics.)
+
+- **Starting a session sticks to the right document.** In three-pane, a
+  session now binds to the document you started it from even if you click
+  into another pane while it connects.
+
+- A couple of messages still pointed at the old "Card Sharing" settings name;
+  they now say **Collaboration**.
+
 ## 0.1.0-beta.11 — 2026-07-10
 
 > **Renamed — please read if you used "live zones."** The beta.10 "live zones"
