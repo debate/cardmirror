@@ -258,7 +258,7 @@ import { openWordCount } from './word-count-ui.js';
 import { wireColorPanel } from './color-panel.js';
 import { countReadAloudWords, formatReadTime, formatNumber } from './word-count.js';
 import { getHost, getElectronHost, isWindowsHost, isSameOpenHandle, type OpenedFile, type JournalEntry } from './host/index.js';
-import { installGlobalErrorSurface } from './error-surface.js';
+import { installGlobalErrorSurface, isFileGoneError } from './error-surface.js';
 
 // Install the last-resort error hooks before ANY app wiring — an exception
 // during boot or in a fire-and-forget flow must never be invisible again.
@@ -6734,17 +6734,6 @@ export async function runSaveMarkedCardsFlow(): Promise<boolean> {
     void alertDialog(`Marked cards save failed: ${err instanceof Error ? err.message : err}`);
     return false;
   }
-}
-
-/** Whether a save failure means the file's on-disk location is GONE —
- *  Electron surfaces a renamed/moved/deleted parent folder as ENOENT
- *  (via the IPC error message); the web FS Access API throws a
- *  NotFoundError DOMException for a handle whose file was removed.
- *  Distinct from "couldn't write" errors (permissions, disk full),
- *  which Save As can't fix any better than Save. */
-function isFileGoneError(err: unknown): boolean {
-  if (!(err instanceof Error)) return false;
-  return err.message.includes('ENOENT') || err.name === 'NotFoundError';
 }
 
 /**

@@ -27,6 +27,22 @@ function surface(kind: string, err: unknown): void {
   showToast(`Something went wrong: ${msg} — details in the developer console.`);
 }
 
+/** Whether a save failure means the file's on-disk location is GONE —
+ *  Electron surfaces a renamed/moved/deleted parent folder as ENOENT
+ *  (via the IPC error message); the web FS Access API throws a
+ *  NotFoundError DOMException for a handle whose file was removed.
+ *  Distinct from "couldn't write" errors (permissions, disk full),
+ *  which Save As can't fix any better than Save.
+ *
+ *  Shape-checked rather than `instanceof Error`: DOMException doesn't
+ *  inherit from Error in every runtime (it doesn't in jsdom), and the
+ *  NotFoundError case is precisely a DOMException. */
+export function isFileGoneError(err: unknown): boolean {
+  if (typeof err !== 'object' || err === null) return false;
+  const { name, message } = err as { name?: unknown; message?: unknown };
+  return (typeof message === 'string' && message.includes('ENOENT')) || name === 'NotFoundError';
+}
+
 export function installGlobalErrorSurface(): void {
   window.addEventListener('unhandledrejection', (e) => {
     surface('unhandled rejection', (e as PromiseRejectionEvent).reason);

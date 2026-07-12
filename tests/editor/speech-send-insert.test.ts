@@ -128,4 +128,35 @@ describe('insertSpeechSlice placement', () => {
       v.destroy();
     }
   });
+
+  it('a failing insert alerts instead of silently losing the card', async () => {
+    // The insert runs in a 0 ms defer, unreachable by any caller try/catch —
+    // and on a cross-window send the sender is told "delivered" before the
+    // receiving window inserts. A throw here used to be a silently lost card
+    // (fail-safe hardening, 2026-07-12).
+    const slice = takeSingleCardSlice();
+    expect(slice).not.toBeNull();
+    const dest = mkView(schema.nodes['doc']!.create(null, [para()]));
+    (dest as unknown as { dispatch: () => void }).dispatch = () => {
+      throw new Error('boom mid-insert');
+    };
+    insertSpeechSlice(dest, slice!, true);
+    await settle();
+    const dialogs = [...document.querySelectorAll('.pmd-route-dialog')];
+    expect(dialogs.some((el) => el.textContent?.includes("Couldn't insert the card"))).toBe(true);
+    expect(dialogs.some((el) => el.textContent?.includes('boom mid-insert'))).toBe(true);
+    // Dismiss via the alert's OK so its document-level listeners unregister.
+    document.querySelector<HTMLButtonElement>('.pmd-text-prompt-ok')?.click();
+    document.querySelectorAll('.pmd-route-overlay').forEach((o) => o.remove());
+    dest.destroy();
+  });
+
+  it('a destroyed destination view is a silent no-op, not a crash or an alert', async () => {
+    const slice = takeSingleCardSlice();
+    const dest = mkView(schema.nodes['doc']!.create(null, [para()]));
+    insertSpeechSlice(dest, slice!, true);
+    dest.destroy(); // closed within the 0 ms defer window
+    await settle();
+    expect(document.querySelector('.pmd-route-dialog')).toBeNull();
+  });
 });

@@ -7,6 +7,24 @@ in each release, see `CHANGELOG.md`.
 
 ## Unreleased
 
+- **Regression tests for the hardening rounds + a real bug they caught**
+  (`error-surface.ts`, new `tests/editor/error-surface.test.ts`, additions
+  to `tests/editor/speech-send-insert.test.ts`). `isFileGoneError` moved
+  from index.ts into error-surface.ts (exported, testable) — and its first
+  test caught a production bug: the guard was `err instanceof Error`, but
+  DOMException doesn't inherit from Error in every runtime, so the web FS
+  Access `NotFoundError` case — one of the two cases the helper exists
+  for — could fail to classify. Now shape-checked (name/message on any
+  object). Tests: ENOENT raw + IPC-wrapped, NotFoundError, negative cases
+  (EACCES, NotAllowedError, non-Errors); global error surface (uncaught
+  error → console + toast, throttle collapses a storm to one toast then
+  re-arms, unhandledrejection event handled without throwing); speech
+  insert failure mode (dispatch throws inside the 0 ms defer → alert with
+  the reason, card not silently lost) and destroyed-view no-op. The
+  index.ts app-shell wrappers (save flows, close/quit, mode switch,
+  recovery) remain untestable as units — index.ts has top-level boot side
+  effects; covered by the tested chokepoints + global hooks instead.
+
 - **Fail-safe hardening round 3: speech insert, close-to-home, pane close**
   (`speech-doc-send.ts`, `index.ts`, `multi-pane-shell.ts`). Swept the
   remaining high-sensitivity entry points for the invisible-exception class.
