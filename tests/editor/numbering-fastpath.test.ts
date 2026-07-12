@@ -10,11 +10,8 @@
  * — plus mark edits, real numbering commands, undo/redo, multi-step
  * transactions, and a seeded randomized op soup.
  *
- * Equivalence = same decoration positions and same rendered content. Widget
- * keys embed the card POSITION, so a mapped set keeps pre-edit positions in
- * its keys while a fresh build bakes new ones — rendering is identical (the
- * glyph text and color mode parts of the key are what render), so the
- * comparison strips the position component.
+ * Equivalence = same decoration positions and same rendered content (widget
+ * keys are position-free: kind + rendered glyph + color mode).
  */
 import { describe, it, expect, beforeEach } from 'vitest';
 import { EditorState, TextSelection, type Transaction } from 'prosemirror-state';
@@ -22,7 +19,7 @@ import { EditorView } from 'prosemirror-view';
 import { history, undo, redo } from 'prosemirror-history';
 import type { Node as PMNode } from 'prosemirror-model';
 import { schema, newHeadingId } from '../../src/schema/index.js';
-import { cardNumberingPlugin, numberingPluginKey } from '../../src/editor/numbering-plugin.js';
+import { cardNumberingPlugin, numberingPluginKey, numberingPerfProbe } from '../../src/editor/numbering-plugin.js';
 import { toggleNumberRole, toggleSubRole, toggleNumRestart } from '../../src/editor/numbering-commands.js';
 import { settings } from '../../src/editor/settings.js';
 
@@ -85,10 +82,6 @@ function mkView(doc: PMNode): EditorView {
   });
 }
 
-/** Strip the position component from a widget key (cnum:<pos>:rest). */
-function normKey(key: string): string {
-  return key.replace(/^cnum:\d+:/, 'cnum:');
-}
 /** Canonical multiset of a decoration set's render-relevant content. */
 function canon(state: EditorState): string[] {
   const set = numberingPluginKey.getState(state)!.decorations;
@@ -97,7 +90,7 @@ function canon(state: EditorState): string[] {
     .map((d) => {
       const spec = (d as unknown as { spec: { key?: string } }).spec;
       const attrs = (d as unknown as { type: { attrs?: Record<string, string> } }).type.attrs;
-      const what = spec?.key ? normKey(spec.key) : JSON.stringify(attrs ?? {});
+      const what = spec?.key ?? JSON.stringify(attrs ?? {});
       return `${d.from}-${d.to}:${what}`;
     })
     .sort();
@@ -151,33 +144,49 @@ describe('numbering fast path: per-edit equivalence across every structure kind'
     'body of ZT1', // zone-inner card body
     'body of VT1', // live-view-inner card body
   ];
-  /** Fingerprint of the MAP path: widget keys bake the build-time card
-   *  position (cnum:<pos>:…); mapping shifts d.from but never rewrites the
-   *  key, so any downstream widget with keyPos !== from-2 proves the set was
-   *  mapped, not rebuilt (a rebuild re-bakes them equal). */
-  function expectMappedNotRebuilt(v: EditorView, label: string): void {
-    const widgets = numberingPluginKey
-      .getState(v.state)!
-      .decorations.find()
-      .filter((d) => {
-        const key = (d as unknown as { spec: { key?: string } }).spec?.key;
-        return typeof key === 'string' && key.startsWith('cnum:');
-      });
-    const drifted = widgets.some((d) => {
-      const key = (d as unknown as { spec: { key: string } }).spec.key;
-      return Number(key.split(':')[1]) !== d.from - 2;
-    });
-    expect(drifted, `${label}: fast path (mapped set) ran`).toBe(true);
-  }
   for (const site of TEXT_SITES) {
     it(`typing in "${site}" maps instead of rebuilding, equivalently`, () => {
       const v = mkView(fixtureDoc());
+      const buildsBefore = numberingPerfProbe.builds;
       v.dispatch(v.state.tr.insertText('xyz', posInText(v.state.doc, site)));
+      // Prove the fast path ran: no full rebuild happened for this edit.
+      // (expectEquivalent's fresh reference state builds afterwards, so the
+      // probe must be read first.)
+      expect(numberingPerfProbe.builds, `${site}: no rebuild`).toBe(buildsBefore);
       expectEquivalent(v, site);
-      expectMappedNotRebuilt(v, site);
       v.destroy();
     });
   }
+
+  it('structural rebuilds REUSE the DOM of unchanged glyphs (position-free keys)', () => {
+    // Insert an UNNUMBERED card at the very top: structural → full rebuild,
+    // every card shifts position, but every label (and thus every rendered
+    // glyph) is unchanged. With position-baked keys this recreated every
+    // number span; position-free keys let ProseMirror keep them.
+    const v = mkView(fixtureDoc());
+    const spansBefore = new Set(v.dom.querySelectorAll('.pmd-card-number'));
+    expect(spansBefore.size).toBeGreaterThan(0);
+    v.dispatch(v.state.tr.insert(0, card('TOPNONE')));
+    const spansAfter = [...v.dom.querySelectorAll('.pmd-card-number')];
+    const kept = spansAfter.filter((el) => spansBefore.has(el)).length;
+    expect(kept, 'unchanged glyph spans preserved across rebuild').toBeGreaterThan(0);
+    v.destroy();
+  });
+
+  it('a glyph whose number CHANGES is still re-rendered across a rebuild', () => {
+    // Insert a NUMBERED card at the top of T1's scope: T1's glyph changes
+    // 1. → 2., so its span must be recreated (key differs by glyph text).
+    const v = mkView(fixtureDoc());
+    const glyphs = () => [...v.dom.querySelectorAll('.pmd-card-number')].map((el) => el.textContent);
+    const before = glyphs();
+    const blockPos = topLevelPosOf(v.state.doc, (nd) => nd.type.name === 'block');
+    const blockNode = v.state.doc.nodeAt(blockPos)!;
+    v.dispatch(v.state.tr.insert(blockPos + blockNode.nodeSize, card('FIRST', { role: 'number' })));
+    const after = glyphs();
+    expect(after.length).toBe(before.length + 1);
+    expect(after[0]).toBe(before[0]); // the new card takes "1"
+    v.destroy();
+  });
 
   it('non-structural deletes (text spans, incl. across a card boundary) stay equivalent', () => {
     const v = mkView(fixtureDoc());

@@ -136,6 +136,13 @@ export const numberingDisplaySig = (): string =>
 
 const EMPTY_STATE: NumberingState = { decorations: DecorationSet.empty, labelSig: '' };
 
+/** Test probe: counts full decoration rebuilds. The fast path's whole point
+ *  is NOT calling build() — the equivalence suite asserts on this counter to
+ *  prove which path ran (decoration/DOM identity can't distinguish them:
+ *  find() materializes fresh wrappers, and position-free keys make rebuilds
+ *  reuse DOM too). */
+export const numberingPerfProbe = { builds: 0 };
+
 function build(doc: PMNode): NumberingState {
   // Numbering display OFF: skip the whole computation (perf audit A-02 —
   // the O(numbered cards × top-level children) rebuild used to run on every
@@ -144,6 +151,7 @@ function build(doc: PMNode): NumberingState {
   // via NUMBERING_REFRESH: the single-doc settings subscriber nudges the
   // focused view, and the multi-pane shell broadcasts to every pane stack.
   if (!settings.get('showCardNumbering')) return EMPTY_STATE;
+  numberingPerfProbe.builds++;
   const { cards } = computeNumbering(doc);
   const labelSig = sigFromCards(cards);
   const decos: Decoration[] = [];
@@ -172,7 +180,15 @@ function build(doc: PMNode): NumberingState {
         // screen until an unrelated rebuild (the "doesn't update until I
         // toggle numbering" field bug, 2026-07-11). The color mode/override
         // is part of the render too, so it joins the key.
-        key: `cnum:${cardPos}:${label.kind}:${glyphText(label)}:${matchHeading ? headingColor ?? 'inh' : 'tok'}`,
+        //
+        // Deliberately NO position component: PM only compares keys between
+        // widgets aligned at the same document position, so position adds
+        // nothing for disambiguation — but baking it in meant every
+        // structural rebuild recreated the DOM of every downstream glyph
+        // (new positions → new keys → eq false), even when every glyph read
+        // the same. Position-free keys let a rebuild reuse the spans of all
+        // unchanged numbers (perf audit A-02 follow-up, 2026-07-13).
+        key: `cnum:${label.kind}:${glyphText(label)}:${matchHeading ? headingColor ?? 'inh' : 'tok'}`,
         ignoreSelection: true,
       }),
     );

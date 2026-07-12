@@ -7,6 +7,26 @@ in each release, see `CHANGELOG.md`.
 
 ## Unreleased
 
+- **Numbering widget keys: position component dropped** (perf audit A-02
+  follow-up; `numbering-plugin.ts`, tests in `numbering-fastpath.test.ts`).
+  Widget keys were `cnum:<cardPos>:<kind>:<glyph>:<color>` — but PM only
+  compares keys between widgets aligned at the same position, so the
+  position added nothing for disambiguation while guaranteeing that every
+  structural rebuild recreated the DOM of every downstream glyph (shifted
+  positions → new keys → eq false), even when every glyph read the same.
+  Verified before changing: nothing in src/ reads `spec.key` (the only
+  consumer is prosemirror-view's one-line equality check), and nothing
+  outside the plugin reads its state (docx export numbers independently).
+  Keys are now `cnum:<kind>:<glyph>:<color>` — the stale-glyph protection
+  (rendered glyph + color mode in the key, field bug 2026-07-11) is
+  untouched. New DOM-level tests: inserting an unnumbered card at the top
+  (structural rebuild, all positions shift, all glyphs unchanged) preserves
+  the number spans; inserting a numbered card re-renders the glyphs that
+  actually change. The map-vs-rebuild test probe (which had exploited the
+  position drift) is replaced by an exported build counter
+  (`numberingPerfProbe`) — decoration/DOM identity can no longer
+  distinguish the paths, which is the point.
+
 - **Numbering fast path** (perf audit A-02 tier 2; `numbering-plugin.ts`;
   comprehensive suite in `tests/editor/numbering-fastpath.test.ts`).
   apply() rebuilt the full DecorationSet on every doc-changing transaction.
