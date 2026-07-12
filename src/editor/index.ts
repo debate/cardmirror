@@ -259,6 +259,7 @@ import { wireColorPanel } from './color-panel.js';
 import { countReadAloudWords, formatReadTime, formatNumber } from './word-count.js';
 import { getHost, getElectronHost, isWindowsHost, isSameOpenHandle, type OpenedFile, type JournalEntry } from './host/index.js';
 import { installGlobalErrorSurface, isFileGoneError } from './error-surface.js';
+import { computeSelectionChrome, type SelectionChrome } from './selection-chrome.js';
 
 // Install the last-resort error hooks before ANY app wiring — an exception
 // during boot or in a fire-and-forget flow must never be invisible again.
@@ -987,6 +988,46 @@ export function enableMultiDocMode(opts: {
   exportBtn.disabled = false;
 }
 
+/** All mark names any formatting-panel button cares about — the fused
+ *  selection walk answers presence for the whole set in one pass. */
+const FUSED_MARK_NAMES = ['cite_mark', 'underline_mark', 'emphasis_mark'] as const;
+
+/** One-frame coalescing for the selection-mirroring chrome (font-size chip,
+ *  cursor-color readout, formatting-panel pressed states, numbering buttons)
+ *  — perf audit A-01, 2026-07-11. These used to run inline on EVERY
+ *  transaction, each doing its own O(selection) walk: drag-selecting
+ *  dispatches a selection transaction per pointermove (~60-125/s), so
+ *  growing a selection across a master file saturated the main thread
+ *  recomputing four readouts. The flush reads view.state at frame time, so
+ *  a burst of transactions inside one frame costs ONE fused walk; readouts
+ *  land at most a frame (~16 ms) late, imperceptible for passive
+ *  indicators. Settings/mount/benchmark refresh paths still call the
+ *  refreshers directly (synchronously) — the gate at the dispatch site is
+ *  complete because these readouts depend only on doc, selection,
+ *  storedMarks, and settings. */
+let selectionChromePending = false;
+function scheduleSelectionChromeRefresh(): void {
+  if (selectionChromePending) return;
+  selectionChromePending = true;
+  requestAnimationFrame(() => {
+    selectionChromePending = false;
+    flushSelectionChrome();
+  });
+}
+function flushSelectionChrome(): void {
+  // ONE walk answers font uniformity, mark presence, and numbering units
+  // for a range selection; every empty-selection path is O(1) and computed
+  // inside the consumers as before.
+  const chrome =
+    view && !view.state.selection.empty
+      ? computeSelectionChrome(view.state, FUSED_MARK_NAMES, ptForRun)
+      : null;
+  refreshFontSizeDisplay(chrome);
+  refreshCursorColorDisplay();
+  refreshFormattingPanelButtonStates(chrome);
+  syncNumberingButtons(chrome);
+}
+
 /** Used by the multi-pane shell: route the shared ribbon /
  *  chrome through the currently-focused pane's view. */
 export function setActiveView(v: EditorView | null): void {
@@ -1000,10 +1041,10 @@ export function setActiveView(v: EditorView | null): void {
   // Re-sync the chrome that depends on `view` (font-size chip,
   // word-count display, paragraph integrity indicator,
   // read-mode toggle pressed-state, speech-mark button, etc.).
-  refreshFontSizeDisplay();
-  refreshCursorColorDisplay();
-  refreshFormattingPanelButtonStates();
-  syncNumberingButtons();
+  // The selection-mirroring quartet coalesces to one fused walk per frame
+  // — the multi-pane dispatch re-runs setActiveView per focused-pane
+  // transaction, which used to pay all four walks a second time (A-01).
+  scheduleSelectionChromeRefresh();
   refreshWordCount();
   refreshReadModeBtn();
   refreshSpeechMarkBtn();
@@ -3251,6 +3292,9 @@ settings.subscribe((s) => {
   applyLineHeight(s.lineHeight);
   applyParagraphSpacing();
   applyFormattingPanel(s.formattingPanelMode, s.formattingPanelPreview, s.showCharacterStyles);
+  // Button states must re-sync when the panel is re-shown (the hidden mode
+  // skips their computation entirely — see refreshFormattingPanelButtonStates).
+  refreshFormattingPanelButtonStates();
   syncParagraphIntegrityBtn();
   syncNumberingButtons();
   // A settings change never edits the document, so the whole-doc word
@@ -3830,26 +3874,37 @@ if (numVisibilityBtn) {
     settings.set('showCardNumbering', !settings.get('showCardNumbering'));
   });
 }
-function syncNumberingButtons(): void {
-  // Faces mirror the configured number / substructure format.
-  if (numRoleBtn) numRoleBtn.textContent = numberingSampleGlyph('number');
-  if (numSubRoleBtn) numSubRoleBtn.textContent = numberingSampleGlyph('sub');
-  // The show/hide button reflects the numbering-visibility setting.
-  numVisibilityBtn?.setAttribute(
-    'aria-pressed',
-    settings.get('showCardNumbering') ? 'true' : 'false',
-  );
+/** Last-written numbering button DOM state — these ran per transaction, so
+ *  skip the textContent/attribute writes when nothing changed (A-01). */
+const numBtnWritten = new Map<HTMLElement, string>();
+function writeBtn(el: HTMLElement | null, face: string | null, pressed: boolean): void {
+  if (!el) return;
+  const key = `${face ?? ''}|${pressed}`;
+  if (numBtnWritten.get(el) === key) return;
+  numBtnWritten.set(el, key);
+  if (face !== null) el.textContent = face;
+  el.setAttribute('aria-pressed', pressed ? 'true' : 'false');
+}
+function syncNumberingButtons(chrome?: SelectionChrome | null): void {
+  const faceNumber = numberingSampleGlyph('number');
+  const faceSub = numberingSampleGlyph('sub');
+  const visOn = settings.get('showCardNumbering');
   // Role / restart reflect the current selection's numbering state.
   if (!view) {
-    for (const b of [numRoleBtn, numSubRoleBtn, numRestartBtn]) {
-      b?.setAttribute('aria-pressed', 'false');
-    }
+    writeBtn(numRoleBtn, faceNumber, false);
+    writeBtn(numSubRoleBtn, faceSub, false);
+    writeBtn(numRestartBtn, null, false);
+    writeBtn(numVisibilityBtn, null, visOn);
     return;
   }
-  const st = numberingSelectionState(view.state);
-  numRoleBtn?.setAttribute('aria-pressed', st.number ? 'true' : 'false');
-  numSubRoleBtn?.setAttribute('aria-pressed', st.sub ? 'true' : 'false');
-  numRestartBtn?.setAttribute('aria-pressed', st.restart ? 'true' : 'false');
+  const st = numberingSelectionState(
+    view.state,
+    chrome && !view.state.selection.empty ? chrome.units : undefined,
+  );
+  writeBtn(numRoleBtn, faceNumber, st.number);
+  writeBtn(numSubRoleBtn, faceSub, st.sub);
+  writeBtn(numRestartBtn, null, st.restart);
+  writeBtn(numVisibilityBtn, null, visOn);
 }
 syncNumberingButtons();
 
@@ -4051,8 +4106,12 @@ function isMarkActiveInSelection(state: EditorState, markName: string): boolean 
  *  character style button shows its toggled-on (aria-pressed) state when
  *  the cursor sits on text carrying that style. Cheap — reads the
  *  cursor's block type + marks (O(1)); safe to call on every transaction. */
-function refreshFormattingPanelButtonStates(): void {
+function refreshFormattingPanelButtonStates(chrome?: SelectionChrome | null): void {
   if (!view) return;
+  // Panel hidden → the buttons aren't visible; skip the mark computation.
+  // The settings subscriber re-syncs states explicitly when the mode
+  // changes back, so nothing shows stale on re-show.
+  if (settings.get('formattingPanelMode') === 'hidden') return;
   const state = view.state;
   const $from = state.selection.$from;
   // Clicking between blocks lands a gap cursor (or a node selection) whose
@@ -4061,6 +4120,7 @@ function refreshFormattingPanelButtonStates(): void {
   // style instead of blanking every button.
   if (!$from.parent.isTextblock) return;
   const blockType = $from.parent.type.name;
+  const useChrome = chrome && !state.selection.empty ? chrome : null;
   for (const { id, btn } of formattingPanelBtnRefs) {
     let active = false;
     const wantBlock = FORMATTING_PANEL_ACTIVE_BLOCK[id];
@@ -4068,13 +4128,17 @@ function refreshFormattingPanelButtonStates(): void {
       active = blockType === wantBlock;
     } else {
       const wantMarks = FORMATTING_PANEL_ACTIVE_MARKS[id];
-      if (wantMarks) active = wantMarks.some((m) => isMarkActiveInSelection(state, m));
+      if (wantMarks) {
+        active = useChrome
+          ? wantMarks.some((m) => useChrome.markActive[m])
+          : wantMarks.some((m) => isMarkActiveInSelection(state, m));
+      }
     }
     btn.setAttribute('aria-pressed', active ? 'true' : 'false');
   }
 }
 
-function refreshFontSizeDisplay(): void {
+function refreshFontSizeDisplay(chrome?: SelectionChrome | null): void {
   if (!fontSizeInput || !fontSizeControlEl) return;
   // Don't clobber the user's in-progress edit — only sync the input
   // value when it isn't focused.
@@ -4084,7 +4148,10 @@ function refreshFontSizeDisplay(): void {
     fontSizeControlEl.classList.remove('pmd-font-size-direct');
     return;
   }
-  const info = effectiveFontSizeForDisplay(view.state);
+  const info =
+    chrome && !view.state.selection.empty
+      ? chrome.font
+      : effectiveFontSizeForDisplay(view.state);
   fontSizeInput.value = info.pt == null ? '—' : formatPt(info.pt);
   // Red when every contributing run derives its size from an explicit
   // `font_size` mark; black when bare or driven by a named-style mark.
@@ -4192,23 +4259,9 @@ function effectiveFontSizeForDisplay(state: EditorState): FontSizeInfo {
     return { pt: paragraphDefaultPt(parent.type.name), direct: false };
   }
 
-  // Non-empty: collect (size, direct) per text run. Uniform size → show
-  // it; "direct" flag is the AND across runs (red only when every run
-  // is directly formatted).
-  const found = new Set<number>();
-  let allDirect = true;
-  let anyRun = false;
-  state.doc.nodesBetween(sel.from, sel.to, (node, _pos, parent) => {
-    if (!node.isText || !parent) return true;
-    const r = ptForRun(node, parent);
-    found.add(r.pt);
-    if (!r.direct) allDirect = false;
-    anyRun = true;
-    return true;
-  });
-  if (!anyRun) return { pt: null, direct: false };
-  if (found.size === 1) return { pt: [...found][0]!, direct: allDirect };
-  return { pt: null, direct: false };
+  // Non-empty: one implementation — the fused selection walk (asked for
+  // zero marks here; direct fallback callers only need the font answer).
+  return computeSelectionChrome(state, [], ptForRun).font;
 }
 
 /** Cached whole-doc read-aloud word count. Recomputed only when the
@@ -4882,12 +4935,17 @@ function mountView(doc: PMNode, threads: Thread[] = []): void {
         // scheduleHeavyUpdate repopulates it on the next idle flush).
         lastWholeDocWords = null;
       }
-      // Cheap; runs on every transaction (selection moves included)
-      // so the readout always reflects the cursor's current run.
-      refreshFontSizeDisplay();
-      refreshCursorColorDisplay();
-      refreshFormattingPanelButtonStates();
-      syncNumberingButtons();
+      // Selection-mirroring chrome: only when something it displays could
+      // have changed (doc, selection, storedMarks — settings changes have
+      // their own refresh path), coalesced to one fused walk per frame.
+      // Meta-only ticks (spellcheck, comments GC, collab leases) skip it.
+      if (
+        tx.docChanged ||
+        !prevState.selection.eq(next.selection) ||
+        prevState.storedMarks !== next.storedMarks
+      ) {
+        scheduleSelectionChromeRefresh();
+      }
       // Doc-walking work (nav rebuild, word count, comments column
       // refresh, comments-plugin orphan GC) is all O(doc) and the
       // dominant per-keystroke cost on big docs. Debounce it, and run

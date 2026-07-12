@@ -106,12 +106,18 @@ export const toggleNumRestart: Command = (state, dispatch) => {
  * default, so it's "on" unless flagged continue) or card/analytic (on only when
  * explicitly flagged to restart).
  */
-export function numberingSelectionState(state: EditorState): {
+export function numberingSelectionState(
+  state: EditorState,
+  precomputedUnits?: CardUnit[],
+): {
   number: boolean;
   sub: boolean;
   restart: boolean;
 } {
-  const units = inScopeCardUnits(state);
+  // The fused selection-chrome walk (selection-chrome.ts) already collected
+  // the in-scope units for range selections; accept them to avoid a second
+  // O(selection) walk per refresh. Semantics identical to inScopeCardUnits.
+  const units = precomputedUnits ?? inScopeCardUnits(state);
   const allRole = (role: NumRole): boolean =>
     units.length > 0 && units.every((u) => u.node.attrs['numRole'] === role);
   const $pos = state.selection.$from;
