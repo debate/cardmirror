@@ -23,7 +23,7 @@ import { deriveDropzoneLabel } from '../dropzone-store.js';
 import { schema } from '../../schema/index.js';
 import { settings, type PairingGroup } from '../settings.js';
 import { showToast } from '../toast.js';
-import { relayClient, type SendItem } from './relay-client.js';
+import { relayClient, sendOutcomeToast, type SendItem } from './relay-client.js';
 import { collabEnabled } from '../collab/collab-gate.js';
 import { collabInviter } from '../collab/collab-hooks.js';
 
@@ -369,17 +369,13 @@ export class SendPillController {
 
     let ok = 0;
     let fail = 0;
+    let authFail = 0;
     for (const si of sendItems) {
       const res = await relayClient.send(target.codes, si, { via: target.via });
       ok += res.ok;
       fail += res.fail;
+      authFail += res.authFail;
     }
-    if (fail === 0) {
-      showToast(`Sent to ${target.label} ✓`);
-    } else if (ok === 0) {
-      showToast(`Couldn't reach ${target.label}`);
-    } else {
-      showToast(`Sent to ${target.label} (${fail} failed)`);
-    }
+    showToast(sendOutcomeToast(target.label, { ok, fail, authFail }));
   }
 }

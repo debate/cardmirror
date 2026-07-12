@@ -27,6 +27,27 @@ export interface SendResult {
   ok: number;
   /** Recipients that failed (network / relay error). */
   fail: number;
+  /** How many of `fail` were credential DECLINES (401/403) rather than
+   *  outages. Zero while the official relay runs ungated (the beta). */
+  authFail: number;
+}
+
+/** The toast for a send's outcome — shared by the send pill and
+ *  Send-to-Starred so a credential decline reads the same everywhere:
+ *  it names the fix (Settings → Collaboration, account OR self-hosted
+ *  relay — never "subscription required") instead of the misleading
+ *  "couldn't reach". Exported for tests. */
+export function sendOutcomeToast(label: string, res: SendResult): string {
+  if (res.fail === 0) return `Sent to ${label} ✓`;
+  if (res.authFail > 0) {
+    const scope = res.ok === 0 && res.authFail === res.fail ? '' : ` for ${res.authFail} recipient(s)`;
+    return (
+      `The relay declined your credentials${scope} — in Settings → Collaboration, ` +
+      `connect your Debate Decoded account or set up your own relay.`
+    );
+  }
+  if (res.ok === 0) return `Couldn't reach ${label}`;
+  return `Sent to ${label} (${res.fail} failed)`;
 }
 
 class RelayClient {
@@ -48,12 +69,12 @@ class RelayClient {
     opts?: { via?: string; minReceiverVersion?: string },
   ): Promise<SendResult> {
     const targets = Array.from(new Set(recipientCodes.filter(Boolean)));
-    if (targets.length === 0) return { ok: 0, fail: 0 };
+    if (targets.length === 0) return { ok: 0, fail: 0, authFail: 0 };
 
     const electron = getElectronHost();
     if (!electron?.pairingSend) {
       // Web edition has no main-process sender yet (deferred).
-      return { ok: 0, fail: targets.length };
+      return { ok: 0, fail: targets.length, authFail: 0 };
     }
     try {
       const res = await electron.pairingSend({
@@ -62,9 +83,10 @@ class RelayClient {
         via: opts?.via,
         minReceiverVersion: opts?.minReceiverVersion,
       });
-      return { ok: res?.ok ?? 0, fail: res?.fail ?? 0 };
+      // authFail ?? 0 keeps an older main (no decline counting) working.
+      return { ok: res?.ok ?? 0, fail: res?.fail ?? 0, authFail: res?.authFail ?? 0 };
     } catch {
-      return { ok: 0, fail: targets.length };
+      return { ok: 0, fail: targets.length, authFail: 0 };
     }
   }
 }

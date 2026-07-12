@@ -1263,8 +1263,8 @@ export interface Settings {
   /** Pairing: display mirror of the blog-account entitlement expiry
    *  (epoch ms; 0 = not connected). The entitlement itself lives in
    *  Electron main; this mirror only drives the settings row's status
-   *  line. The row is hidden unless the runtime enables the account
-   *  flow (PAIRING_AUTH=1). */
+   *  line. Linking is optional while the relay runs ungated (the beta)
+   *  — it gates nothing. */
   pairingConnectedUntil: number;
   /** Pairing: this machine's own shareable code — its relay address.
    *  Generated once (lazily on first enable) and shown in settings with
@@ -3140,13 +3140,19 @@ export const SETTING_METADATA: SettingMeta[] = [
   },
   {
     key: 'pairingConnectedUntil',
-    label: 'Authorize with Debate Decoded',
+    label: 'Debate Decoded account (optional)',
     description:
-      'Link this machine to your Debate Decoded membership: open the connect page on the blog, sign in, and paste the code it shows you here. Each membership covers two machines; linking a third asks before unlinking the oldest.',
+      'Optional while CardMirror is in beta: no feature requires it — card sharing and ' +
+      'co-editing work exactly the same whether or not this machine is linked. Linking just ' +
+      'readies this machine in case the hosted relay asks for accounts after the beta. To ' +
+      'link, open debate-decoded.ghost.io/cardmirror-connect, sign in, and paste the code it ' +
+      'shows you here. Each membership covers two machines; linking a third asks before ' +
+      'unlinking the oldest.',
     kind: 'pairingAccount',
     category: 'pairing',
     electronOnly: true,
     dependsOn: 'pairingEnabled',
+    aliases: ['account', 'auth', 'authorize', 'debate decoded', 'connect code', 'membership'],
   },
   {
     key: 'pairingDisplayName',

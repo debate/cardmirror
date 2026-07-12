@@ -2058,18 +2058,18 @@ function buildReadersEditor(): HTMLElement {
   return wrap;
 }
 
-/** Your own pairing code: shown read-only with Copy + Regenerate. Empty
- *  until card sharing is enabled (the wiring layer mints it on enable). */
-/** Blog-account row: hidden entirely unless the Electron main process
- *  enables the entitlement flow (PAIRING_AUTH=1 — dormant in release
- *  builds). Paste-a-connect-code UI with the seat-limit confirm flow:
- *  a 409 names the oldest seat and carries a fresh retryCode (codes
- *  are single-use), so the confirm retry never bounces the user back
- *  to the blog page. */
+/** Blog-account row: OPTIONAL account linking — while the relay runs
+ *  ungated (the beta), an entitlement gates nothing and every message
+ *  here must say so. Paste-a-connect-code UI with the seat-limit
+ *  confirm flow: a 409 names the oldest seat and carries a fresh
+ *  retryCode (codes are single-use), so the confirm retry never bounces
+ *  the user back to the blog page. The row waits for the main process
+ *  to report the flow available, so an older main (or the web edition,
+ *  which has no pairing IPC at all) leaves it hidden. */
 function buildPairingAccountEditor(row: HTMLElement): HTMLElement {
   const wrap = document.createElement('div');
   wrap.className = 'pmd-pairing-account';
-  row.style.display = 'none'; // shown only once main confirms the flow is enabled
+  row.style.display = 'none'; // shown only once main confirms the flow is available
 
   const status = document.createElement('div');
   status.className = 'pmd-pairing-account-status';
@@ -2080,7 +2080,7 @@ function buildPairingAccountEditor(row: HTMLElement): HTMLElement {
   const input = document.createElement('input');
   input.type = 'text';
   input.className = 'pmd-settings-text';
-  input.placeholder = 'connect code from the blog page';
+  input.placeholder = 'code from debate-decoded.ghost.io/cardmirror-connect';
   input.spellcheck = false;
   controls.appendChild(input);
   const connectBtn = document.createElement('button');
@@ -2107,14 +2107,16 @@ function buildPairingAccountEditor(row: HTMLElement): HTMLElement {
         `through ${new Date(expiresAt).toLocaleDateString()})`;
       disconnectBtn.hidden = false;
     } else {
-      status.textContent = 'Not connected';
+      status.textContent =
+        'Not linked — and nothing requires it during the beta; every feature works without an account.';
       disconnectBtn.hidden = true;
     }
   }
 
   const ERROR_TEXT: Record<string, string> = {
     badCode: 'That code is invalid or expired — generate a fresh one on the blog page.',
-    subscription: 'Your membership isn\u2019t active.',
+    subscription:
+      'Your membership isn\u2019t active. (Linking is optional during the beta \u2014 nothing in CardMirror requires it.)',
     evicted: 'Another machine took this seat. Generate a new code to re-link.',
     unsupported: 'The relay doesn\u2019t support accounts.',
     network: 'Couldn\u2019t reach the relay.',

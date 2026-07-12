@@ -7,6 +7,35 @@ in each release, see `CHANGELOG.md`.
 
 ## Unreleased
 
+- **Relay auth architecture activated — enforcement stays off**
+  (`pairing-ipc.ts`, new `pairing-entitlement.ts`; 18 tests across
+  `tests/desktop/pairing-entitlement.test.ts` +
+  `tests/editor/send-outcome-toast.test.ts`). The account-entitlement
+  flow built dormant in beta.7 no longer hides behind the runtime
+  `PAIRING_AUTH` env flag (which a packaged, double-clicked app could
+  never satisfy — it inherits no shell env): the Debate Decoded account
+  row in Settings → Collaboration now shows for every desktop user, and
+  a valid stored entitlement is preferred as the Authorization bearer on
+  the OFFICIAL relay (which accepts it alongside the shared token while
+  ungated — the server has taken entitlement bearers since 5a11a10, so
+  adoption accrues with zero enforcement). Custom self-hosted relays
+  still always use their own token. The pure decision core — stored-
+  state validation, the 60s validity slack, the renew-inside-final-24h
+  window, and the full /relay/connect response taxonomy (bind, renewal
+  keeping the last-known email past a fail-open lookup, seat-limit
+  confirm flow with retryCode, visible eviction, badCode / lapsed /
+  unsupported) — moved to `pairing-entitlement.ts` where it's unit-
+  tested. Send declines are now surfaced: the main process counts
+  per-recipient 401/403s separately (`authFail` on the send IPC), and
+  both the send pill and Send-to-Starred use one shared toast builder
+  (`sendOutcomeToast`) that names the fix — account or self-hosted
+  relay, never "subscription" — instead of "couldn't reach"; inert
+  while the relay is ungated. Every user-facing auth surface (settings
+  row + description, connect errors, eviction toast, card-sharing 401,
+  co-editing session-start/mid-session 401s) now states that linking is
+  OPTIONAL during the beta and gates nothing. Future gating flip is
+  server-config only (webhooks + `RELAY_GATING`), per the runbook.
+
 - **LLM client hardening** (`llm.ts`; 24 tests in
   `tests/editor/llm-errors.test.ts`). Both providers now share a failure
   envelope beyond the kind-tagged `LlmError`s: (1) ONE automatic retry on

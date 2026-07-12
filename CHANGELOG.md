@@ -9,6 +9,17 @@ see `DETAILED_CHANGELOG.md`.
 
 ### Added
 
+- **Optional Debate Decoded account linking** (Settings → Collaboration).
+  You can now link CardMirror to a Debate Decoded membership: open
+  [the connect page](https://debate-decoded.ghost.io/cardmirror-connect/),
+  sign in, and paste the code it shows into the new **Debate Decoded
+  account** row. **While CardMirror is in beta this is optional and
+  required for nothing** — card sharing, co-editing, and every other
+  feature work identically with or without it, and self-hosted relays
+  never need an account. Linking simply readies this machine in case the
+  hosted relay asks for accounts after the beta. A membership covers two
+  machines; linking a third asks before unlinking the oldest.
+
 - **AI features can now use OpenRouter** as an inference provider, alongside
   the Anthropic API. Pick the provider under **Settings → Comments & AI → AI
   provider**. OpenRouter needs its own API key and a model id (for example

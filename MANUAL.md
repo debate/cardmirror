@@ -1076,6 +1076,23 @@ after three hours. Sharing is off until you turn it on.
 Settings → Collaboration. Everyone sharing cards with each other must
 point at the same relay. Leave both empty to use the official relay.
 
+**Linking a Debate Decoded account — optional.** Settings → Collaboration
+has a **Debate Decoded account** row. To be completely clear: **while
+CardMirror is in beta, linking is optional and required for nothing** —
+card sharing, co-editing, and everything else work identically whether or
+not this machine is linked. What linking does is future-proof your setup:
+if the hosted relay ever asks for accounts after the beta, machines that
+are already linked will carry on without interruption (self-hosted relays
+never need an account, full stop). To link, open
+[debate-decoded.ghost.io/cardmirror-connect](https://debate-decoded.ghost.io/cardmirror-connect/),
+sign in to your membership, and paste the code the page shows you into the
+settings row — codes are single-use and expire after ten minutes, so
+generate a fresh one if it's rejected. A membership covers **two
+machines**; linking a third asks before it unlinks the oldest, and an
+unlinked machine finds out the next time it checks in. **Disconnect**
+unlinks this machine; regenerating your pairing code also unlinks it (the
+link is tied to that code).
+
 ---
 
 ## 9. Co-editing (real-time collaboration)

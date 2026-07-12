@@ -472,7 +472,8 @@ function sessionCallbacks(deps: CollabUiDeps, getSess: () => ActiveSession | nul
       showToast(
         'The session relay rejected your credentials — reconnect your Debate ' +
           'Decoded account or check your relay settings (Settings → Collaboration). ' +
-          'Your edits are saved locally and keep retrying.',
+          'Your edits are saved locally and keep retrying. (During the beta the ' +
+          'official relay requires no account.)',
       );
     },
     onBacklogMerged: (count: number) => {
@@ -534,11 +535,18 @@ function sessionCallbacks(deps: CollabUiDeps, getSess: () => ActiveSession | nul
  *  without asserting which. Any non-401 keeps its raw reason. */
 export function relayFailureMessage(err: unknown, opts: { initiating: boolean; verb: string }): string {
   if (err instanceof RoomsError && err.status === 401) {
+    // Beta context appended: the ungated official relay never 401s, so
+    // today this points at a bad self-host token or a stale build — and
+    // the message must never read as "subscription required".
+    const beta =
+      ' (During the beta the official relay requires no account — every feature works without one.)';
     return opts.initiating
       ? 'Starting a collaboration session requires a relay. In Settings → ' +
-          'Collaboration, connect your Debate Decoded account or set up your own relay.'
+          'Collaboration, connect your Debate Decoded account or set up your own relay.' +
+          beta
       : 'The session relay rejected your credentials. In Settings → Collaboration, ' +
-          'connect your Debate Decoded account or set up your own relay.';
+          'connect your Debate Decoded account or set up your own relay.' +
+          beta;
   }
   // 410 = the room was ended (host); 404 = the room itself is gone (relay
   // idle GC). Not errors the user can retry into — tell them the session is

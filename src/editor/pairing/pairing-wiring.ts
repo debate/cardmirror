@@ -103,7 +103,8 @@ export function initPairingWiring(): void {
       if (st.evicted) {
         showToast(
           'This machine was unlinked from your Debate Decoded account ' +
-            '(another machine took the seat). Re-link from the connect page.',
+            '(another machine took the seat). Re-link from the connect page — ' +
+            'or not: during the beta nothing requires the link.',
         );
       }
     });
@@ -111,12 +112,16 @@ export function initPairingWiring(): void {
 
   // Relay rejected our credentials (401): a wrong self-host token today,
   // or a missing subscription once gating enforces. Same two-path
-  // framing as the co-editing session-start message.
+  // framing as the co-editing session-start message — plus the beta
+  // context, since the ungated official relay shouldn't 401 at all
+  // (a wrong custom-relay token or a stale build is the likely cause).
   if (electron?.onPairingUnauthorized) {
     electron.onPairingUnauthorized(() => {
       showToast(
         'Card sharing: the relay rejected your credentials. In Settings → ' +
-          'Collaboration, connect your Debate Decoded account or set up your own relay.',
+          'Collaboration, connect your Debate Decoded account or set up your own relay. ' +
+          '(During the beta the official relay requires no account, so this usually ' +
+          'means a self-hosted relay token is wrong or the app needs an update.)',
       );
     });
   }

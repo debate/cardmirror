@@ -624,7 +624,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   pairingRegenerateKey: () =>
     ipcRenderer.invoke('host:pairing-regenerate-key') as Promise<{ ownCode: string }>,
   pairingSend: (payload: PairingSendIpc) =>
-    ipcRenderer.invoke('host:pairing-send', payload) as Promise<{ ok: number; fail: number }>,
+    ipcRenderer.invoke('host:pairing-send', payload) as Promise<{
+      ok: number;
+      fail: number;
+      authFail: number;
+    }>,
   pairingInboxList: () =>
     ipcRenderer.invoke('host:pairing-inbox-list') as Promise<PairingInboxItemIpc[]>,
   pairingInboxRemove: (id: string) =>
@@ -663,7 +667,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('pairing:unauthorized', listener);
     return () => ipcRenderer.removeListener('pairing:unauthorized', listener);
   },
-  /** Blog-account entitlement (dormant without PAIRING_AUTH=1 in main). */
+  /** Blog-account entitlement (optional during the beta — gates nothing). */
   pairingConnectAccount: (payload: { connectCode: string; confirmEvict?: boolean }) =>
     ipcRenderer.invoke('host:pairing-connect-account', payload) as Promise<PairingConnectResultIpc>,
   pairingAccountStatus: () =>

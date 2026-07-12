@@ -10,7 +10,7 @@ import { settings, type PairingPartner, type PairingGroup } from '../settings.js
 import { takeSendSlice } from '../speech-doc-send.js';
 import { deriveDropzoneLabel } from '../dropzone-store.js';
 import { showToast } from '../toast.js';
-import { relayClient, type SendItem } from './relay-client.js';
+import { relayClient, sendOutcomeToast, type SendItem } from './relay-client.js';
 
 /** Resolve the starred ref → recipient codes + a display label (groups also
  *  carry a `via` label). Returns null when nothing is starred or the starred
@@ -62,7 +62,5 @@ export async function sendViewToStarred(view: EditorView): Promise<void> {
     sliceJson: slice.toJSON(),
   };
   const res = await relayClient.send(target.codes, item, { via: target.via });
-  if (res.fail === 0) showToast(`Sent to ${target.label} ✓`);
-  else if (res.ok === 0) showToast(`Couldn't reach ${target.label}`);
-  else showToast(`Sent to ${target.label} (${res.fail} failed)`);
+  showToast(sendOutcomeToast(target.label, res));
 }

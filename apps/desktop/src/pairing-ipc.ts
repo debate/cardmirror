@@ -40,6 +40,15 @@ import * as path from 'node:path';
 import { createPairingKeystore, routingId, type PairingKeystore, type SealedBundle } from './pairing-crypto.js';
 import { BUILT_IN_RELAY_TOKEN } from './pairing-build.js';
 import { RelayStream } from './relay-stream.js';
+import {
+  entitlementIfValid,
+  interpretConnectResponse,
+  parseStoredEntitlement,
+  renewalDue,
+  type ConnectOutcome,
+  type ConnectResponseBody,
+  type EntitlementState,
+} from './pairing-entitlement.js';
 
 /** Relay endpoint defaults. Resolution order (see relayUrl()/relayToken()):
  *  user settings (self-hosted relay) → env override → baked default. Env
@@ -81,22 +90,18 @@ function relayUrl(): string {
   return custom || DEFAULT_RELAY_URL;
 }
 
-/** Blog-account entitlement flow — SHIPPED DORMANT. Everything below
- *  the flag exists in release builds but is inert until the app is
- *  launched with PAIRING_AUTH=1 (dev/testing). When active, a valid
- *  stored entitlement becomes the bearer for the OFFICIAL relay (the
- *  relay accepts it alongside the shared token even before gating is
- *  enforced); custom self-hosted relays always use their own token. */
-const AUTH_FEATURE = process.env.PAIRING_AUTH === '1';
-
 /** Effective bearer. This supplier is the single seam of the
- *  subscription-entitlement flow — everything (POST, GET, DELETE,
- *  stream) routes its Authorization through here. */
+ *  account-entitlement flow — everything (POST, GET, DELETE, stream)
+ *  routes its Authorization through here. A valid stored entitlement is
+ *  preferred for the OFFICIAL relay (which accepts it alongside the
+ *  shared token while it runs ungated — linking an account is optional
+ *  during the beta and gates nothing); custom self-hosted relays always
+ *  use their own token, never entitlements. */
 function relayToken(): string {
   const custom = config.relayToken.trim();
   if (custom) return custom;
-  if (AUTH_FEATURE && !config.relayUrl.trim()) {
-    const ent = entitlementIfValid();
+  if (!config.relayUrl.trim()) {
+    const ent = validEntitlement();
     if (ent) return ent.entitlement;
   }
   return DEFAULT_RELAY_TOKEN;
@@ -175,15 +180,7 @@ function ks(): PairingKeystore {
   return keystore;
 }
 
-// ── Blog-account entitlement (persisted; dormant without PAIRING_AUTH) ─
-
-interface EntitlementState {
-  entitlement: string;
-  /** Epoch ms. */
-  expiresAt: number;
-  /** Member email the relay reported at connect/renewal ('' unknown). */
-  email: string;
-}
+// ── Blog-account entitlement (persisted; optional during the beta) ────
 
 let entitlementState: EntitlementState | null = null;
 let entitlementLoaded = false;
@@ -198,18 +195,9 @@ async function ensureEntitlementLoaded(): Promise<void> {
   if (entitlementLoaded) return;
   entitlementLoaded = true;
   try {
-    const parsed = JSON.parse(await fs.readFile(entitlementPath(), 'utf8'));
-    if (
-      parsed &&
-      typeof parsed.entitlement === 'string' &&
-      typeof parsed.expiresAt === 'number'
-    ) {
-      entitlementState = {
-        entitlement: parsed.entitlement,
-        expiresAt: parsed.expiresAt,
-        email: typeof parsed.email === 'string' ? parsed.email : '',
-      };
-    }
+    entitlementState = parseStoredEntitlement(
+      JSON.parse(await fs.readFile(entitlementPath(), 'utf8')),
+    );
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
       console.warn('[pairing] Failed to read pairing-entitlement.json:', err);
@@ -229,12 +217,8 @@ async function persistEntitlement(): Promise<void> {
   }
 }
 
-function entitlementIfValid(): EntitlementState | null {
-  // 60s slack so a token never expires mid-request.
-  if (entitlementState && entitlementState.expiresAt > Date.now() + 60_000) {
-    return entitlementState;
-  }
-  return null;
+function validEntitlement(): EntitlementState | null {
+  return entitlementIfValid(entitlementState, Date.now());
 }
 
 function accountStatus(): {
@@ -244,8 +228,11 @@ function accountStatus(): {
   email: string;
 } {
   return {
-    enabled: AUTH_FEATURE,
-    connected: entitlementIfValid() !== null,
+    // Always available on desktop. The renderer's settings row keys its
+    // visibility off this flag, so an older renderer paired with this
+    // main still behaves.
+    enabled: true,
+    connected: validEntitlement() !== null,
     expiresAt: entitlementState?.expiresAt ?? 0,
     email: entitlementState?.email ?? '',
   };
@@ -257,17 +244,6 @@ function broadcastEntitlement(extra?: { evicted?: boolean; lapsed?: boolean }): 
       w.webContents.send('pairing:entitlement-changed', { ...accountStatus(), ...extra });
     }
   }
-}
-
-/** Structured result of a connect / renewal call against /relay/connect. */
-interface ConnectOutcome {
-  ok: boolean;
-  error?: string;
-  expiresAt?: number;
-  email?: string;
-  limit?: number;
-  wouldEvict?: { routingCode: string; boundAt: string };
-  retryCode?: string;
 }
 
 async function connectAccount(connectCode: string, confirmEvict: boolean): Promise<ConnectOutcome> {
@@ -294,62 +270,24 @@ async function connectAccount(connectCode: string, confirmEvict: boolean): Promi
     console.warn('[pairing] connect failed:', err);
     return { ok: false, error: 'network' };
   }
-  const body = (await res.json().catch(() => ({}))) as {
-    entitlement?: string;
-    expiresAt?: number;
-    email?: string;
-    detail?: { error?: string; limit?: number; wouldEvict?: { routingCode: string; boundAt: string }; retryCode?: string };
-  };
-  if (res.ok && typeof body.entitlement === 'string' && typeof body.expiresAt === 'number') {
-    entitlementState = {
-      entitlement: body.entitlement,
-      expiresAt: body.expiresAt,
-      // A renewal that failed the (fail-open) email lookup keeps the
-      // last-known email rather than blanking the status line.
-      email:
-        (typeof body.email === 'string' && body.email) || entitlementState?.email || '',
-    };
+  const body = (await res.json().catch(() => ({}))) as ConnectResponseBody;
+  const { outcome, next, evicted } = interpretConnectResponse(res.status, body, entitlementState);
+  if (next !== undefined) {
+    entitlementState = next;
     await persistEntitlement();
-    broadcastEntitlement();
-    return { ok: true, expiresAt: body.expiresAt, email: entitlementState.email };
+    broadcastEntitlement(evicted ? { evicted: true } : undefined);
   }
-  const detail = body.detail;
-  if (res.status === 409 && detail?.error === 'seatLimit') {
-    return {
-      ok: false,
-      error: 'seatLimit',
-      limit: detail.limit,
-      wouldEvict: detail.wouldEvict,
-      retryCode: detail.retryCode,
-    };
-  }
-  if (res.status === 409 && detail?.error === 'youWereEvicted') {
-    entitlementState = null;
-    await persistEntitlement();
-    broadcastEntitlement({ evicted: true });
-    return { ok: false, error: 'evicted' };
-  }
-  if (res.status === 401) return { ok: false, error: 'badCode' };
-  if (res.status === 403) return { ok: false, error: 'subscription' };
-  if (res.status === 404) return { ok: false, error: 'unsupported' };
-  return { ok: false, error: `http ${res.status}` };
+  return outcome;
 }
 
 /** Renew the entitlement when it is inside its final 24h (or already
  *  expired). Code-less renewal — the relay refreshes active bindings
  *  freely; a 409 here means this machine's seat was taken. */
 async function maybeRenewEntitlement(): Promise<void> {
-  if (!AUTH_FEATURE || renewing || config.relayUrl.trim()) return;
+  if (renewing || config.relayUrl.trim()) return;
   await ensureEntitlementLoaded();
   if (entitlementState === null) return;
-  // Renew inside the final 24h — or immediately when the stored state
-  // predates the email echo, so the status line fills in on launch.
-  if (
-    entitlementState.email &&
-    entitlementState.expiresAt - Date.now() > 24 * 3600 * 1000
-  ) {
-    return;
-  }
+  if (!renewalDue(entitlementState, Date.now())) return;
   renewing = true;
   try {
     const outcome = await connectAccount('', false);
@@ -737,11 +675,11 @@ export function registerPairingIpc(): void {
     return { ownCode };
   });
 
-  // Blog-account entitlement surface (inert without PAIRING_AUTH=1).
+  // Blog-account entitlement surface. Optional during the beta — an
+  // entitlement gates nothing while the relay runs ungated.
   ipcMain.handle(
     'host:pairing-connect-account',
     async (_e, payload: { connectCode: string; confirmEvict?: boolean }) => {
-      if (!AUTH_FEATURE) return { ok: false, error: 'disabled' };
       if (typeof payload?.connectCode !== 'string' || !payload.connectCode.trim()) {
         return { ok: false, error: 'badCode' };
       }
@@ -787,16 +725,20 @@ export function registerPairingIpc(): void {
         via?: string;
         minReceiverVersion?: string;
       },
-    ): Promise<{ ok: number; fail: number }> => {
+    ): Promise<{ ok: number; fail: number; authFail: number }> => {
       const targets = Array.isArray(payload?.recipientCodes)
         ? Array.from(new Set(payload.recipientCodes.filter((c) => typeof c === 'string' && c)))
         : [];
       if (targets.length === 0 || !payload?.item) {
-        return { ok: 0, fail: targets.length };
+        return { ok: 0, fail: targets.length, authFail: 0 };
       }
       const senderCode = ks().ownPublicCode();
       let ok = 0;
       let fail = 0;
+      /** How many of `fail` were the relay DECLINING our credentials
+       *  (401/403) rather than an outage — the renderer names the fix
+       *  instead of "couldn't reach". Inert while the relay is ungated. */
+      let authFail = 0;
       await Promise.all(
         targets.map(async (recipientPublicCode) => {
           try {
@@ -840,6 +782,7 @@ export function registerPairingIpc(): void {
             if (res.ok) ok++;
             else {
               fail++;
+              if (res.status === 401 || res.status === 403) authFail++;
               console.warn(`[pairing] POST returned ${res.status}`);
             }
           } catch (err) {
@@ -848,7 +791,7 @@ export function registerPairingIpc(): void {
           }
         }),
       );
-      return { ok, fail };
+      return { ok, fail, authFail };
     },
   );
 
