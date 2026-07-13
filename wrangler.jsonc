@@ -1,0 +1,15 @@
+// Cloudflare Workers config for the WEB edition (cardmirror.app).
+// Assets-only deployment: no Worker script, just the Vite build output
+// served as static files from Cloudflare's edge. Deployed by the
+// Workers Builds Git integration (`npx wrangler deploy` after
+// `npm run build`); the desktop/Electron builds don't touch this.
+{
+  "name": "cardmirror",
+  "compatibility_date": "2026-07-13",
+  "assets": {
+    "directory": "./dist",
+    // Unknown paths serve index.html — the app is a single page, and
+    // this keeps deep links / stale PWA navigations from 404ing.
+    "not_found_handling": "single-page-application"
+  }
+}
