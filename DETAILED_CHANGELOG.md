@@ -7,6 +7,26 @@ in each release, see `CHANGELOG.md`.
 
 ## Unreleased
 
+- **Restart toggle is scope-aware** (`numbering-commands.ts`,
+  `nav-panel.ts`; tests in `numbering-commands.test.ts` +
+  `nav-panel-card-numbers.test.ts`). `toggleNumRestart` gains the same
+  selection scoping as the role toggles, level-aware: the nav scope
+  hook generalizes from level-4 card positions to
+  `{ kind: 'blocks' | 'cards', positions }` — level-3 rows resolve to
+  the block nodes themselves (which carry `numRestart`), level-4 rows
+  to the wrapping card/analytic_unit. Editor RANGE selections act on
+  the blocks they span, falling back to card units only when no block
+  is in range (blocks win: flipping every card to "restart here"
+  because a selection crossed a block would be catastrophic). Whole-set
+  semantics normalize to the NON-DEFAULT state per kind — blocks all →
+  "continue" (the consecutive-numbering-across-blocks use case), cards
+  all → "restart here"; a second press restores defaults. The ribbon
+  restart button's pressed state follows the same scope (true when
+  every in-scope unit restarts the count), resolved independently of
+  the selection chrome's precomputed card units, which would miss a
+  blocks selection. Role toggles consume only the 'cards' flavor —
+  a blocks selection falls through to the caret for those.
+
 - **Nav depth: default-for-new-docs setting; level buttons transient**
   (`nav-panel.ts`, `settings.ts`, `settings-ui.ts`; tests in
   `tests/editor/nav-panel-depth.test.ts`). `navMaxLevel` is reframed as

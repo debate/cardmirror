@@ -3869,7 +3869,7 @@ const numVisibilityBtn = document.getElementById('num-visibility-btn') as HTMLBu
 // through the active-panel resolver so it follows the focused pane in
 // multi-pane mode; single selections return null (the editor caret wins).
 registerNavNumberingScope(
-  () => activeNavPanelResolver()?.selectedCardUnitPositions() ?? null,
+  () => activeNavPanelResolver()?.selectedNumberingScope() ?? null,
 );
 for (const [btn, cmd] of [
   [numRoleBtn, 'toggleNumberRole'],

@@ -132,7 +132,7 @@ describe('nav-pane selection scope (registerNavNumberingScope)', () => {
     // Caret sits in C; the nav selection covers A and B.
     s = s.apply(s.tr.setSelection(TextSelection.create(s.doc, posInText(s.doc, 'C'))));
     const navPositions = childPositions(s.doc, 0, 1);
-    registerNavNumberingScope(() => navPositions);
+    registerNavNumberingScope(() => ({ kind: 'cards', positions: navPositions }));
     s = run(s, toggleNumberRole);
     expect(roles(s.doc)).toEqual(['number', 'number', 'none']);
   });
@@ -143,7 +143,7 @@ describe('nav-pane selection scope (registerNavNumberingScope)', () => {
       s = s.apply(s.tr.setNodeAttribute(pos, 'numRole', 'sub'));
     }
     s = s.apply(s.tr.setSelection(TextSelection.create(s.doc, posInText(s.doc, 'A'))));
-    registerNavNumberingScope(() => childPositions(s.doc, 0, 1));
+    registerNavNumberingScope(() => ({ kind: 'cards', positions: childPositions(s.doc, 0, 1) }));
     s = run(s, toggleSubRole);
     expect(roles(s.doc)).toEqual(['none', 'none']);
   });
@@ -152,7 +152,7 @@ describe('nav-pane selection scope (registerNavNumberingScope)', () => {
     let s = stateWith([card('A'), card('B')]);
     s = s.apply(s.tr.setSelection(TextSelection.create(s.doc, posInText(s.doc, 'B'))));
     // A position pointing INSIDE a card (its tag) is not a card unit.
-    registerNavNumberingScope(() => [childPositions(s.doc, 0)[0]! + 1]);
+    registerNavNumberingScope(() => ({ kind: 'cards', positions: [childPositions(s.doc, 0)[0]! + 1] }));
     s = run(s, toggleNumberRole);
     expect(roles(s.doc)).toEqual(['none', 'number']); // caret card, not tag-pos garbage
   });
@@ -163,5 +163,79 @@ describe('nav-pane selection scope (registerNavNumberingScope)', () => {
     registerNavNumberingScope(() => null);
     s = run(s, toggleNumberRole);
     expect(roles(s.doc)).toEqual(['number', 'none']);
+  });
+});
+
+describe('toggleNumRestart — multi-unit scope (normalize to non-default)', () => {
+  afterEach(() => registerNavNumberingScope(() => null));
+
+  /** Positions of the i-th top-level children. */
+  function childPositions(doc: PMNode, ...indices: number[]): number[] {
+    const at: number[] = [];
+    doc.forEach((_n, off, i) => {
+      if (indices.includes(i)) at.push(off);
+    });
+    return at;
+  }
+  /** numRestart of each top-level block, in order. */
+  function blockRestarts(doc: PMNode): boolean[] {
+    const out: boolean[] = [];
+    doc.forEach((n) => {
+      if (n.type.name === 'block') out.push(n.attrs['numRestart']);
+    });
+    return out;
+  }
+
+  it('nav blocks scope: a mixed set normalizes ALL blocks to continue, then restores restart', () => {
+    // The field scenario: arguments split across blocks, wanting one
+    // consecutive count — select the blocks, press once.
+    let s = stateWith([block('One'), card('A'), block('Two'), card('B'), block('Three'), card('C')]);
+    // Pre-flag the middle block "continue" so the set is mixed.
+    s = s.apply(s.tr.setNodeAttribute(childPositions(s.doc, 2)[0]!, 'numRestart', false));
+    s = s.apply(s.tr.setSelection(TextSelection.create(s.doc, posInText(s.doc, 'A'))));
+    registerNavNumberingScope(() => ({ kind: 'blocks', positions: childPositions(s.doc, 0, 2, 4) }));
+    expect(blockRestarts(s.doc)).toEqual([true, false, true]); // mixed
+
+    s = run(s, toggleNumRestart); // → all continue (non-default)
+    expect(blockRestarts(s.doc)).toEqual([false, false, false]);
+
+    s = run(s, toggleNumRestart); // all flagged → restore restart
+    expect(blockRestarts(s.doc)).toEqual([true, true, true]);
+  });
+
+  it('nav cards scope: normalizes all cards to restart-here, then clears', () => {
+    let s = stateWith([card('A'), card('B')]);
+    s = s.apply(s.tr.setSelection(TextSelection.create(s.doc, posInText(s.doc, 'A'))));
+    registerNavNumberingScope(() => ({ kind: 'cards', positions: childPositions(s.doc, 0, 1) }));
+    s = run(s, toggleNumRestart);
+    expect(s.doc.child(0).attrs['numRestart']).toBe(true);
+    expect(s.doc.child(1).attrs['numRestart']).toBe(true);
+    s = run(s, toggleNumRestart);
+    expect(s.doc.child(0).attrs['numRestart']).toBe(false);
+    expect(s.doc.child(1).attrs['numRestart']).toBe(false);
+  });
+
+  it('editor range spanning blocks acts on the BLOCKS only (cards untouched)', () => {
+    let s = stateWith([block('One'), card('A'), block('Two'), card('B')]);
+    s = s.apply(
+      s.tr.setSelection(TextSelection.create(s.doc, posInText(s.doc, 'One'), posInText(s.doc, 'B'))),
+    );
+    s = run(s, toggleNumRestart);
+    expect(blockRestarts(s.doc)).toEqual([false, false]); // blocks → continue
+    // Cards' restart flags untouched — flipping them to "restart here"
+    // because the selection crossed a block would be catastrophic.
+    s.doc.forEach((n) => {
+      if (n.type.name === 'card') expect(n.attrs['numRestart']).toBe(false);
+    });
+  });
+
+  it('editor range with only cards flags them all restart-here', () => {
+    let s = stateWith([card('A'), card('B')]);
+    s = s.apply(
+      s.tr.setSelection(TextSelection.create(s.doc, posInText(s.doc, 'A'), posInText(s.doc, 'B'))),
+    );
+    s = run(s, toggleNumRestart);
+    expect(s.doc.child(0).attrs['numRestart']).toBe(true);
+    expect(s.doc.child(1).attrs['numRestart']).toBe(true);
   });
 });

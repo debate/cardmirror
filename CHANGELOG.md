@@ -9,6 +9,14 @@ see `DETAILED_CHANGELOG.md`.
 
 ### Changed
 
+- **Numbering restart works on selections too.** Select several blocks
+  in the navigation pane (Shift/Ctrl-click) and hit the restart toggle:
+  every selected block flips to "continue" in one press, so arguments
+  separated by blocks number consecutively (1…30 instead of restarting
+  at each block); press again to restore the per-block restarts. Works
+  symmetrically for a selection of tags (flag several cards to restart
+  the count), and for text selections in the editor spanning blocks.
+
 - **New setting: Default navigation depth** (Settings → General). Sets
   how deep the navigation pane opens for newly opened documents
   (Pocket / Hat / Block / Tag; default Block). The pane's 1–4 buttons

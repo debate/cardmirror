@@ -283,7 +283,12 @@ doc.
 You can also number straight from the outline: **Shift-click or Ctrl/Cmd-click
 several tags in the navigation pane**, then hit the number or substructure
 button (or their shortcuts) — the toggle applies to every selected card at
-once, and the selection stays put so you can toggle again.
+once, and the selection stays put so you can toggle again. The **restart
+toggle** works the same way, one level up: select several **blocks** in the
+outline and hit restart to flip them all to "continue", so arguments
+separated by blocks number consecutively straight through (press again to
+restore the per-block restarts). A selection of tags flags those cards to
+restart the count instead.
 
 Tune how they look in **Settings → Appearance → Card numbering**: independent
 formats for the number and its substructure, the separator between them (period,

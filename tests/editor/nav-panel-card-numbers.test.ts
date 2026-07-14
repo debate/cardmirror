@@ -94,7 +94,7 @@ describe('NavigationPanel — card number glyphs', () => {
   });
 });
 
-describe('NavigationPanel — selectedCardUnitPositions (numbering toggle scope)', () => {
+describe('NavigationPanel — selectedNumberingScope (numbering toggle scope)', () => {
   /** Force the panel's selection internals (private) to the given rows. */
   function forceSelection(nav: NavigationPanel, ids: string[], level: number): void {
     const p = nav as unknown as { selectedIds: Set<string>; selectionLevel: number | null };
@@ -115,25 +115,44 @@ describe('NavigationPanel — selectedCardUnitPositions (numbering toggle scope)
     const { view, nav } = setup(card('A'), card('B'), analytic('C'));
     const all = cardsOf(view);
     forceSelection(nav, [all[0]!.id, all[2]!.id], 4);
-    expect(nav.selectedCardUnitPositions()?.sort((a, b) => a - b)).toEqual([
-      all[0]!.pos,
-      all[2]!.pos,
-    ]);
+    const scope = nav.selectedNumberingScope();
+    expect(scope?.kind).toBe('cards');
+    expect(scope?.positions.sort((a, b) => a - b)).toEqual([all[0]!.pos, all[2]!.pos]);
+    view.destroy();
+  });
+
+  it('a multi-selection of block rows maps to the block node positions (restart scope)', () => {
+    const b1 = newHeadingId();
+    const b2 = newHeadingId();
+    const { view, nav } = setup(
+      schema.nodes['block']!.create({ id: b1 }, schema.text('One')),
+      card('A'),
+      schema.nodes['block']!.create({ id: b2 }, schema.text('Two')),
+      card('B'),
+    );
+    forceSelection(nav, [b1, b2], 3);
+    const scope = nav.selectedNumberingScope();
+    expect(scope?.kind).toBe('blocks');
+    const blockPositions: number[] = [];
+    view.state.doc.forEach((n, off) => {
+      if (n.type.name === 'block') blockPositions.push(off);
+    });
+    expect(scope?.positions.sort((a, b) => a - b)).toEqual(blockPositions);
     view.destroy();
   });
 
   it('a single selection defers to the editor caret (null)', () => {
     const { view, nav } = setup(card('A'), card('B'));
     forceSelection(nav, [cardsOf(view)[0]!.id], 4);
-    expect(nav.selectedCardUnitPositions()).toBeNull();
+    expect(nav.selectedNumberingScope()).toBeNull();
     view.destroy();
   });
 
-  it('a non-level-4 selection (blocks etc.) is not a numbering scope', () => {
+  it('a level-1/2 selection (pockets/hats) is not a numbering scope', () => {
     const { view, nav } = setup(card('A'), card('B'));
     const all = cardsOf(view);
-    forceSelection(nav, [all[0]!.id, all[1]!.id], 3);
-    expect(nav.selectedCardUnitPositions()).toBeNull();
+    forceSelection(nav, [all[0]!.id, all[1]!.id], 2);
+    expect(nav.selectedNumberingScope()).toBeNull();
     view.destroy();
   });
 });

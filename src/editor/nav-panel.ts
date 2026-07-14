@@ -1243,25 +1243,42 @@ export class NavigationPanel {
     this.applySelectionClasses();
   }
 
-  /** Wrapping card/analytic_unit positions of the current EXPLICIT
-   *  multi-selection of tag/analytic rows — the numbering toggles'
-   *  nav-selection scope ("apply to these cards as if selected").
+  /** The numbering commands' nav-selection scope ("apply to these
+   *  units as if selected"), from the current EXPLICIT multi-selection:
    *
-   *  Null unless ≥2 level-4 rows are selected: a single selection is
-   *  just the caret-tracking mirror (the highlight follows the editor
-   *  caret), so the editor's own selection scope must win there. A
-   *  moved caret collapses multi-selects (`setCaretHeading`), so a
-   *  surviving multi-select is always a deliberate Shift/Ctrl-click.
+   *   - level-4 rows (tags/analytics) → the wrapping card/
+   *     analytic_unit positions (`kind: 'cards'`) — number/sub role
+   *     toggles AND per-card restart flags;
+   *   - level-3 rows (blocks) → the block node positions
+   *     (`kind: 'blocks'`) — the restart/continue toggle, e.g. flipping
+   *     every block separating a consecutively-numbered run to
+   *     "continue" in one press;
+   *   - anything else → null.
+   *
+   *  Null unless ≥2 rows are selected: a single selection is just the
+   *  caret-tracking mirror (the highlight follows the editor caret),
+   *  so the editor's own selection scope must win there. A moved caret
+   *  collapses multi-selects (`setCaretHeading`), so a surviving
+   *  multi-select is always a deliberate Shift/Ctrl-click.
    *
    *  Resolved against the live doc via `collectHeadings` (NOT the
    *  rendered rows — a shift-click range includes rows hidden under
    *  collapsed parents). Deduped: a card's tag and its in-card
    *  analytic both map to the same wrapper. */
-  selectedCardUnitPositions(): number[] | null {
+  selectedNumberingScope(): { kind: 'blocks' | 'cards'; positions: number[] } | null {
     if (!this.view) return null;
-    if (this.selectedIds.size < 2 || this.selectionLevel !== 4) return null;
+    if (this.selectedIds.size < 2) return null;
+    if (this.selectionLevel !== 3 && this.selectionLevel !== 4) return null;
     const doc = this.view.state.doc;
     const out = new Set<number>();
+    if (this.selectionLevel === 3) {
+      for (const e of collectHeadings(doc, { skipCite: true })) {
+        if (e.id == null || !this.selectedIds.has(e.id)) continue;
+        if (e.type !== 'block') continue;
+        out.add(e.pos); // the block node itself carries numRestart
+      }
+      return out.size > 0 ? { kind: 'blocks', positions: [...out] } : null;
+    }
     for (const e of collectHeadings(doc, { skipCite: true })) {
       if (e.id == null || !this.selectedIds.has(e.id)) continue;
       if (e.type !== 'tag' && e.type !== 'analytic') continue;
@@ -1269,7 +1286,7 @@ export class NavigationPanel {
       if ($pos.depth === 0) continue; // malformed — a bare heading has no wrapper
       out.add($pos.before());
     }
-    return out.size > 0 ? [...out] : null;
+    return out.size > 0 ? { kind: 'cards', positions: [...out] } : null;
   }
 
   private applySelectionClasses(): void {
