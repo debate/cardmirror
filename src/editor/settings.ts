@@ -817,6 +817,11 @@ export interface Settings {
   /** Per-style center/justify alignment overrides (accessibility).
    *  Applied as CSS custom properties; see StyleAlignments. */
   styleAlignments: StyleAlignments;
+  /** Maximum text-column width in px, 0 = off (default). Caps the
+   *  ProseMirror content column and centers it, so reading long lines
+   *  doesn't require sweeping the eyes across a wide screen
+   *  (accessibility). Display-only. */
+  maxTextWidthPx: number;
   /**
    * Per-style display colors. See DisplayColors. Each becomes a CSS
    * custom property on `:root`.
@@ -1525,6 +1530,7 @@ const DEFAULTS: Settings = {
   displayParagraphSpacing: { ...DEFAULT_PARAGRAPH_SPACING },
   displayTypography: { ...DEFAULT_DISPLAY_TYPOGRAPHY },
   styleAlignments: { ...DEFAULT_STYLE_ALIGNMENTS },
+  maxTextWidthPx: 0,
   displayColors: { ...DEFAULT_DISPLAY_COLORS },
   bodyFont: 'Times New Roman',
   uiFont: '',
@@ -1737,6 +1743,7 @@ export interface SettingMeta {
     | 'fileSearchOutlineDepth'
     | 'navDefaultDepth'
     | 'styleAlignments'
+    | 'maxTextWidth'
     | 'fileSearchTiebreak'
     | 'speechDocFormat'
     | 'saveFormat'
@@ -2168,6 +2175,16 @@ export const SETTING_METADATA: SettingMeta[] = [
     category: 'accessibility',
     section: 'Text alignment',
     aliases: ['justify', 'justified text', 'center text', 'alignment', 'flush margins'],
+  },
+  {
+    key: 'maxTextWidthPx',
+    label: 'Maximum text width',
+    description:
+      "Cap how wide the document text column can get, and center it — long lines stop stretching across the whole screen, so reading doesn't require sweeping your eyes edge to edge. Off by default; when on, the width is in pixels (400–3000).",
+    kind: 'maxTextWidth',
+    category: 'accessibility',
+    section: 'Text width',
+    aliases: ['line length', 'column width', 'narrow text', 'reading width'],
   },
   {
     key: 'colorVisionFriendly',
@@ -3873,6 +3890,10 @@ function sanitize(s: Settings): Settings {
     displayParagraphSpacing: sanitizeParagraphSpacing(s.displayParagraphSpacing),
     displayTypography: sanitizeDisplayTypography(s.displayTypography),
     styleAlignments: sanitizeStyleAlignments(s.styleAlignments),
+    maxTextWidthPx:
+      Number.isFinite(s.maxTextWidthPx) && s.maxTextWidthPx > 0
+        ? clamp(Math.round(s.maxTextWidthPx), 400, 3000)
+        : 0,
     displayColors: sanitizeDisplayColors(s.displayColors, s.customColorOverrides),
     bodyFont: sanitizeBodyFont(s.bodyFont),
     uiFont: sanitizeUiFont(s.uiFont),

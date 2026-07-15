@@ -2507,6 +2507,9 @@ code {
   flex: 0 0 8rem;
   font-size: 0.85rem;
 }
+.pmd-max-text-width-input {
+  width: 4.5rem;
+}
 
 /* Accessibility → Text alignment rows: style label left, the
    Default/Center/Justify button group right. */
@@ -2523,6 +2526,9 @@ code {
 .pmd-style-alignments-label {
   flex: 0 0 8rem;
   font-size: 0.85rem;
+}
+.pmd-max-text-width-input {
+  width: 4.5rem;
 }
 
 /* Compact color control used in the Card numbering settings section. Shares the
@@ -2628,6 +2634,15 @@ code {
 }
 :is(#editor, .pmd-pane-editor) .pmd-cite-para {
   text-align: var(--pmd-align-cite, start);
+}
+
+/* Accessibility → Maximum text width: cap + center the content column.
+   The var only exists when the setting is on; `none` is the everyday
+   value, and `margin-inline: auto` is inert while the column fills
+   its scroller. */
+:is(#editor, .pmd-pane-editor) .ProseMirror {
+  max-width: var(--pmd-max-text-width, none);
+  margin-inline: auto;
 }
 
 /* Cite paragraphs render their bold-13pt cite text at single line

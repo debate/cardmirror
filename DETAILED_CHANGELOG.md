@@ -7,6 +7,17 @@ in each release, see `CHANGELOG.md`.
 
 ## Unreleased
 
+- **Maximum text width (accessibility)** (`maxTextWidthPx` in
+  `settings.ts`, 0 = off/default, clamp 400–3000px; `index.ts`,
+  `settings-ui.ts`, `style.css`). Caps + centers the ProseMirror
+  content column via a `--pmd-max-text-width` var (removed entirely
+  when off — the everyday layout is the pre-feature CSS;
+  `margin-inline: auto` is inert at full width). Applying a cap
+  changes the width cards lay out into, so `applyMaxTextWidth`
+  explicitly re-schedules the content-visibility intrinsic-width
+  measurement. UI: enable checkbox + px input; enabling restores the
+  last width (or 800).
+
 - **Per-style text alignment (accessibility)** (`styleAlignments` in
   `settings.ts`; `index.ts`, `settings-ui.ts`, `style.css`). Seven
   structural styles (tag, doc-level paragraph, card body, analytic

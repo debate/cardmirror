@@ -2906,6 +2906,18 @@ function applyStyleAlignments(a: StyleAlignments): void {
   }
 }
 
+/** Cap + center the ProseMirror content column (accessibility "max
+ *  text width"). 0 = off → the var is removed and layout is exactly
+ *  the pre-feature CSS. Changing the cap changes the width cards lay
+ *  out into, so the content-visibility intrinsic-width re-measures. */
+function applyMaxTextWidth(px: number): void {
+  for (const el of [editorEl, document.documentElement]) {
+    if (px > 0) el.style.setProperty('--pmd-max-text-width', `${px}px`);
+    else el.style.removeProperty('--pmd-max-text-width');
+  }
+  scheduleSyncCardIntrinsicWidth();
+}
+
 function applyDisplayTypography(t: DisplayTypography): void {
   editorEl.classList.toggle('pmd-cite-underlined', t.citeUnderlined);
   editorEl.classList.toggle('pmd-underline-bold', t.underlineBold);
@@ -3298,6 +3310,7 @@ settings.subscribe((s) => {
   applyDisplaySizes(s.displaySizes);
   applyDisplayTypography(s.displayTypography);
   applyStyleAlignments(s.styleAlignments);
+  applyMaxTextWidth(s.maxTextWidthPx);
   applyDisplayColors(s.displayColors);
   applyHighlightShadingOverride(
     s.overrideHighlightColor,
@@ -3633,6 +3646,7 @@ applyChromeScale(settings.get('chromeScalePct'));
 applyDisplaySizes(settings.get('displaySizes'));
 applyDisplayTypography(settings.get('displayTypography'));
 applyStyleAlignments(settings.get('styleAlignments'));
+applyMaxTextWidth(settings.get('maxTextWidthPx'));
 applyDisplayColors(settings.get('displayColors'));
 applyHighlightShadingOverride(
   settings.get('overrideHighlightColor'),

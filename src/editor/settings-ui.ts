@@ -920,6 +920,10 @@ class SettingsModal {
       row.appendChild(text);
       row.appendChild(buildStyleAlignmentsEditor());
       return row;
+    } else if (meta.kind === 'maxTextWidth') {
+      row.appendChild(text);
+      row.appendChild(buildMaxTextWidthEditor());
+      return row;
     } else if (meta.kind === 'fileSearchTiebreak') {
       row.appendChild(text);
       row.appendChild(buildFileSearchTiebreakEditor());
@@ -5259,6 +5263,61 @@ function buildCondenseWarningDelimiterEditor(): HTMLElement {
 
 /** Four-button segmented control for `fileSearchOutlineDepth` — the
  *  deepest level the file-search outline expands to by default. */
+/** Accessibility → Maximum text width: an enable checkbox + a px
+ *  input. Off stores 0; enabling restores the last width (or 800). */
+function buildMaxTextWidthEditor(): HTMLElement {
+  const wrap = document.createElement('div');
+  wrap.className = 'pmd-max-text-width-editor';
+  let lastOnValue = 800;
+
+  const row = document.createElement('label');
+  row.className = 'pmd-typography-flag-row';
+  const cb = document.createElement('input');
+  cb.type = 'checkbox';
+  row.appendChild(cb);
+  const lbl = document.createElement('span');
+  lbl.textContent = 'Limit text width to';
+  row.appendChild(lbl);
+  const input = document.createElement('input');
+  input.type = 'number';
+  input.min = '400';
+  input.max = '3000';
+  input.step = '10';
+  input.className = 'pmd-max-text-width-input';
+  row.appendChild(input);
+  const px = document.createElement('span');
+  px.textContent = 'px';
+  row.appendChild(px);
+  wrap.appendChild(row);
+
+  cb.addEventListener('change', () => {
+    settings.set('maxTextWidthPx', cb.checked ? lastOnValue : 0);
+  });
+  input.addEventListener('change', () => {
+    const n = Math.round(Number(input.value));
+    if (Number.isFinite(n) && n >= 400 && n <= 3000) {
+      lastOnValue = n;
+      if (cb.checked) settings.set('maxTextWidthPx', n);
+    }
+  });
+
+  function refresh(): void {
+    const v = settings.get('maxTextWidthPx');
+    cb.checked = v > 0;
+    input.disabled = v <= 0;
+    if (v > 0) {
+      lastOnValue = v;
+      input.value = String(v);
+    } else if (!input.value) {
+      input.value = String(lastOnValue);
+    }
+  }
+  refresh();
+  const unsub = settings.subscribe(refresh);
+  registerRowCleanup(wrap, () => unsub());
+  return wrap;
+}
+
 /** Per-style alignment rows (Accessibility → Text alignment): one
  *  Default / Center / Justify picker per structural style. */
 function buildStyleAlignmentsEditor(): HTMLElement {
