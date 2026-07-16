@@ -37,7 +37,28 @@ in each release, see `CHANGELOG.md`.
   conversion returns null when it finds no debate structure (no
   card/heading/cite) and the paste falls through to the previous
   behavior; F2 plain paste runs before it; the setting turns the whole
-  layer off. haku.cards conversion rides the same machinery next.
+  layer off.
+
+- **Smart paste conversion: haku.cards** (`convertHakuHtml` in
+  `import/html-paste.ts`; tests in
+  `tests/import/haku-html-paste.test.ts`). haku's copy builders emit
+  classless, entirely inline-styled HTML that deliberately mimics
+  Verbatim's visual conventions — which makes it exactly the shared
+  pipeline's visual-rules path (the class dictionary is a natural
+  no-op): 13pt bold `<h4>` → tag, bold-13pt cite lead span →
+  cite_mark → cite_paragraph, `<u>` → underline (normalized to the
+  named style in bodies), highlight group spans
+  (`background`/`mso-highlight`/hex, traditional #FF0/#0F0/#03FFFF
+  and new #ffeb70/#b8f277/#88c9ff palettes) → highlight marks,
+  small-pt runs → font_size (shrunk text), bordered spans → emphasis,
+  26/22pt `h1`/`h2` case exports → pocket/hat. haku's `color:#1b1b1c`
+  contrast stamp on highlight spans is dropped (font color on a
+  highlighted run is the tool's rendering choice, not the user's —
+  CardMirror's highlight mark forces contrast itself). Known quirk,
+  accepted: haku's source-file breadcrumb lines (plain 11pt paragraphs
+  naming the original pocket/hat/block, between cite and body) are
+  indistinguishable from body text and import as card_body
+  paragraphs.
 
 - **Word paste no longer inserts a picture of the copied text**
   (`paste-plugin.ts` `handlePaste`; tests in

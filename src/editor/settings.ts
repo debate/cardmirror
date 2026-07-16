@@ -1005,11 +1005,11 @@ export interface Settings {
    */
   condenseOnPaste: boolean;
   /** Smart paste conversion (default on): clipboard HTML recognized as
-   *  coming from Word (and, when its converter lands, haku.cards) is
-   *  converted into CardMirror structure — cards, cites, headings,
-   *  named-style marks, highlights, numbering — via the docx importer's
-   *  assembly path. Off, or when nothing recognizable is found, pastes
-   *  behave exactly as before. F2 plain paste always overrides. */
+   *  coming from Word or haku.cards is converted into CardMirror
+   *  structure — cards, cites, headings, named-style marks, highlights,
+   *  numbering — via the docx importer's assembly path. Off, or when
+   *  nothing recognizable is found, pastes behave exactly as before.
+   *  F2 plain paste always overrides. */
   smartPasteConversion: boolean;
   /** Which gaps the formatting-gap bridge treats as bridgeable: 'both'
    *  (whitespace and punctuation) or 'whitespace' (whitespace only). Feeds both
@@ -2761,11 +2761,11 @@ export const SETTING_METADATA: SettingMeta[] = [
     key: 'smartPasteConversion',
     label: 'Smart paste conversion',
     description:
-      'Recognize content copied from Microsoft Word and convert it into CardMirror structure on paste — tags, cites, headings, underlining, and highlighting instead of unformatted text. When off, or when the pasted content has no recognizable structure, pasting works exactly as before. Paste Text (F2) always pastes plain.',
+      'Recognize content copied from Microsoft Word or haku.cards and convert it into CardMirror structure on paste — tags, cites, headings, underlining, and highlighting instead of unformatted text. When off, or when the pasted content has no recognizable structure, pasting works exactly as before. Paste Text (F2) always pastes plain.',
     kind: 'toggle',
     category: 'editing',
     section: 'Paste',
-    aliases: ['word paste', 'paste from word', 'paste conversion', 'convert paste'],
+    aliases: ['word paste', 'paste from word', 'haku', 'paste conversion', 'convert paste'],
   },
 
   {

@@ -429,7 +429,12 @@ function runsToInlines(runs: HtmlRun[], nodeType: string): PMNode[] {
     if (rs.href) marks.push(schema.marks['link']!.create({ href: rs.href }));
     if (rs.highlight) marks.push(schema.marks['highlight']!.create({ color: rs.highlight }));
     if (rs.shading) marks.push(schema.marks['shading']!.create({ color: rs.shading }));
-    if (rs.fontColor && rs.fontColor !== '000000') {
+    // Font color is dropped on highlighted runs: the source's inline
+    // color there is the tool's own contrast choice for its highlight
+    // rendering (haku stamps color:#1b1b1c on every highlight span),
+    // and CardMirror's highlight mark already forces contrast per
+    // color band.
+    if (rs.fontColor && rs.fontColor !== '000000' && !rs.highlight) {
       marks.push(schema.marks['font_color']!.create({ color: rs.fontColor }));
     }
     if (
@@ -590,6 +595,15 @@ function hasDebateStructure(doc: PMNode): boolean {
   return found;
 }
 
+function convertViaImporter(html: string): PMNode | null {
+  const dom = new DOMParser().parseFromString(html, 'text/html');
+  const dict = parseStyleDict(dom);
+  const paras = trimEdgeEmpties(collectParas(dom.body, dict));
+  if (!paras.length) return null;
+  const doc = normalizeUnderlineMarks(assembleDoc(paras));
+  return hasDebateStructure(doc) ? doc : null;
+}
+
 /**
  * Convert Word clipboard HTML into a CardMirror doc, or null when the
  * HTML contains no recognizable debate structure (caller falls through
@@ -597,10 +611,21 @@ function hasDebateStructure(doc: PMNode): boolean {
  * assumes `detectPasteDialect` already said 'word'.
  */
 export function convertWordHtml(html: string): PMNode | null {
-  const dom = new DOMParser().parseFromString(html, 'text/html');
-  const dict = parseStyleDict(dom);
-  const paras = trimEdgeEmpties(collectParas(dom.body, dict));
-  if (!paras.length) return null;
-  const doc = normalizeUnderlineMarks(assembleDoc(paras));
-  return hasDebateStructure(doc) ? doc : null;
+  return convertViaImporter(html);
+}
+
+/**
+ * Convert haku.cards clipboard HTML. haku's copy builders emit
+ * classless, entirely inline-styled HTML that deliberately mimics the
+ * Verbatim visual conventions (13pt bold `<h4>` tag, bold-13pt cite
+ * lead span, `<u>` underlines, mso-highlight spans, small-pt shrunk
+ * runs, 26/22pt `h1`/`h2` case headings) — exactly the visual-rules
+ * path of the shared pipeline, with the class dictionary a natural
+ * no-op. Known quirk, accepted for now: the source-file breadcrumb
+ * paragraphs haku includes between cite and body (plain 11pt lines
+ * naming the original pocket/hat/block) are indistinguishable from
+ * body text and import as card_body paragraphs.
+ */
+export function convertHakuHtml(html: string): PMNode | null {
+  return convertViaImporter(html);
 }

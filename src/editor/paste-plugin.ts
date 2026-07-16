@@ -56,7 +56,7 @@ import { buildImageNodeFromBlob, insertImageNode } from './image-insert.js';
 import { fragmentHasZone, flattenZonesInSlice, enclosingZonePos } from './transclusion.js';
 import { recallLinkedCopy } from './clipboard-link-cache.js';
 import { detectPasteDialect } from './paste-dialect.js';
-import { convertWordHtml } from '../import/html-paste.js';
+import { convertWordHtml, convertHakuHtml } from '../import/html-paste.js';
 
 
 /**
@@ -465,7 +465,7 @@ export function buildPastePlugin(ctx: PastePluginCtx): Plugin<PluginState> {
         }
 
         // Smart paste conversion: clipboard HTML that carries a strong
-        // source signature (Word's document shell; later haku's builder
+        // source signature (Word's document shell; haku's builder
         // fingerprint — see paste-dialect.ts) converts through the docx
         // importer's assembly path into real CardMirror structure:
         // cards, cites, headings, named-style marks, highlights,
@@ -477,7 +477,12 @@ export function buildPastePlugin(ctx: PastePluginCtx): Plugin<PluginState> {
         if (ctx.smartPasteConversion()) {
           const html = cd?.getData('text/html') ?? '';
           const dialect = detectPasteDialect(html);
-          const converted = dialect === 'word' ? convertWordHtml(html) : null;
+          const converted =
+            dialect === 'word'
+              ? convertWordHtml(html)
+              : dialect === 'haku'
+                ? convertHakuHtml(html)
+                : null;
           if (converted && converted.content.size) {
             event.preventDefault();
             const convSlice = new Slice(converted.content, 0, 0);

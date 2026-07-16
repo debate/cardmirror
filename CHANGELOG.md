@@ -9,13 +9,13 @@ see `DETAILED_CHANGELOG.md`.
 
 ### Added
 
-- **Smart paste from Word** (Settings → Editing → Paste; on by
-  default). Pasting cards copied from Microsoft Word — including
-  Verbatim files — now recreates real CardMirror structure: tags,
-  cites, headings, underlining, highlighting, and card numbering,
-  instead of unformatted text. Pasted content with no recognizable
-  structure pastes exactly as before, and Paste Text (F2) still
-  pastes plain.
+- **Smart paste from Word and haku.cards** (Settings → Editing →
+  Paste; on by default). Pasting cards copied from Microsoft Word —
+  including Verbatim files — or from haku.cards now recreates real
+  CardMirror structure: tags, cites, headings, underlining,
+  highlighting, and card numbering, instead of unformatted text.
+  Pasted content with no recognizable structure pastes exactly as
+  before, and Paste Text (F2) still pastes plain.
 
 - **Maximum text width** (Settings → Accessibility → Text width). Cap
   how wide the document text column gets — long lines stop stretching

@@ -23,6 +23,8 @@ span.StyleUnderline {mso-style-name:"Style Underline"; text-decoration:underline
 
 const PLAIN_WEB_HTML = `<article><h2>A headline</h2><p>Ordinary <b>web</b> text.</p></article>`;
 
+const HAKU_HTML = `<div style="font-family:Calibri, Candara, Segoe, 'Segoe UI', Optima, Arial, sans-serif"><h4 style="margin:0 0 2px 0;font-weight:700;font-size:13pt;line-height:108%;">Ice melt outweighs</h4><p style="font-weight:400;font-size:11pt;line-height:110%;margin:0 0 3px 0;"><span style="font-weight:700;font-size:13pt;">Chen ’24</span><span> (analyst)</span></p><p style="font-weight:400;font-size:11.00pt;line-height:172%;"><span style="font-size:8.00pt;">The evidence </span><span style="background:yellow;mso-highlight:yellow;background-color:#FF0;color:#1b1b1c;font-size:12.00pt;box-decoration-break:clone"><u>is conclusive</u></span></p></div>`;
+
 function makeView(smartPaste: boolean): EditorView {
   const ctx: PastePluginCtx = {
     condenseOnPaste: () => false,
@@ -95,6 +97,21 @@ describe('smart paste conversion in handlePaste', () => {
     });
     expect(types).toContain('tag:Warming causes extinction');
     expect(types.some((t) => t.startsWith('cite_paragraph:Smith'))).toBe(true);
+    view.destroy();
+  });
+
+  it('haku HTML converts to a structured card when the setting is on', () => {
+    const view = makeView(true);
+    const handled = firePaste(view, pasteEvent({ 'text/html': HAKU_HTML, 'text/plain': 'Ice melt…' }));
+    expect(handled).toBe(true);
+    expect(() => view.state.doc.check()).not.toThrow();
+    const types: string[] = [];
+    view.state.doc.descendants((n) => {
+      if (n.isTextblock) types.push(`${n.type.name}:${n.textContent}`);
+      return true;
+    });
+    expect(types).toContain('tag:Ice melt outweighs');
+    expect(types.some((t) => t.startsWith('cite_paragraph:Chen'))).toBe(true);
     view.destroy();
   });
 
