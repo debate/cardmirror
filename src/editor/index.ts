@@ -4838,6 +4838,7 @@ export function buildEditorPlugins(targetUid?: string | null): Plugin[] {
       paragraphIntegrity: () => settings.get('paragraphIntegrity'),
       usePilcrows: () => settings.get('usePilcrows'),
       headingMode: () => settings.get('headingMode'),
+      smartPasteConversion: () => settings.get('smartPasteConversion'),
       onArmedChange: (armed) => updatePlainPasteIndicator(armed),
     }),
     imageContextMenuPlugin,

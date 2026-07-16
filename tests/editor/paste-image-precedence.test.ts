@@ -75,6 +75,7 @@ const ctx: PastePluginCtx = {
   paragraphIntegrity: () => false,
   usePilcrows: () => false,
   headingMode: () => 'respect',
+  smartPasteConversion: () => false,
 };
 
 function makeView(): EditorView {

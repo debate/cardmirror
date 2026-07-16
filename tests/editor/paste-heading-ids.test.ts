@@ -59,6 +59,7 @@ const ctx = {
   condenseOnPaste: () => false,
   paragraphIntegrity: () => false,
   usePilcrows: () => false,
+  smartPasteConversion: () => false,
   headingMode: () => 'strict' as const,
 };
 

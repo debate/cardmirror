@@ -55,6 +55,8 @@ import { condenseBranchC, condenseMerge } from './condense.js';
 import { buildImageNodeFromBlob, insertImageNode } from './image-insert.js';
 import { fragmentHasZone, flattenZonesInSlice, enclosingZonePos } from './transclusion.js';
 import { recallLinkedCopy } from './clipboard-link-cache.js';
+import { detectPasteDialect } from './paste-dialect.js';
+import { convertWordHtml } from '../import/html-paste.js';
 
 
 /**
@@ -223,6 +225,10 @@ export interface PastePluginCtx {
   paragraphIntegrity: () => boolean;
   usePilcrows: () => boolean;
   headingMode: () => 'strict' | 'respect' | 'demolish';
+  /** Smart paste conversion (settings toggle, default on): route
+   *  recognized Word / haku clipboard HTML through the structure
+   *  converters instead of PM's generic HTML parse. */
+  smartPasteConversion: () => boolean;
   /** Called whenever the armed flag flips, so the chrome can mirror it. */
   onArmedChange?: (armed: boolean) => void;
 }
@@ -456,6 +462,36 @@ export function buildPastePlugin(ctx: PastePluginCtx): Plugin<PluginState> {
           view.dispatch(tr.scrollIntoView());
           if (ctx.condenseOnPaste()) condensePastedRange(view, pasteFrom, ctx);
           return true;
+        }
+
+        // Smart paste conversion: clipboard HTML that carries a strong
+        // source signature (Word's document shell; later haku's builder
+        // fingerprint — see paste-dialect.ts) converts through the docx
+        // importer's assembly path into real CardMirror structure:
+        // cards, cites, headings, named-style marks, highlights,
+        // numbering. Runs AFTER the F2 branch (explicit plain paste
+        // always wins) and only when the setting is on. The converter
+        // returns null when it finds no debate structure, so a
+        // false-positive signature match falls through to the default
+        // paths — never to mangled output.
+        if (ctx.smartPasteConversion()) {
+          const html = cd?.getData('text/html') ?? '';
+          const dialect = detectPasteDialect(html);
+          const converted = dialect === 'word' ? convertWordHtml(html) : null;
+          if (converted && converted.content.size) {
+            event.preventDefault();
+            const convSlice = new Slice(converted.content, 0, 0);
+            // Same insertion ladder as the default paths below: fit
+            // into the cursor's card, else split the container, else
+            // body-then-structural, else a plain replace.
+            let tr =
+              tryPasteCardContent(view.state, convSlice) ??
+              tryPasteSplitContainer(view.state, convSlice) ??
+              tryPasteBodyThenStructural(view.state, convSlice);
+            if (!tr) tr = view.state.tr.replaceSelection(convSlice);
+            view.dispatch(tr.scrollIntoView());
+            return true;
+          }
         }
 
         // Card-fitting FIRST. Content that BELONGS in the cursor's card — a

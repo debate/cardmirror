@@ -27,7 +27,11 @@
 const XML_ILLEGAL_OR_PAIR =
   /([\uD800-\uDBFF][\uDC00-\uDFFF])|[\u0000-\u0008\u000B\u000C\u000E-\u001F\uFFFE\uFFFF\uD800-\uDFFF]/g;
 
-function stripXmlIllegal(s: string): string {
+/** Exported for the paste converters (`import/html-paste.ts`): stripping
+ *  these characters at CONTENT ENTRY keeps them out of the doc in the
+ *  first place, instead of relying solely on this module's export-time
+ *  chokepoint. One definition, both directions. */
+export function stripXmlIllegal(s: string): string {
   return s.replace(XML_ILLEGAL_OR_PAIR, (_m, pair: string | undefined) => pair ?? '');
 }
 

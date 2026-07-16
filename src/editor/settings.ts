@@ -1004,6 +1004,13 @@ export interface Settings {
    * `usePilcrows` / `headingMode`).
    */
   condenseOnPaste: boolean;
+  /** Smart paste conversion (default on): clipboard HTML recognized as
+   *  coming from Word (and, when its converter lands, haku.cards) is
+   *  converted into CardMirror structure — cards, cites, headings,
+   *  named-style marks, highlights, numbering — via the docx importer's
+   *  assembly path. Off, or when nothing recognizable is found, pastes
+   *  behave exactly as before. F2 plain paste always overrides. */
+  smartPasteConversion: boolean;
   /** Which gaps the formatting-gap bridge treats as bridgeable: 'both'
    *  (whitespace and punctuation) or 'whitespace' (whitespace only). Feeds both
    *  the auto-bridge and the manual Fix Formatting Gaps command. */
@@ -1564,6 +1571,7 @@ const DEFAULTS: Settings = {
   extractUndertagInQuotes: false,
   headingMode: 'respect',
   condenseOnPaste: false,
+  smartPasteConversion: true,
   formattingGapClass: 'both',
   autoBridgeFormattingGaps: true,
   clearFormattingOnNamedStyleToggleOff: true,
@@ -2748,6 +2756,16 @@ export const SETTING_METADATA: SettingMeta[] = [
     kind: 'toggle',
     category: 'editing',
     section: 'Condense',
+  },
+  {
+    key: 'smartPasteConversion',
+    label: 'Smart paste conversion',
+    description:
+      'Recognize content copied from Microsoft Word and convert it into CardMirror structure on paste — tags, cites, headings, underlining, and highlighting instead of unformatted text. When off, or when the pasted content has no recognizable structure, pasting works exactly as before. Paste Text (F2) always pastes plain.',
+    kind: 'toggle',
+    category: 'editing',
+    section: 'Paste',
+    aliases: ['word paste', 'paste from word', 'paste conversion', 'convert paste'],
   },
 
   {
@@ -3972,6 +3990,7 @@ function sanitize(s: Settings): Settings {
       s.condenseOnPaste === undefined
         ? DEFAULTS.condenseOnPaste
         : !!s.condenseOnPaste,
+    smartPasteConversion: s.smartPasteConversion === false ? false : true,
     formattingGapClass: FORMATTING_GAP_CLASSES.includes(
       s.formattingGapClass as FormattingGapClass,
     )

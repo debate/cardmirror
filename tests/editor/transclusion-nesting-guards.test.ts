@@ -125,6 +125,7 @@ function mount(doc: PMNode): EditorView {
     condenseOnPaste: () => false,
     paragraphIntegrity: () => false,
     usePilcrows: () => false,
+    smartPasteConversion: () => false,
     headingMode: () => 'strict',
   })] }) });
 }

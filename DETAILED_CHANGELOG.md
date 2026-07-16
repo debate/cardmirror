@@ -7,6 +7,38 @@ in each release, see `CHANGELOG.md`.
 
 ## Unreleased
 
+- **Smart paste conversion: Word clipboard HTML → CardMirror structure**
+  (`import/html-paste.ts`, new; wiring in `paste-plugin.ts`; setting
+  `smartPasteConversion`, default on, Settings → Editing → Paste; tests
+  in `tests/import/word-html-paste.test.ts` +
+  `tests/editor/smart-paste-conversion.test.ts`). Word pastes used to
+  degrade to plain paragraphs because the schema's parse rules are
+  pmd-class-qualified. Now, clipboard HTML that `detectPasteDialect`
+  recognizes as Word converts through the docx importer's own assembly
+  seam: a front-end classifies the HTML into the importer's
+  `ParaInfo[]` intermediate — by NAME where Word's head `<style>` block
+  supplies classes/mso-style-names (resolved through the same
+  vocabulary as `PSTYLE_TO_NODE`/`RSTYLE_TO_MARK`, legacy ids
+  included), by VISUAL convention where names are absent (bold 26pt
+  pocket / 22pt hat / 16pt underlined block, gated on
+  mso-outline-level like the importer's outline promotion; a bold-13pt
+  LEAD run classifies a cite) — then `assembleDoc` builds the doc
+  (card grouping, cite slotting via cite_mark,
+  `reconstructNumbering` fed from `mso-list` lfo/level, underline
+  normalization), so paste and `.docx` import can never disagree.
+  Also mapped: highlights (mso-highlight/named/hex → OOXML named
+  colors; unknown hexes → shading, Word's protected-highlight
+  convention), font sizes (suppressing style-implied sizes: 11pt
+  Normal, each heading's canonical size, cite's 13pt), boxed spans →
+  emphasis, links, sub/superscript, strikethrough; Word's fake
+  auto-number glyphs (`mso-list:Ignore`) and `<o:p>` noise are
+  dropped; XML-illegal control characters are stripped at entry with
+  the same definition as the export chokepoint. Guardrails: the
+  conversion returns null when it finds no debate structure (no
+  card/heading/cite) and the paste falls through to the previous
+  behavior; F2 plain paste runs before it; the setting turns the whole
+  layer off. haku.cards conversion rides the same machinery next.
+
 - **Word paste no longer inserts a picture of the copied text**
   (`paste-plugin.ts` `handlePaste`; tests in
   `tests/editor/paste-image-precedence.test.ts`). Word (and other
