@@ -221,6 +221,13 @@ describe('convertWordHtml — marks and runs', () => {
     expect(marksAt(doc, 'sized kept text')).toContain('font_size');
   });
 
+  it('gap fixing does NOT run on Word pastes: punctuation splits import verbatim', () => {
+    const doc = convertWordHtml(
+      wordDoc(`<h4>Tag</h4><p class=MsoNormal><u>global warming</u>, <u>causes extinction</u></p>`),
+    )!;
+    expect(marksAt(doc, ',')).toEqual([]); // the gap stays exactly as copied
+  });
+
   it('strips XML-illegal control characters at entry', () => {
     const doc = convertWordHtml(
       wordDoc(`<h4>Tag</h4><p class=MsoNormal>groupseparator</p>`),

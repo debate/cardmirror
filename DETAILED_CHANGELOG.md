@@ -85,6 +85,27 @@ in each release, see `CHANGELOG.md`.
   by both passes: there the sizes and bold+underline combinations are
   the user's own formatting (guarded by test).
 
+- **haku pastes arrive gap-fixed** (`fixGapsInConvertedDoc` in
+  `import/html-paste.ts`; machinery extracted to
+  `editor/formatting-gaps.ts`). haku splits underlining at punctuation
+  on copy (its `underlinePunctuationSegments` strips trailing
+  punctuation out of `<u>` runs), so converted cards were full of
+  one-character formatting gaps the user would fix by hand. The manual
+  Fix Formatting Gaps command now runs on the converted doc — on a
+  throwaway EditorState, before the content is pasted — honoring the
+  user's `formattingGapClass` setting, after the emphasis/size
+  conventions so the bridge sees final marks. The bridge's font-size
+  tie-break uses a local mirror of the app shell's
+  `effectivePtForNode` (the shell can't be imported from the converter
+  graph). Word pastes are not gap-fixed (guarded by test). Supporting
+  refactor with no behavior change: the whole gap cluster
+  (`fixFormattingGaps`, `forEachGap`, gap-char class, structural
+  no-bridge sets) moved from `ribbon-commands.ts` to a new
+  `formatting-gaps.ts` — ribbon-commands imports paste-plugin, so the
+  converter importing ribbon-commands would have been a module cycle;
+  ribbon-commands re-exports `fixFormattingGaps` for existing
+  callers.
+
 - **Word paste no longer inserts a picture of the copied text**
   (`paste-plugin.ts` `handlePaste`; tests in
   `tests/editor/paste-image-precedence.test.ts`). Word (and other

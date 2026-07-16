@@ -17,11 +17,13 @@ see `DETAILED_CHANGELOG.md`.
   haku pastes additionally translate haku's formatting back into
   CardMirror semantics: bold-underlined text becomes Emphasis (old
   files where every underline is bold are recognized and kept as plain
-  underline), and haku's font-size noise is cleaned up — real
-  shrinking (under 10 pt) and deliberately enlarged phrases keep their
-  sizes, everything else pastes at your normal text size. Pasted
-  content with no recognizable structure pastes exactly as before,
-  and Paste Text (F2) still pastes plain.
+  underline), haku's font-size noise is cleaned up — real shrinking
+  (under 10 pt) and deliberately enlarged phrases keep their sizes,
+  everything else pastes at your normal text size — and Fix Formatting
+  Gaps runs automatically on the converted card, so underlining that
+  haku split at punctuation arrives already bridged. Pasted content
+  with no recognizable structure pastes exactly as before, and Paste
+  Text (F2) still pastes plain.
 
 - **Maximum text width** (Settings → Accessibility → Text width). Cap
   how wide the document text column gets — long lines stop stretching

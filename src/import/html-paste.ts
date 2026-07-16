@@ -28,9 +28,12 @@
  */
 
 import { type Node as PMNode, type Mark } from 'prosemirror-model';
+import { EditorState } from 'prosemirror-state';
 import { schema } from '../schema/index.js';
 import { assembleDoc, type ParaInfo } from './importer.js';
 import { normalizeUnderlineMarks } from '../editor/named-style-normalizer-plugin.js';
+import { fixFormattingGaps } from '../editor/formatting-gaps.js';
+import { settings } from '../editor/settings.js';
 import { stripXmlIllegal } from '../ooxml/xml.js';
 
 // ─── Style vocabulary ────────────────────────────────────────────────────────
@@ -630,7 +633,76 @@ export function convertWordHtml(html: string): PMNode | null {
  */
 export function convertHakuHtml(html: string): PMNode | null {
   const doc = convertViaImporter(html);
-  return doc ? applyHakuBodyConventions(doc) : null;
+  return doc ? fixGapsInConvertedDoc(applyHakuBodyConventions(doc)) : null;
+}
+
+/**
+ * Run the manual Fix Formatting Gaps command over a freshly converted
+ * doc — haku splits underlining at punctuation on copy (its
+ * `underlinePunctuationSegments` strips trailing punctuation from
+ * `<u>` runs), so a converted card is full of one-character formatting
+ * gaps the user would otherwise fix by hand. Applied on a throwaway
+ * EditorState (empty selection = whole doc) BEFORE the content is
+ * pasted, so the paste arrives already normalized. Uses the same
+ * command as F9's manual fix, including the user's
+ * `formattingGapClass` setting. Runs after `applyHakuBodyConventions`
+ * so the bridge sees the final marks (emphasis, cleaned sizes).
+ */
+function fixGapsInConvertedDoc(doc: PMNode): PMNode {
+  let out = doc;
+  try {
+    const state = EditorState.create({ doc });
+    fixFormattingGaps(convertedEffectivePt)(state, (tr) => {
+      out = tr.doc;
+    });
+  } catch (_e) {
+    return doc; // normalization must never break a valid conversion
+  }
+  return out;
+}
+
+/** Local mirror of the app shell's `effectivePtForNode` (index.ts) —
+ *  the shell can't be imported from the converter graph (module-level
+ *  boot code). Same precedence: `font_size` mark → its value; named-
+ *  style mark → its displaySizes size; else the parent paragraph's
+ *  natural size. Only consulted by the gap bridge to pick the smaller
+ *  bookend's size for a gap between differently-sized runs. */
+function convertedEffectivePt(node: PMNode | null, parent: PMNode): number {
+  const sizes = settings.get('displaySizes');
+  if (node?.isText) {
+    const fs = node.marks.find((m) => m.type.name === 'font_size');
+    if (fs) return Number(fs.attrs['halfPoints'] ?? 22) / 2;
+    for (const m of node.marks) {
+      switch (m.type.name) {
+        case 'cite_mark':
+          return sizes.cite;
+        case 'underline_mark':
+          return sizes.underline;
+        case 'emphasis_mark':
+          return sizes.emphasis;
+        case 'undertag_mark':
+          return sizes.undertag;
+        case 'analytic_mark':
+          return sizes.analytic;
+      }
+    }
+  }
+  switch (parent.type.name) {
+    case 'pocket':
+      return sizes.pocket;
+    case 'hat':
+      return sizes.hat;
+    case 'block':
+      return sizes.block;
+    case 'tag':
+      return sizes.tag;
+    case 'analytic':
+      return sizes.analytic;
+    case 'undertag':
+      return sizes.undertag;
+    default:
+      return sizes.normal;
+  }
 }
 
 // ─── haku body conventions ───────────────────────────────────────────────────

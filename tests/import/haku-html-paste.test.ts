@@ -147,6 +147,28 @@ describe('convertHakuHtml', () => {
     expect(marksAt(doc, 'exactly ten').has('font_size')).toBe(false); // 10 is not "smaller than 10"
   });
 
+  it('formatting gaps are fixed before paste: punctuation splits in underlining bridge', () => {
+    // haku strips trailing punctuation out of <u> runs on copy, so
+    // "warming, causes" arrives as two underline runs with a bare ", "
+    // between them. The converted doc must come out already bridged.
+    const html = `<div style="${CAL}"><h4 style="font-weight:700;font-size:13pt;">Tag</h4><p style="font-size:11pt;"><u>global warming</u>, <u>causes extinction</u> and <u>more</u></p></div>`;
+    const doc = convertHakuHtml(html)!;
+    // Bridged runs merge into one underlined text node spanning the comma.
+    expect(marksAt(doc, 'warming, causes').has('underline_mark')).toBe(true);
+    // An unformatted interior WORD is not a gap — " and " stays plain.
+    expect(marksAt(doc, 'and').has('underline_mark')).toBe(false);
+  });
+
+  it('gap fixing bridges emphasis between adjacent emphasized fragments', () => {
+    const html = `<div style="${CAL}"><h4 style="font-weight:700;font-size:13pt;">Tag</h4><p style="font-size:11pt;"><u>plain kept context runs long here</u> then <b><u>act</u></b> <b><u>now</u></b></p></div>`;
+    const doc = convertHakuHtml(html)!;
+    // The space between the two emphasized words carries emphasis, so
+    // the three nodes merge into a single emphasized "act now".
+    const m = marksAt(doc, 'act now');
+    expect(m.has('emphasis_mark')).toBe(true);
+    expect(m.has('bold')).toBe(false);
+  });
+
   it('source-file breadcrumb paragraphs import as body text (documented quirk)', () => {
     const html = `<div style="${CAL}"><h4 style="font-weight:700;font-size:13pt;">Tag</h4><p style="font-size:11pt;"><span style="font-weight:700;font-size:13pt;">Cite ’22</span></p><div style="margin:0 0 3px 0;"><p style="margin:0 0 1px 0;font-weight:400;font-size:11pt;line-height:110%;">Impacts</p></div><p style="font-size:11pt;">real body</p></div>`;
     const doc = convertHakuHtml(html)!;
