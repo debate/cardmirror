@@ -14,6 +14,10 @@ see `DETAILED_CHANGELOG.md`.
   including Verbatim files — or from haku.cards now recreates real
   CardMirror structure: tags, cites, headings, underlining,
   highlighting, and card numbering, instead of unformatted text.
+  Renamed Emphasis styles — "Emphasis1", "Text Bold", "Char Char"
+  duplicates, even fully random names — are recognized by name
+  pattern or by their box border, so emphasis survives the paste even
+  from files the style cleaner hasn't repaired.
   haku pastes additionally translate haku's formatting back into
   CardMirror semantics: bold-underlined text becomes Emphasis (old
   files where every underline is bold are recognized and kept as plain

@@ -62,7 +62,10 @@ const PARA_TOKEN_TO_NODE: Record<string, string> = {
 };
 
 /** Character-style tokens → schema mark name. Mirrors `RSTYLE_TO_MARK`
- *  including the legacy ids/names it documents. */
+ *  including the legacy ids/names it documents — plus "Text Bold", the
+ *  most common name Word's style-duplication bugs rename Emphasis to
+ *  (field report 2026-07-16; the same rename family the style cleaner
+ *  utility exists to repair). */
 const CHAR_TOKEN_TO_MARK: Record<string, string> = {
   styleunderline: 'underline_mark',
   underline: 'underline_mark',
@@ -72,9 +75,29 @@ const CHAR_TOKEN_TO_MARK: Record<string, string> = {
   stylestylebold12pt: 'cite_mark',
   'stylestylebold+12pt': 'cite_mark',
   emphasis: 'emphasis_mark',
+  textbold: 'emphasis_mark',
   undertagchar: 'undertag_mark',
   analyticchar: 'analytic_mark',
 };
+
+/** Word's own built-in italic character styles whose names CONTAIN
+ *  "emphasis" but are never the Verbatim box style — excluded from the
+ *  contains-"emphasis" fuzzy rule below. */
+const NOT_VERBATIM_EMPHASIS = new Set(['subtleemphasis', 'intenseemphasis']);
+
+/** Renamed-emphasis fuzzy rule: Word's style-duplication bugs produce
+ *  "Emphasis1", "Emphasis Char Char", etc. — any char-style token
+ *  containing "emphasis" (minus Word's italic built-ins) is the
+ *  Verbatim Emphasis. Mirrors the paragraph side's contains-"analytic"
+ *  rule. */
+function charTokenToMark(token: string): string | null {
+  const exact = CHAR_TOKEN_TO_MARK[token];
+  if (exact) return exact;
+  if (token.includes('emphasis') && !NOT_VERBATIM_EMPHASIS.has(token)) {
+    return 'emphasis_mark';
+  }
+  return null;
+}
 
 /** The canonical display size (pt) each heading style renders at. A
  *  run-level font-size equal to its own paragraph's canonical size is
@@ -279,7 +302,7 @@ function foldElement(el: Element, rs: RunStyle, dict: Map<string, ClassInfo>): R
     const info = dict.get(cls);
     let mark: string | null = null;
     for (const token of classTokens(cls, info)) {
-      mark = CHAR_TOKEN_TO_MARK[token] ?? null;
+      mark = charTokenToMark(token);
       if (mark) break;
     }
     if (mark) {
@@ -344,8 +367,16 @@ function foldCss(css: string, out: RunStyle): void {
         else if (v.includes('sub')) out.sub = true;
         break;
       case 'border':
+      case 'mso-border-alt':
         // A bordered span is the Emphasis box (Word's Emphasis style has
         // a <w:bdr>; haku's "boxed" text is an inline windowtext border).
+        // This is the style cleaner's key insight ported to the paste
+        // path: `w:bdr` is the ONE attribute unique to Emphasis in the
+        // Verbatim vocabulary, so it identifies the style through any
+        // rename. `mso-border-alt` is Word's alternate spelling of the
+        // run border in clipboard CSS. Deliberately NOT matched: per-side
+        // border-top/-bottom/… properties — those are paragraph-border
+        // spellings, not the run box.
         if (v.includes('solid')) out.boxed = true;
         break;
     }

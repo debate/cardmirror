@@ -85,6 +85,29 @@ in each release, see `CHANGELOG.md`.
   by both passes: there the sizes and bold+underline combinations are
   the user's own formatting (guarded by test).
 
+- **Word paste: renamed Emphasis styles are recognized**
+  (`charTokenToMark` + widened border detection in
+  `import/html-paste.ts`). Word's style-duplication bugs rename
+  Emphasis to "Emphasis1", "Emphasis Char Char", "Text Bold", or
+  arbitrary names — the failure family the style cleaner utility
+  repairs in .docx files. The paste converter now catches them three
+  ways, name-first then formatting-truth: (1) any char-style token
+  containing "emphasis" maps to emphasis_mark (mirroring the paragraph
+  side's contains-"analytic" rule), excluding Word's italic built-ins
+  Subtle/Intense Emphasis; (2) "Text Bold" — the most common rename —
+  is an explicit token; (3) the box border identifies the style
+  through ANY rename (the style cleaner's key insight: `w:bdr` is the
+  one attribute unique to Emphasis in the Verbatim vocabulary), now
+  matching Word's `mso-border-alt` spelling as well as the `border`
+  shorthand, in class CSS and inline styles. Per-side border
+  properties are deliberately not matched (paragraph-border spellings,
+  not the run box). Note the .docx IMPORTER still has none of this —
+  it maps only the exact `Emphasis` rStyle; renamed emphasis in a
+  .docx still needs the style cleaner. No contextual conversion was
+  added for Word (bold+underline stays bold+underline): pastes from
+  Word are expected to be high-fidelity, unlike haku's already
+  post-processed content.
+
 - **haku pastes arrive gap-fixed** (`fixGapsInConvertedDoc` in
   `import/html-paste.ts`; machinery extracted to
   `editor/formatting-gaps.ts`). haku splits underlining at punctuation

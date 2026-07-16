@@ -221,6 +221,51 @@ describe('convertWordHtml — marks and runs', () => {
     expect(marksAt(doc, 'sized kept text')).toContain('font_size');
   });
 
+  it('renamed emphasis styles: contains-"emphasis" names (Emphasis1, Char Char) map to emphasis_mark', () => {
+    const doc = convertWordHtml(
+      wordDoc(
+        `<h4>Tag</h4><p class=MsoNormal>a <span class=Emphasis1>renamed one</span> and <span class=EmphasisCharChar>char char</span></p>`,
+      ),
+    )!;
+    expect(marksAt(doc, 'renamed one')).toContain('emphasis_mark');
+    expect(marksAt(doc, 'char char')).toContain('emphasis_mark');
+  });
+
+  it('renamed emphasis styles: "Text Bold" (the most common rename) maps via mso-style-name', () => {
+    const doc = convertWordHtml(
+      wordDoc(
+        `<h4>Tag</h4><p class=MsoNormal>with <span class=TextBold15>boxed text</span> inside</p>`,
+        `span.TextBold15 {mso-style-name:"Text Bold"; font-weight:bold; text-decoration:underline;}`,
+      ),
+    )!;
+    expect(marksAt(doc, 'boxed text')).toContain('emphasis_mark');
+    // The style's own display CSS must not double as direct marks.
+    expect(marksAt(doc, 'boxed text')).not.toContain('bold');
+  });
+
+  it('renamed emphasis styles: a fully random name is still caught by its box border (incl. mso-border-alt)', () => {
+    const doc = convertWordHtml(
+      wordDoc(
+        `<h4>Tag</h4><p class=MsoNormal>x <span class=Wacky>bordered run</span> y <span style='mso-border-alt:solid windowtext .5pt'>alt bordered</span> z</p>`,
+        `span.Wacky {mso-style-name:"Totally Random"; border:solid windowtext 1.0pt; padding:0in;}`,
+      ),
+    )!;
+    expect(marksAt(doc, 'bordered run')).toContain('emphasis_mark');
+    expect(marksAt(doc, 'alt bordered')).toContain('emphasis_mark');
+  });
+
+  it("Word's italic built-ins (Subtle/Intense Emphasis) are NOT the Verbatim box", () => {
+    const doc = convertWordHtml(
+      wordDoc(
+        `<h4>Tag</h4><p class=MsoNormal>an <span class=IntenseEmphasis>accented aside</span> here</p>`,
+        `span.IntenseEmphasis {mso-style-name:"Intense Emphasis"; font-style:italic;}`,
+      ),
+    )!;
+    const m = marksAt(doc, 'accented aside');
+    expect(m).not.toContain('emphasis_mark');
+    expect(m).toContain('italic'); // its own CSS folds instead
+  });
+
   it('gap fixing does NOT run on Word pastes: punctuation splits import verbatim', () => {
     const doc = convertWordHtml(
       wordDoc(`<h4>Tag</h4><p class=MsoNormal><u>global warming</u>, <u>causes extinction</u></p>`),
