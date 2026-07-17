@@ -1,6 +1,6 @@
 {
   "name": "@cardmirror/desktop",
-  "version": "0.1.0-beta.14",
+  "version": "0.1.0-beta.15",
   "description": "CardMirror \u2014 Electron desktop wrapper",
   "author": "Anthony Trufanov",
   "homepage": "https://github.com/ant981228/cardmirror",

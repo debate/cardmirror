@@ -5,7 +5,7 @@ behavior, rationale, and (where useful) the implementation context
 behind a change. For a shorter, jargon-free summary of what's new
 in each release, see `CHANGELOG.md`.
 
-## Unreleased
+## 0.1.0-beta.15 — 2026-07-16
 
 - **Explicit document icons for the file associations**
   (`apps/desktop/scripts/generate-doc-icons.py` → `build/docx.icns` /
