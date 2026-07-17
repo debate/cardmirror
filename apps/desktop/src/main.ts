@@ -2551,7 +2551,11 @@ ipcMain.handle('host:update-chip-action', () => {
       void shell.openExternal(`${RELEASES_URL}/tag/v${updateChip.version}`);
       return;
     }
-    autoUpdater.quitAndInstall();
+    // (silent, forceRunAfter): the NSIS installer runs with no UI and
+    // relaunches the app when done — the chip promised "restart to
+    // install", not "watch an installer wizard". Matches ebb's passive
+    // install feel.
+    autoUpdater.quitAndInstall(true, true);
   } else {
     void shell.openExternal(`${RELEASES_URL}/tag/v${updateChip.version}`);
   }
