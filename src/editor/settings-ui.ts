@@ -1454,6 +1454,54 @@ function buildInstallInfoSection(): HTMLElement {
     launchRow.appendChild(launchText);
     wrap.appendChild(launchRow);
 
+    // Tournament mode (mirrors ebb): pause the AUTOMATIC checks for a
+    // week so nothing downloads or changes mid-tournament. Manual
+    // checks still work — a deliberate "check now" should always
+    // answer. While paused the row shows when checks resume and the
+    // button flips to an immediate resume.
+    const pauseWrap = document.createElement('div');
+    pauseWrap.className = 'pmd-update-pause';
+    const pauseStatus = document.createElement('div');
+    pauseStatus.className = 'pmd-update-pause-status';
+    const pauseBtn = document.createElement('button');
+    pauseBtn.type = 'button';
+    pauseBtn.className = 'pmd-install-info-btn';
+    const pauseDesc = document.createElement('div');
+    pauseDesc.className = 'pmd-update-pause-desc';
+    pauseDesc.textContent =
+      'Going to a tournament? Pausing stops automatic update checks and downloads; manual checks still work.';
+    const renderPause = (): void => {
+      const until = settings.get('updateChecksPausedUntil');
+      if (until > Date.now()) {
+        const resume = new Date(until).toLocaleDateString(undefined, {
+          weekday: 'long',
+          month: 'long',
+          day: 'numeric',
+        });
+        pauseStatus.textContent = `Automatic update checks are paused — they resume ${resume}.`;
+        pauseStatus.hidden = false;
+        pauseBtn.textContent = 'Resume update checks now';
+      } else {
+        pauseStatus.hidden = true;
+        pauseBtn.textContent = 'Pause update checks for 1 week';
+      }
+    };
+    pauseBtn.addEventListener('click', () => {
+      const paused = settings.get('updateChecksPausedUntil') > Date.now();
+      settings.set(
+        'updateChecksPausedUntil',
+        paused ? 0 : Date.now() + 7 * 24 * 60 * 60 * 1000,
+      );
+      renderPause();
+    });
+    const unsubscribePause = settings.subscribe(() => renderPause());
+    registerRowCleanup(pauseWrap, () => unsubscribePause());
+    renderPause();
+    pauseWrap.appendChild(pauseStatus);
+    pauseWrap.appendChild(pauseBtn);
+    pauseWrap.appendChild(pauseDesc);
+    wrap.appendChild(pauseWrap);
+
     const actions = document.createElement('div');
     actions.className = 'pmd-install-info-actions';
 
@@ -1478,14 +1526,9 @@ function buildInstallInfoSection(): HTMLElement {
         if (result.status === 'latest') {
           showToast("You're on the latest version.");
         } else if (result.status === 'updating') {
-          // macOS can detect but not self-install updates, so don't
-          // claim a background download there — send users to the .dmg.
-          const isMac = /Mac/i.test(navigator.userAgent);
-          showToast(
-            isMac
-              ? 'Update available — download the new version from the releases page.'
-              : 'Update available — downloading in the background.',
-          );
+          // All platforms stage in the background now (mac via the
+          // swap updater); the chip appears when it's ready.
+          showToast('Update available — downloading in the background; watch for the status-bar chip.');
         } else if (result.status === 'dev') {
           showToast('Update checks are only active in packaged builds.');
         } else {

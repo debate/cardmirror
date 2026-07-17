@@ -19,7 +19,10 @@ see `DETAILED_CHANGELOG.md`.
   also now a single universal app — one .dmg that runs natively on
   both Apple Silicon and Intel, so there's no wrong version to
   accidentally install — and updates no longer reset the microphone
-  permission for voice control.
+  permission for voice control. And for tournaments: a **Pause update
+  checks for 1 week** button (Settings → General → About this install)
+  stops all automatic checks and downloads until the shown resume
+  date, with a resume-now button while paused.
 
 - **Smart paste from Word and haku.cards** (Settings → Editing →
   Paste; on by default). Pasting cards copied from Microsoft Word —

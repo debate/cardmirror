@@ -483,6 +483,12 @@ export interface Settings {
    *  in the About this install panel always work regardless. No
    *  effect on the web edition (no update mechanism). */
   checkForUpdatesOnLaunch: boolean;
+  /** Tournament mode: epoch ms until which the AUTOMATIC update checks
+   *  (launch + daily) are paused; 0 = not paused. Set by the "Pause
+   *  update checks for 1 week" button next to the auto-check toggle.
+   *  Manual checks (Help menu / About section button) are unaffected —
+   *  a deliberate "check now" should always work. */
+  updateChecksPausedUntil: number;
   /** Width of the comments column in CSS pixels. User-resizable via
    *  the drag handle on the column's left edge. Clamped to
    *  `COMMENTS_WIDTH_MIN` … `COMMENTS_WIDTH_MAX` (240–560) — below
@@ -1465,6 +1471,7 @@ const DEFAULTS: Settings = {
   showDocNameChip: false,
   showUndoRedoButtons: false,
   checkForUpdatesOnLaunch: false,
+  updateChecksPausedUntil: 0,
   commentsColumnWidth: 320,
   reduceMotion: 'auto',
   colorVisionFriendly: false,
@@ -3793,6 +3800,10 @@ function sanitize(s: Settings): Settings {
     showDocNameChip: !!s.showDocNameChip,
     showUndoRedoButtons: !!s.showUndoRedoButtons,
     checkForUpdatesOnLaunch: !!s.checkForUpdatesOnLaunch,
+    updateChecksPausedUntil:
+      Number.isFinite(Number(s.updateChecksPausedUntil)) && Number(s.updateChecksPausedUntil) > 0
+        ? Math.floor(Number(s.updateChecksPausedUntil))
+        : 0,
     commentsColumnWidth:
       typeof s.commentsColumnWidth === 'number' && Number.isFinite(s.commentsColumnWidth)
         ? Math.max(240, Math.min(560, s.commentsColumnWidth))

@@ -5751,6 +5751,21 @@ html.pmd-nav-flat .pmd-nav-type-analytic:hover .pmd-nav-label {
   margin-bottom: 0.6rem;
   user-select: none;
 }
+.pmd-update-pause {
+  margin: 0.4rem 0 0.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  align-items: flex-start;
+}
+.pmd-update-pause-status {
+  font-weight: 600;
+}
+.pmd-update-pause-desc {
+  font-size: 0.85em;
+  color: var(--pmd-c-text-dim, #777);
+}
+
 .pmd-install-info-actions {
   display: flex;
   gap: 0.5rem;

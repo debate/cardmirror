@@ -7,6 +7,19 @@ in each release, see `CHANGELOG.md`.
 
 ## Unreleased
 
+- **Tournament pause for automatic update checks**
+  (`updateChecksPausedUntil` setting; button in the About-this-install
+  section next to the auto-check toggle; sanitize test in
+  `tests/editor/update-pause.test.ts`; mirrors ebb's tournament mode).
+  One click pauses the AUTOMATIC checks (launch + daily) for 7 days by
+  storing an epoch-ms resume timestamp; both renderer auto-check sites
+  gate on `pausedUntil <= Date.now()`, so stale timestamps self-heal
+  as unpaused with no cleanup migration. While paused the row shows
+  the resume date and the button flips to resume-now (sets 0). Manual
+  checks (Help menu, About button) are deliberately unaffected. Also
+  fixed the About section's stale "macOS can't self-install" toast —
+  all platforms stage in the background since the swap updater.
+
 - **Update flow overhaul: install-on-confirm chip, universal mac
   build, mac self-update, stable signing** (modeled on ebb's update UX
   after a comparative review, 2026-07-16; verified against a local

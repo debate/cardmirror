@@ -1809,6 +1809,13 @@ you launch.
 Auto-check on launch is off by default — turn it on in Settings → General.
 Linux users who installed via the AUR update with `yay -Syu`.
 
+**Going to a tournament?** The **Pause update checks for 1 week**
+button (next to the auto-check toggle in Settings → General → About
+this install) stops all automatic checks and downloads until the shown
+resume date — nothing about the app changes mid-tournament. While
+paused, the row shows when checks resume and offers a **Resume update
+checks now** button. Manual checks still work.
+
 Automatic updates never interrupt you: when a new version has been
 downloaded in the background, a small **chip appears in the status bar**
 ("Update x.y.z ready — restart to install"). Nothing installs until you

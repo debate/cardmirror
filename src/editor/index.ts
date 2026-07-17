@@ -8129,7 +8129,11 @@ async function initSingleDocBoot(): Promise<void> {
     // user dismissed it on the first window. The main-process IPC
     // handler is a no-op in dev (non-packaged) builds, so the gate
     // here is renderer-side defense in depth.
-    if (electron && settings.get('checkForUpdatesOnLaunch')) {
+    if (
+      electron &&
+      settings.get('checkForUpdatesOnLaunch') &&
+      settings.get('updateChecksPausedUntil') <= Date.now() // tournament pause
+    ) {
       try {
         await electron.triggerAutoUpdateCheck();
       } catch (err) {
@@ -8145,7 +8149,10 @@ async function initSingleDocBoot(): Promise<void> {
     if (electron) {
       window.setInterval(
         () => {
-          if (settings.get('checkForUpdatesOnLaunch')) {
+          if (
+            settings.get('checkForUpdatesOnLaunch') &&
+            settings.get('updateChecksPausedUntil') <= Date.now() // tournament pause
+          ) {
             void electron.triggerAutoUpdateCheck().catch((err) => {
               console.warn('Daily update check failed:', err);
             });
