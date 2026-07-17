@@ -45,9 +45,8 @@ launch CardMirror like any other app.
 
 ### macOS
 
-1. Download the `.dmg` for your Mac:
-   - **Apple Silicon (M1 / M2 / M3 / M4)**: `CardMirror-x.x.x-arm64.dmg`.
-   - **Intel**: `CardMirror-x.x.x.dmg` (or `-x64.dmg`).
+1. Download `CardMirror-x.x.x-universal.dmg` — one download that runs
+   natively on both Apple Silicon (M1 and later) and Intel Macs.
 2. Open the `.dmg`, drag **CardMirror** to your Applications folder.
 3. **First launch only.** Gatekeeper refuses to open unsigned apps.
    You'll see one of two messages depending on your macOS version:
@@ -134,18 +133,24 @@ the full breakdown.
 ### Updates
 
 **Help → Check for Updates…** checks manually: it tells you you're
-current, or offers an available update (downloaded in the background,
-with a "restart now?" prompt when it's ready).
+current, or announces an available update and downloads it in the
+background.
 
 Auto-check on launch is off by default. Turn it on in Settings →
 General → "About this install" → **Check for updates on launch**.
 
-> **macOS: automatic updates don't work yet.** The in-app updater can
-> tell you a new version exists, but it can't install it on Mac. To
-> update, download the latest `.dmg` from the releases page and reinstall
-> it (drag **CardMirror** to Applications, replacing the old copy) each
-> time — same steps as the [macOS install](#macos) above. Windows and
-> Linux are unaffected.
+Updates never interrupt you: when a new version has finished
+downloading, a small chip appears in the status bar ("Update x.y.z
+ready — restart to install"), and nothing installs until you click it.
+On Windows and Linux, quitting the app normally also applies a
+downloaded update on the way out. On macOS, clicking the chip restarts
+straight into the new version; if your install can't be updated in
+place (for example the app isn't in a writable folder), the chip opens
+the releases page instead so you can grab the new `.dmg`.
+
+Going to a tournament? **Pause update checks for 1 week** (Settings →
+General → "About this install") stops all automatic checks and
+downloads until the shown resume date.
 
 Linux users who installed via the AUR can update with `yay -Syu`
 instead.
