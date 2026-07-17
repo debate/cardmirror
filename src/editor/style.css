@@ -6106,6 +6106,13 @@ html.pmd-nav-flat .pmd-nav-type-analytic:hover .pmd-nav-label {
   gap: 0.3rem 0.75rem;
 }
 
+/* The reset footer is a grid item in the two-column sizes editor —
+   span the full row so justify-content:flex-end puts the button on
+   the far right, matching the spacing editors' reset placement. */
+.pmd-display-sizes-editor .pmd-line-heights-footer {
+  grid-column: 1 / -1;
+}
+
 
 
 .pmd-display-size-label {
