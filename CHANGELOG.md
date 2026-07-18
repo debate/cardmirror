@@ -5,6 +5,18 @@ changes in each release, written for users of the editor. For
 in-depth rationale and implementation context behind each entry,
 see `DETAILED_CHANGELOG.md`.
 
+## Unreleased
+
+### Changed
+
+- **Privacy policy updated for the optional account link.** The policy
+  still said "no accounts" outright; it now accurately describes the
+  optional Debate Decoded membership link that shipped in beta.13 —
+  what the relay stores when you link (a routing-code-to-membership
+  association, never your email or name), that it's required for
+  nothing during the beta, and how to unlink or have the server-side
+  record deleted.
+
 ## 0.1.0-beta.16 — 2026-07-17
 
 ### Added

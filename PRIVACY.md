@@ -1,12 +1,12 @@
 # CardMirror Privacy Policy
 
-**Last updated: July 7, 2026**
+**Last updated: July 18, 2026**
 
 CardMirror is a writing and research tool for debate and academic work. This
 policy explains, in plain language, what happens to your data when you use it.
 
 The short version: **CardMirror keeps your work on your own device.** There are
-no accounts, no logins, and no advertising or analytics tracking. A few
+no required accounts, no logins, and no advertising or analytics tracking. A few
 optional features connect to the internet — and when they do, the things you
 share are **end‑to‑end encrypted**, meaning our server passes them along
 without being able to read them. This policy spells out exactly what each
@@ -19,8 +19,11 @@ feature sends, what (if anything) is stored, and for how long.
 
 ## 1. What we *don't* do
 
-- **No accounts.** You don't sign up, log in, or give us an email, phone number,
-  or password. There is no account to create and none to breach.
+- **No CardMirror accounts, and none required.** You don't sign up, create a
+  password, or need any account to use CardMirror — every feature works
+  without one. The one exception is **optional**: you can link CardMirror to
+  an existing Debate Decoded membership (see §9), which is required for
+  nothing during the beta.
 - **No tracking or analytics.** CardMirror contains no analytics SDKs, no
   advertising trackers, and no usage telemetry. We do not build a profile of
   you or sell, rent, or trade anyone's data. We never have.
@@ -183,6 +186,34 @@ can also be pointed at a **self‑hosted relay**; if you or your organization ru
 your own, that server is under your control and this section describes only the
 official relay.
 
+### Optional account link (Debate Decoded)
+
+You can optionally link CardMirror to a **Debate Decoded membership**
+(Settings → Collaboration). **During the beta this is required for nothing** —
+card sharing, co‑editing, and every other feature work identically without it,
+and self‑hosted relays never involve it. It exists so this machine is ready if
+the hosted relay asks for membership after the beta.
+
+If you choose to link:
+
+- You sign in on the **Debate Decoded website** (their site, their account
+  system, covered by their own privacy policy) and paste a one‑time connect
+  code into CardMirror.
+- The official relay then stores an **association between your pairing
+  routing code and your membership ID**, with its status and timestamps. This
+  is the one place the relay ties your otherwise‑pseudonymous routing code to
+  a membership. The relay does **not** store your email or name; the
+  membership email and expiry the app displays are looked up from the
+  membership system and shown on your device.
+- End‑to‑end encryption is unchanged — linking gives the relay no ability to
+  read any content.
+- A membership covers **two machines**; linking a third asks before unlinking
+  the oldest.
+
+**Unlinking:** the **Disconnect** button in the same settings row unlinks the
+machine. To have the server‑side link record deleted entirely, contact us
+(§14).
+
 ---
 
 ## 10. Third parties
@@ -208,8 +239,8 @@ Each third party handles what it receives under its own privacy policy.
 
 CardMirror is a general‑purpose writing tool intended for a general audience,
 which may include high‑school and college students. It is **not directed to
-children under 13**, and because it has no accounts and stores work on your own
-device, we generally do not collect personal information from anyone. We do not
+children under 13**, and because it requires no accounts and stores work on your
+own device, we generally do not collect personal information from anyone. We do not
 knowingly collect personal information from children under 13 through the server
 features. If you believe a child under 13 has provided personal information
 through the relay, please contact us (§14) and we will help remove it.
@@ -230,10 +261,15 @@ institution's own policies and agreements also apply.
   data from the relay immediately; otherwise it expires after 7 days of
   inactivity. You can also clear a session's local record on your device.
 - **API keys / display name:** clear the corresponding field in Settings.
+- **Account link (optional):** **Disconnect** in Settings → Collaboration
+  unlinks this machine; contact us (§14) to have the server‑side link record
+  deleted entirely.
 
-Because we don't hold an account or a readable copy of your work, there is no
-central profile for us to delete — deletion happens where the data lives (your
-device) or via the automatic relay expiry above.
+Because we don't hold a readable copy of your work — and, unless you opted
+into the account link, no account either — there is no central profile for us
+to delete: deletion happens where the data lives (your device) or via the
+automatic relay expiry above, plus the account-link removal path if you used
+that.
 
 ---
 
