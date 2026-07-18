@@ -110,6 +110,17 @@ in each release, see `CHANGELOG.md`.
   clipboard" even when the write had failed); all now route through
   the shared module with success/busy toasts, and the link context
   menu (already honest) switched to it for the retry + host path.
+  Follow-up hardening from the regression audit: the main-process
+  handler VERIFIES the write by reading the text flavor back
+  (Electron's `clipboard.write` returns void, so success was
+  otherwise a claim, not a fact; bounded length+prefix compare, and
+  the only blind spot — another app overwriting between write and
+  read-back — errs toward false failure, the safe direction); empty
+  flavors are omitted from the payload (passing `html: ''` would
+  register an empty text/html format, and Word/Docs prefer HTML, so
+  text-only copies would have pasted as nothing there); and the
+  ClipboardItem-less plain-text fallback the old heading-copy paths
+  had (old Firefox web) is restored inside the shared writer.
   Retry ladder tested in `tests/editor/clipboard-write.test.ts`.
 
 - **Nav drag scroll-gate cache validated against re-parenting**

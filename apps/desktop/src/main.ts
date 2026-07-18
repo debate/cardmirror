@@ -514,7 +514,26 @@ ipcMain.handle(
     const html = typeof payload?.html === 'string' ? payload.html : '';
     const text = typeof payload?.text === 'string' ? payload.text : '';
     if (!html && !text) return false;
-    clipboard.write({ html, text });
+    // Omit empty flavors — passing html: '' would REGISTER an empty
+    // text/html format, and Word/Docs prefer the HTML flavor, so a
+    // text-only copy would paste as nothing there.
+    const data: Electron.Data = {};
+    if (html) data.html = html;
+    if (text) data.text = text;
+    clipboard.write(data);
+    // clipboard.write returns void — verify by reading the text
+    // flavor back (both flavors land in the one atomic write, so
+    // text present ⇒ the write took). Bounded compare: length + a
+    // prefix, so multi-megabyte cards don't pay a full scan. The
+    // only blind spot is another app overwriting the clipboard in
+    // the microseconds between write and read — which reports a
+    // false FAILURE, the safe direction.
+    if (text) {
+      const readBack = clipboard.readText();
+      const N = 4096;
+      return readBack.length === text.length && readBack.slice(0, N) === text.slice(0, N);
+    }
+    // html-only payload (no callers today): trust the write.
     return true;
   },
 );

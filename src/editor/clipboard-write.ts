@@ -55,6 +55,13 @@ export async function writeClipboardHtml(html: string, text: string): Promise<bo
       if (await host.clipboardWriteHtml(html, text)) return;
       // Older shell without the API — fall through to the renderer.
     }
+    if (typeof ClipboardItem === 'undefined' || !navigator.clipboard?.write) {
+      // Old Firefox web: no ClipboardItem — degrade to a plain-text
+      // copy rather than failing outright (the pre-consolidation
+      // behavior of the heading-copy paths).
+      await navigator.clipboard.writeText(text);
+      return;
+    }
     await navigator.clipboard.write([
       new ClipboardItem({
         'text/html': new Blob([html], { type: 'text/html' }),
