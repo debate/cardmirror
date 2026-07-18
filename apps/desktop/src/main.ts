@@ -24,6 +24,7 @@ import {
   crashReporter,
   dialog,
   ipcMain,
+  screen,
   shell,
 } from 'electron';
 import { autoUpdater } from 'electron-updater';
@@ -458,6 +459,10 @@ function createWindow(initialDoc?: InitialDocPayload): BrowserWindow {
     pendingInitialDocs.delete(win.id);
     skipCloseConfirm.delete(win.id);
     multiPaneWindows.delete(win.id);
+    // A lone floating timer must not outlive the last document
+    // window (it would block `window-all-closed` from ever firing
+    // on Windows / Linux).
+    closeTimerWindowIfOrphaned();
   });
 
   mainWindow = win;
@@ -2049,8 +2054,13 @@ app.on('browser-window-created', (_event, win) => {
     // first-window status (and with it the startup-recovery UI).
     // While other windows remain, firstness stays retired — a
     // window spawned mid-session must not offer to "recover" docs
-    // that are open in those windows.
-    if (BrowserWindow.getAllWindows().filter((w) => !w.isDestroyed()).length === 0) {
+    // that are open in those windows. The timer pop-out doesn't
+    // count — it's chrome, not a document window, and it closes
+    // itself right after the last doc window anyway.
+    const remaining = BrowserWindow.getAllWindows().filter(
+      (w) => !w.isDestroyed() && !isTimerWindow(w),
+    );
+    if (remaining.length === 0) {
       firstWindowId = null;
     }
   });
@@ -2361,7 +2371,11 @@ const TERMS_URL = 'https://github.com/ant981228/cardmirror/blob/main/TERMS.md';
  *  first available window. Returns `null` only when no windows
  *  exist at all (effectively never for the manual-check path). */
 function dialogParentWindow(): BrowserWindow | null {
-  return BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0] ?? null;
+  // Never parent a dialog to the tiny timer float — pick a real
+  // document window even when the float happens to hold focus.
+  const focused = BrowserWindow.getFocusedWindow();
+  if (focused && !isTimerWindow(focused)) return focused;
+  return BrowserWindow.getAllWindows().find((w) => !isTimerWindow(w)) ?? null;
 }
 
 /** Re-entrancy guard. A single in-flight check guards the manual
@@ -2505,6 +2519,188 @@ function runUpdateCheck(opts: UpdateCheckOpts): void {
 function runManualUpdateCheck(): void {
   runUpdateCheck({ alertOnLatest: true, alertOnError: true, alertOnAvailable: true });
 }
+
+// ─── Floating timer pop-out window ───────────────────────────────────
+// A small frameless always-on-top window running timer.html (its own
+// tiny renderer entry). Its preload exposes exactly ONE call (window
+// self-resize; timer-popout-preload.ts): timer state AND settings
+// live in the origin's localStorage + BroadcastChannel, so the
+// pop-out ticks and controls the shared timer with a near-zero host
+// surface — least privilege. The renderer's shared `poppedOut` flag
+// drives everything (main windows hide their panel; the pop-out
+// closes itself when the flag clears); this side only owns the
+// window's existence and the crash-path backstop broadcast.
+
+let timerWindow: BrowserWindow | null = null;
+/** Per-session position memory. Deliberately NOT persisted: the
+ *  timer always launches popped-in (the boot reconciliation in the
+ *  renderer), so a cross-launch position would be dead weight. */
+let timerWindowPos: { x: number; y: number } | null = null;
+/** The chrome-zoom factor the current float renders at — needed to
+ *  map the pop-out's CSS-pixel content measurements to DIP when it
+ *  asks to be resized (compact ↔ expanded reflow). */
+let timerWindowZoom = 1;
+
+/** Fallback dimensions when the opener didn't measure its panel
+ *  (older renderer). Sized for the expanded panel at 100% zoom. */
+const TIMER_WINDOW_FALLBACK_WIDTH = 300;
+const TIMER_WINDOW_FALLBACK_HEIGHT = 64;
+/** Breathing room around the measured panel content: the page adds
+ *  0.5rem horizontal padding per side (16px total) and the panel
+ *  centers vertically in the window. */
+const TIMER_WINDOW_PAD_W = 20;
+const TIMER_WINDOW_PAD_H = 14;
+
+interface TimerPopoutOpts {
+  contentWidth?: number;
+  contentHeight?: number;
+  zoomFactor?: number;
+}
+
+function isTimerWindow(w: BrowserWindow): boolean {
+  return timerWindow !== null && w === timerWindow;
+}
+
+/** Close the pop-out when the last DOCUMENT window goes away — a
+ *  lone floating timer must not keep the app alive on Windows/Linux
+ *  (`window-all-closed` counts every BrowserWindow) or linger
+ *  ownerless on macOS. Called from doc-window `closed` handlers. */
+function closeTimerWindowIfOrphaned(): void {
+  if (!timerWindow || timerWindow.isDestroyed()) return;
+  const others = BrowserWindow.getAllWindows().filter(
+    (w) => !w.isDestroyed() && !isTimerWindow(w),
+  );
+  if (others.length === 0) timerWindow.close();
+}
+
+function openTimerWindow(popoutOpts?: TimerPopoutOpts): void {
+  if (timerWindow && !timerWindow.isDestroyed()) {
+    timerWindow.showInactive();
+    return;
+  }
+  // The opener measured its rendered panel in ITS CSS pixels; its
+  // chrome zoom maps those to DIP. Applying the same zoom to the
+  // pop-out (below) keeps the float's controls at the exact scale
+  // the user's ribbon renders at — the pop-out itself has no host
+  // surface to read the setting with.
+  const zoom =
+    typeof popoutOpts?.zoomFactor === 'number' &&
+    Number.isFinite(popoutOpts.zoomFactor) &&
+    popoutOpts.zoomFactor > 0.2 &&
+    popoutOpts.zoomFactor < 5
+      ? popoutOpts.zoomFactor
+      : 1;
+  const width =
+    typeof popoutOpts?.contentWidth === 'number' && popoutOpts.contentWidth > 40
+      ? Math.round(popoutOpts.contentWidth * zoom) + TIMER_WINDOW_PAD_W
+      : TIMER_WINDOW_FALLBACK_WIDTH;
+  const height =
+    typeof popoutOpts?.contentHeight === 'number' && popoutOpts.contentHeight > 20
+      ? Math.round(popoutOpts.contentHeight * zoom) + TIMER_WINDOW_PAD_H
+      : TIMER_WINDOW_FALLBACK_HEIGHT;
+  const opts: Electron.BrowserWindowConstructorOptions = {
+    width,
+    height,
+    frame: false,
+    resizable: false,
+    minimizable: false,
+    maximizable: false,
+    fullscreenable: false,
+    skipTaskbar: true,
+    alwaysOnTop: true,
+    show: false,
+    title: 'Timer — CardMirror',
+    webPreferences: {
+      // Minimal dedicated preload: exposes ONLY a resize call (see
+      // timer-popout-preload.ts). Everything else the pop-out does
+      // rides localStorage + BroadcastChannel.
+      preload: path.join(__dirname, 'timer-popout-preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+    },
+  };
+  if (timerWindowPos) {
+    // Clamp the remembered position to a connected display's work
+    // area — a monitor unplugged mid-session must not strand the
+    // float offscreen.
+    const area = screen.getDisplayNearestPoint(timerWindowPos).workArea;
+    opts.x = Math.min(Math.max(timerWindowPos.x, area.x), area.x + area.width - width);
+    opts.y = Math.min(Math.max(timerWindowPos.y, area.y), area.y + area.height - height);
+  }
+  const win = new BrowserWindow(opts);
+  timerWindowZoom = zoom;
+  // 'floating' sits above normal windows without fighting system
+  // panels. (Fullscreen spaces are explicitly out of scope — the
+  // answer there is keeping the timer popped in.)
+  win.setAlwaysOnTop(true, 'floating');
+  win.on('moved', () => {
+    const [x, y] = win.getPosition();
+    if (typeof x === 'number' && typeof y === 'number') timerWindowPos = { x, y };
+  });
+  win.on('closed', () => {
+    timerWindow = null;
+    // Backstop for closes that skipped the renderer's own pagehide
+    // write (crash, force-close): tell surviving windows to clear
+    // the popped-out flag so the in-app panel comes back.
+    for (const w of BrowserWindow.getAllWindows()) {
+      if (!w.isDestroyed()) w.webContents.send('timer:popout-closed');
+    }
+  });
+  // Match the opener's chrome zoom before first paint — the pop-out
+  // can't apply it itself (no host surface). Re-assert after load:
+  // Chromium resets per-origin zoom on navigation commit.
+  if (zoom !== 1) {
+    win.webContents.on('did-finish-load', () => {
+      if (!win.isDestroyed()) win.webContents.setZoomFactor(zoom);
+    });
+  }
+  if (!app.isPackaged) {
+    void win.loadURL(`${DEV_SERVER_URL}/timer.html`);
+  } else {
+    void win.loadFile(path.join(process.resourcesPath, 'renderer', 'timer.html'));
+  }
+  // showInactive: popping the timer out must not steal focus from
+  // the document the user is editing.
+  win.once('ready-to-show', () => win.showInactive());
+  timerWindow = win;
+}
+
+ipcMain.handle('host:timer-popout-open', (_evt, popoutOpts?: TimerPopoutOpts) => {
+  openTimerWindow(popoutOpts);
+});
+/** The pop-out's content reflowed (compact ↔ expanded toggle): hug
+ *  it again. Only the float itself may call this; measurements are
+ *  its CSS px, scaled by the zoom the window was opened with, and
+ *  the result is re-clamped into the work area so growing near a
+ *  screen edge can't push the float off-screen. */
+ipcMain.handle(
+  'host:timer-popout-resize',
+  (evt, dims?: { contentWidth?: number; contentHeight?: number }) => {
+    if (!timerWindow || timerWindow.isDestroyed()) return;
+    if (evt.sender !== timerWindow.webContents) return;
+    const cw = dims?.contentWidth;
+    const ch = dims?.contentHeight;
+    if (typeof cw !== 'number' || typeof ch !== 'number') return;
+    if (!(cw > 40) || !(ch > 20) || cw > 2000 || ch > 600) return;
+    const width = Math.round(cw * timerWindowZoom) + TIMER_WINDOW_PAD_W;
+    const height = Math.round(ch * timerWindowZoom) + TIMER_WINDOW_PAD_H;
+    timerWindow.setSize(width, height);
+    const [x, y] = timerWindow.getPosition();
+    if (typeof x === 'number' && typeof y === 'number') {
+      const area = screen.getDisplayNearestPoint({ x, y }).workArea;
+      const cx = Math.min(Math.max(x, area.x), area.x + area.width - width);
+      const cy = Math.min(Math.max(y, area.y), area.y + area.height - height);
+      if (cx !== x || cy !== y) timerWindow.setPosition(cx, cy);
+    }
+  },
+);
+/** Boot-time reconciliation: lets a reloading renderer distinguish
+ *  "pop-out is alive, keep the flag" (three-pane mode switch) from
+ *  "flag is stale, clear it" (fresh launch). */
+ipcMain.handle('host:timer-popout-exists', () =>
+  timerWindow !== null && !timerWindow.isDestroyed(),
+);
 
 // ─── Update chip (install-on-confirm) ────────────────────────────────
 // The ebb model (adopted 2026-07-16): auto-updates never dialog. Windows /

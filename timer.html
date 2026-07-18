@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Timer — CardMirror</title>
+    <link rel="stylesheet" href="/src/editor/style.css" />
+  </head>
+  <body class="pmd-timer-popout-page">
+    <!-- Floating always-on-top timer window (desktop only). Mounted by
+         timer-popout.ts with the same timer UI as the in-app panel;
+         state syncs over the shared BroadcastChannel, so this window
+         is just another subscriber of timer-state.ts. -->
+    <section id="timer-panel" class="pmd-timer-panel" hidden></section>
+    <script type="module" src="/src/editor/timer-popout.ts"></script>
+  </body>
+</html>

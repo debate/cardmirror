@@ -7,6 +7,53 @@ in each release, see `CHANGELOG.md`.
 
 ## Unreleased
 
+- **Floating always-on-top timer pop-out** (desktop;
+  `timer.html` / `src/editor/timer-popout.ts` second vite entry;
+  `setTimerPoppedOut` / `reconcileTimerPopout` in
+  `src/editor/timer-state.ts`; window management in
+  apps/desktop main.ts). The timer panel gains a ⇱ button that
+  moves the timer into a small frameless `alwaysOnTop: 'floating'`
+  window. Architecture rides the timer's existing sync layer: state
+  already lives in localStorage + a BroadcastChannel with each
+  window deriving the live countdown from `runningSince + base`, so
+  the pop-out is just another subscriber — its preload exposes
+  exactly one call (self-resize, so the frameless window re-hugs the
+  panel when the compact ↔ expanded toggle reflows it; settings
+  persist in the same origin localStorage, so presets / compact /
+  theme read identically) and it controls the shared clocks with a
+  near-zero host surface. The window opens sized to the opener's
+  measured panel at the opener's chrome-zoom factor, which the main
+  process also applies to the float so both surfaces render at the
+  same scale; the float carries its own pop-in button (⇲), and in
+  BOTH layouts reset + pop-out stack half-height in the first
+  column. Compact was redesigned to absorb the new button at zero
+  width cost: the aff/neg pair gives way to a single prep button
+  (side per the shared `prepShownSide` — an active prep mode always
+  wins, else the sticky last-chosen side) spanning a ⇄ side-switch
+  and the start/pause button. The ⇄ is a pure display flip in speech
+  mode but a real pause-and-switch while a prep mode is selected —
+  a switch that only changed a hidden preference would read as
+  broken. A shared `poppedOut` flag drives
+  everything: main windows render the panel iff
+  `visible && !poppedOut` (the timer never shows in the float and a
+  window at once), popping out forces `visible: true`, hiding the
+  timer anywhere retracts the pop-out, and the float closes itself
+  whenever the flag clears — state is the single driver, with a
+  main-process `timer:popout-closed` broadcast as the crash-path
+  backstop. The persisted flag is reconciled at boot against the
+  host's live "does a timer window exist?" answer rather than
+  cleared unconditionally: a fresh launch always starts popped-in
+  (per design — no stale-flag landmine), while a three-pane
+  mode-switch reload (which reloads the window under a surviving
+  float) keeps the flag and the invariant. The pop-out window is
+  excluded from quit accounting (a lone float closes with the last
+  document window rather than keeping the app alive) and from
+  dialog parenting; its per-session position is remembered and
+  clamped to a connected display. Deliberately out of scope:
+  macOS fullscreen-space floating (keep the timer popped in there)
+  and cross-launch pop-out persistence. State semantics tested in
+  `tests/editor/timer-state.test.ts`.
+
 - **Nav drag scroll-gate cache validated against re-parenting**
   (`findNavScrollGate` in `src/editor/nav-panel.ts`; field report
   2026-07-17, three-pane). The drag hit-test gates pointer positions

@@ -1293,7 +1293,7 @@ html:has(body.pmd-speech-banner-visible) {
 #ribbon #timer-toggle-btn[aria-pressed="true"],
 .pmd-theme-editor-btn[aria-pressed='true'],
 .pmd-pane-focused .pmd-pane-chip,
-#ribbon .pmd-timer-start[aria-pressed="true"] {
+:is(#ribbon, body.pmd-timer-popout-page) .pmd-timer-start[aria-pressed="true"] {
   background: var(--pmd-c-accent);
   color: var(--pmd-c-text-on-accent);
 }
@@ -11751,7 +11751,7 @@ html.pmd-timer-right #timer-panel {
    (1.7rem implicit height from line-height, 0.95rem font)
    and the timer rows tower over the adjacent file-ops button
    stack. Same trick `.ribbon-button-stack button` uses. */
-#ribbon .pmd-timer-panel button {
+:is(#ribbon, body.pmd-timer-popout-page) .pmd-timer-panel button {
   background: var(--pmd-c-bg);
   border: 1px solid var(--pmd-c-border);
   border-radius: 3px;
@@ -11783,7 +11783,7 @@ html.pmd-timer-right #timer-panel {
    (1,2,1) so the `height: auto` actually overrides the
    button-rule's fixed `height: 1.45rem` and the reset visually
    spans the full panel (both rows + the inter-row gap). */
-#ribbon .pmd-timer-panel button.pmd-timer-reset {
+:is(#ribbon, body.pmd-timer-popout-page) .pmd-timer-panel button.pmd-timer-reset {
   grid-column: 1;
   grid-row: 1 / span 2;
   height: auto;
@@ -11823,7 +11823,7 @@ html.pmd-timer-right #timer-panel {
 }
 
 /* Start / Pause — col 3, row 1. */
-#ribbon .pmd-timer-start {
+:is(#ribbon, body.pmd-timer-popout-page) .pmd-timer-start {
   grid-column: 3;
   grid-row: 1;
   min-width: 1.6rem;
@@ -11831,7 +11831,7 @@ html.pmd-timer-right #timer-panel {
 
 
 /* Presets — col 4 row 1 (9), col 3 row 2 (6), col 4 row 2 (3). */
-#ribbon .pmd-timer-preset {
+:is(#ribbon, body.pmd-timer-popout-page) .pmd-timer-preset {
   font-variant-numeric: tabular-nums;
   min-width: 1.6rem;
 }
@@ -11842,7 +11842,7 @@ html.pmd-timer-right #timer-panel {
 /* Prep buttons — col 5. Aff on row 1 (blue), Neg on row 2 (red).
    Single-line "A: 10:00" / "N: 10:00" — the time span just
    carries tabular-nums so digits don't jitter as they tick. */
-#ribbon .pmd-timer-prep {
+:is(#ribbon, body.pmd-timer-popout-page) .pmd-timer-prep {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -11858,19 +11858,19 @@ html.pmd-timer-right #timer-panel {
    `button.X` to bring this to (1,2,1) — otherwise the base
    `color: var(--pmd-c-text)` wins and the buttons appear in
    the default text color. */
-#ribbon .pmd-timer-panel button.pmd-timer-aff {
+:is(#ribbon, body.pmd-timer-popout-page) .pmd-timer-panel button.pmd-timer-aff {
   color: var(--pmd-c-aff);
   border-color: var(--pmd-c-aff);
   grid-column: 5;
   grid-row: 1;
 }
-#ribbon .pmd-timer-panel button.pmd-timer-neg {
+:is(#ribbon, body.pmd-timer-popout-page) .pmd-timer-panel button.pmd-timer-neg {
   color: var(--pmd-c-neg);
   border-color: var(--pmd-c-neg);
   grid-column: 5;
   grid-row: 2;
 }
-#ribbon .pmd-timer-prep-active {
+:is(#ribbon, body.pmd-timer-popout-page) .pmd-timer-prep-active {
   background: var(--pmd-c-surface);
   box-shadow: inset 0 0 0 1px currentColor;
 }
@@ -11915,26 +11915,26 @@ html.pmd-timer-right #timer-panel {
    - 'color': prefix hidden, colors remain. Buttons can also
      shrink horizontally — no prefix means no need to reserve
      the extra ~0.8rem for "A: ". */
-#ribbon .pmd-timer-panel[data-prep-label="color"] .pmd-timer-prep-prefix {
+:is(#ribbon, body.pmd-timer-popout-page) .pmd-timer-panel[data-prep-label="color"] .pmd-timer-prep-prefix {
   display: none;
 }
-#ribbon .pmd-timer-panel[data-prep-label="color"] button.pmd-timer-aff,
-#ribbon .pmd-timer-panel[data-prep-label="color"] button.pmd-timer-neg {
+:is(#ribbon, body.pmd-timer-popout-page) .pmd-timer-panel[data-prep-label="color"] button.pmd-timer-aff,
+:is(#ribbon, body.pmd-timer-popout-page) .pmd-timer-panel[data-prep-label="color"] button.pmd-timer-neg {
   min-width: 2.5rem;
   padding: 0 0.25rem;
 }
-#ribbon .pmd-timer-panel[data-prep-label="text"] button.pmd-timer-aff,
-#ribbon .pmd-timer-panel[data-prep-label="text"] button.pmd-timer-neg {
+:is(#ribbon, body.pmd-timer-popout-page) .pmd-timer-panel[data-prep-label="text"] button.pmd-timer-aff,
+:is(#ribbon, body.pmd-timer-popout-page) .pmd-timer-panel[data-prep-label="text"] button.pmd-timer-neg {
   color: var(--pmd-c-text);
   border-color: var(--pmd-c-border);
 }
 /* The prefix-showing modes ('text' / 'both') carry "A:" / "N:" plus the time;
    with a 4-digit time (10:00) the base 0.3rem padding crowds the prefix against
    the edge — give those buttons a touch more horizontal room. */
-#ribbon .pmd-timer-panel[data-prep-label="text"] button.pmd-timer-aff,
-#ribbon .pmd-timer-panel[data-prep-label="text"] button.pmd-timer-neg,
-#ribbon .pmd-timer-panel[data-prep-label="both"] button.pmd-timer-aff,
-#ribbon .pmd-timer-panel[data-prep-label="both"] button.pmd-timer-neg {
+:is(#ribbon, body.pmd-timer-popout-page) .pmd-timer-panel[data-prep-label="text"] button.pmd-timer-aff,
+:is(#ribbon, body.pmd-timer-popout-page) .pmd-timer-panel[data-prep-label="text"] button.pmd-timer-neg,
+:is(#ribbon, body.pmd-timer-popout-page) .pmd-timer-panel[data-prep-label="both"] button.pmd-timer-aff,
+:is(#ribbon, body.pmd-timer-popout-page) .pmd-timer-panel[data-prep-label="both"] button.pmd-timer-neg {
   padding: 0 1.7rem;
 }
 
@@ -11942,20 +11942,20 @@ html.pmd-timer-right #timer-panel {
    treatment as the prep buttons (per `data-prep-label`), so it's clear the time
    showing is prep — and which side. The `::before` keeps the editable time text
    node itself clean. */
-#ribbon .pmd-timer-panel[data-prep-label="color"] #timer-display[data-mode="affPrep"],
-#ribbon .pmd-timer-panel[data-prep-label="both"] #timer-display[data-mode="affPrep"] {
+:is(#ribbon, body.pmd-timer-popout-page) .pmd-timer-panel[data-prep-label="color"] #timer-display[data-mode="affPrep"],
+:is(#ribbon, body.pmd-timer-popout-page) .pmd-timer-panel[data-prep-label="both"] #timer-display[data-mode="affPrep"] {
   color: var(--pmd-c-aff);
 }
-#ribbon .pmd-timer-panel[data-prep-label="color"] #timer-display[data-mode="negPrep"],
-#ribbon .pmd-timer-panel[data-prep-label="both"] #timer-display[data-mode="negPrep"] {
+:is(#ribbon, body.pmd-timer-popout-page) .pmd-timer-panel[data-prep-label="color"] #timer-display[data-mode="negPrep"],
+:is(#ribbon, body.pmd-timer-popout-page) .pmd-timer-panel[data-prep-label="both"] #timer-display[data-mode="negPrep"] {
   color: var(--pmd-c-neg);
 }
-#ribbon .pmd-timer-panel[data-prep-label="text"] #timer-display[data-mode="affPrep"]::before,
-#ribbon .pmd-timer-panel[data-prep-label="both"] #timer-display[data-mode="affPrep"]::before {
+:is(#ribbon, body.pmd-timer-popout-page) .pmd-timer-panel[data-prep-label="text"] #timer-display[data-mode="affPrep"]::before,
+:is(#ribbon, body.pmd-timer-popout-page) .pmd-timer-panel[data-prep-label="both"] #timer-display[data-mode="affPrep"]::before {
   content: "A: ";
 }
-#ribbon .pmd-timer-panel[data-prep-label="text"] #timer-display[data-mode="negPrep"]::before,
-#ribbon .pmd-timer-panel[data-prep-label="both"] #timer-display[data-mode="negPrep"]::before {
+:is(#ribbon, body.pmd-timer-popout-page) .pmd-timer-panel[data-prep-label="text"] #timer-display[data-mode="negPrep"]::before,
+:is(#ribbon, body.pmd-timer-popout-page) .pmd-timer-panel[data-prep-label="both"] #timer-display[data-mode="negPrep"]::before {
   content: "N: ";
 }
 
@@ -11974,26 +11974,154 @@ html.pmd-timer-right #timer-panel {
    All selectors use the same `#ribbon .pmd-timer-panel.pmd-timer-compact button.<class>`
    shape to beat the `#ribbon .pmd-timer-panel button` base
    rule's (1,1,1) specificity. */
-#ribbon .pmd-timer-panel.pmd-timer-compact .pmd-timer-preset {
+:is(#ribbon, body.pmd-timer-popout-page) .pmd-timer-panel.pmd-timer-compact .pmd-timer-preset {
   display: none;
 }
-#ribbon .pmd-timer-panel.pmd-timer-compact .pmd-timer-display {
-  grid-column: 1 / span 2;
+:is(#ribbon, body.pmd-timer-popout-page) .pmd-timer-panel.pmd-timer-compact .pmd-timer-display {
+  grid-column: 2;
 }
-#ribbon .pmd-timer-panel.pmd-timer-compact button.pmd-timer-reset {
-  grid-column: 3;
-  grid-row: 2;
+:is(#ribbon, body.pmd-timer-popout-page) .pmd-timer-panel.pmd-timer-compact button.pmd-timer-reset {
+  grid-column: 1;
+  grid-row: 1;
   height: 1.45rem;
   align-self: auto;
-  font-size: 1rem;
+  /* Same glyph size as the expanded layout's half-height reset —
+     the ↻ must not change size across the compact toggle. */
+  font-size: 0.8rem;
   padding: 0 0.2rem;
   min-width: 0;
 }
-#ribbon .pmd-timer-panel.pmd-timer-compact button.pmd-timer-aff {
+/* Web compact has no pop-out button — reset keeps the full-height
+   column rather than sitting half-height over a hole (same :has
+   gate as the expanded layout). */
+:is(#ribbon, body.pmd-timer-popout-page)
+  .pmd-timer-panel.pmd-timer-compact:not(:has(button.pmd-timer-popout-btn))
+  button.pmd-timer-reset {
+  grid-row: 1 / span 2;
+  height: auto;
+  align-self: stretch;
+}
+/* Start / pause: takes the slot beside the switch, under the prep. */
+:is(#ribbon, body.pmd-timer-popout-page) .pmd-timer-panel.pmd-timer-compact button.pmd-timer-start {
+  grid-column: 4;
+  grid-row: 2;
+  min-width: 0;
+  padding: 0 0.2rem;
+}
+:is(#ribbon, body.pmd-timer-popout-page) .pmd-timer-panel.pmd-timer-compact button.pmd-timer-aff {
   grid-column: 4;
 }
-#ribbon .pmd-timer-panel.pmd-timer-compact button.pmd-timer-neg {
+:is(#ribbon, body.pmd-timer-popout-page) .pmd-timer-panel.pmd-timer-compact button.pmd-timer-neg {
   grid-column: 4;
+}
+
+/* ---- Timer pop-out ----
+ *
+ * The floating always-on-top window (timer.html). The whole page is
+ * the frameless window's drag region; every interactive element opts
+ * back out so buttons and the editable display still click. The
+ * timer chrome itself comes from the shared
+ * `:is(#ribbon, body.pmd-timer-popout-page)` rules above — one
+ * source of truth for both surfaces. */
+body.pmd-timer-popout-page {
+  margin: 0;
+  overflow: hidden;
+  background: var(--pmd-c-bg);
+  -webkit-app-region: drag;
+  user-select: none;
+  /* Center a CONTENT-SIZED panel. The panel must never stretch to
+     the viewport: the pop-out measures the panel to size its own
+     window, and a viewport-tracking panel turns that into a
+     feedback loop (measure viewport → grow window by the padding →
+     bigger viewport → re-measure → …). */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+}
+body.pmd-timer-popout-page .pmd-timer-panel {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0 0.5rem;
+  border-right: none;
+}
+body.pmd-timer-popout-page .pmd-timer-panel button,
+body.pmd-timer-popout-page .pmd-timer-display {
+  -webkit-app-region: no-drag;
+}
+
+/* Pop-out / pop-in button (desktop + the float itself; timer-ui
+   appends it only on those surfaces). Base look only — placement is
+   per-mode below. */
+:is(#ribbon, body.pmd-timer-popout-page) .pmd-timer-panel button.pmd-timer-popout-btn {
+  font-size: 0.8rem;
+  padding: 0 0.2rem;
+  min-width: 1.5rem;
+  color: var(--pmd-c-text-secondary);
+}
+
+/* EXPANDED: reset + pop-out share column 1 as a half-height stack
+   (reset row 1, pop-out row 2). The :has() gate keeps the web
+   panel — which has no pop-out button — rendering reset full-height
+   as before. Specificity: the :not/:has compound outranks the base
+   reset rule's (1,2,1), so the row/height overrides land. */
+:is(#ribbon, body.pmd-timer-popout-page)
+  .pmd-timer-panel:not(.pmd-timer-compact)
+  button.pmd-timer-popout-btn {
+  grid-column: 1;
+  grid-row: 2;
+}
+:is(#ribbon, body.pmd-timer-popout-page)
+  .pmd-timer-panel:not(.pmd-timer-compact):has(button.pmd-timer-popout-btn)
+  button.pmd-timer-reset {
+  grid-row: 1;
+  height: 1.45rem;
+  align-self: auto;
+  font-size: 0.8rem;
+}
+
+/* COMPACT: the two prep buttons give way to a single prep button
+   (showing `shownPrepSide`, spanning two skinny columns) with the
+   side-switch and pop-out sharing the row beneath it — so compact
+   stays exactly as wide as it was before the pop-out existed. The
+   single/switch controls exist only in compact; the base rules
+   below keep them out of the expanded layout entirely. */
+:is(#ribbon, body.pmd-timer-popout-page) .pmd-timer-panel .pmd-timer-prep-single,
+:is(#ribbon, body.pmd-timer-popout-page) .pmd-timer-panel .pmd-timer-prep-switch {
+  display: none;
+}
+:is(#ribbon, body.pmd-timer-popout-page) .pmd-timer-panel.pmd-timer-compact #timer-aff-btn,
+:is(#ribbon, body.pmd-timer-popout-page) .pmd-timer-panel.pmd-timer-compact #timer-neg-btn {
+  display: none;
+}
+:is(#ribbon, body.pmd-timer-popout-page)
+  .pmd-timer-panel.pmd-timer-compact
+  button.pmd-timer-prep-single {
+  display: flex;
+  grid-column: 3 / span 2;
+  grid-row: 1;
+  /* Buttons don't stretch-align across a grid area the way the
+     display div does — pin the width to the full two-column area
+     so the single prep sits exactly over the switch + pop-out pair. */
+  width: 100%;
+  justify-self: stretch;
+}
+:is(#ribbon, body.pmd-timer-popout-page)
+  .pmd-timer-panel.pmd-timer-compact
+  button.pmd-timer-prep-switch {
+  display: flex;
+  grid-column: 3;
+  grid-row: 2;
+  min-width: 0;
+  padding: 0 0.2rem;
+}
+:is(#ribbon, body.pmd-timer-popout-page)
+  .pmd-timer-panel.pmd-timer-compact
+  button.pmd-timer-popout-btn {
+  grid-column: 1;
+  grid-row: 2;
+  min-width: 0;
+  padding: 0 0.2rem;
 }
 
 /* ---- Reduced motion ----

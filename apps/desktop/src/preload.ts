@@ -117,6 +117,20 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return () => ipcRenderer.removeListener('update:chip', listener);
   },
 
+  /** Floating always-on-top timer window. `timerPopoutOpen` creates
+   *  (or re-shows) it; `timerPopoutExists` is the liveness probe the
+   *  boot-time popped-out reconciliation keys on; the closed event is
+   *  the main process's backstop for closes that skipped the pop-out
+   *  renderer's own state write (crash / force-close). */
+  timerPopoutOpen: (opts?: { contentWidth: number; contentHeight: number; zoomFactor: number }) =>
+    ipcRenderer.invoke('host:timer-popout-open', opts),
+  timerPopoutExists: () => ipcRenderer.invoke('host:timer-popout-exists') as Promise<boolean>,
+  onTimerPopoutClosed(handler: () => void): () => void {
+    const listener = (): void => handler();
+    ipcRenderer.on('timer:popout-closed', listener);
+    return () => ipcRenderer.removeListener('timer:popout-closed', listener);
+  },
+
   /** Open the OS file manager at the crash-dumps folder. */
   openCrashDumpsFolder: () => ipcRenderer.invoke('host:open-crash-dumps'),
 

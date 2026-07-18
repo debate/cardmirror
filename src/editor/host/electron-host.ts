@@ -393,6 +393,19 @@ interface ElectronAPI {
   onUpdateChip(
     handler: (payload: { state: 'available' | 'ready'; version: string } | null) => void,
   ): () => void;
+  /** Floating always-on-top timer pop-out window. Optional so a
+   *  renderer against an older packaged shell (preload without the
+   *  timer API) simply never offers the pop-out button. The opener
+   *  measures its rendered panel and passes its chrome zoom so the
+   *  float hugs the content at the same scale (it has no host
+   *  surface of its own to apply zoom with). */
+  timerPopoutOpen?(opts?: {
+    contentWidth: number;
+    contentHeight: number;
+    zoomFactor: number;
+  }): Promise<void>;
+  timerPopoutExists?(): Promise<boolean>;
+  onTimerPopoutClosed?(handler: () => void): () => void;
   /** Open the OS file manager at the crash-dumps folder (mirrors
    *  Help → Open Crash Dumps Folder). */
   openCrashDumpsFolder(): Promise<void>;
@@ -1058,6 +1071,25 @@ export class ElectronHost implements Host {
     // Optional-chained: an older packaged shell (preload without the
     // chip API) just never shows the chip.
     const fn = api().onUpdateChip;
+    return fn ? fn.call(api(), handler) : () => {};
+  }
+
+  // Timer pop-out — optional-chained like the chip API: an older
+  // packaged shell simply never offers the pop-out button.
+  async timerPopoutOpen(opts?: {
+    contentWidth: number;
+    contentHeight: number;
+    zoomFactor: number;
+  }): Promise<void> {
+    await api().timerPopoutOpen?.(opts);
+  }
+
+  async timerPopoutExists(): Promise<boolean> {
+    return (await api().timerPopoutExists?.()) === true;
+  }
+
+  onTimerPopoutClosed(handler: () => void): () => void {
+    const fn = api().onTimerPopoutClosed;
     return fn ? fn.call(api(), handler) : () => {};
   }
 

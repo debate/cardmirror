@@ -22,6 +22,7 @@
  */
 
 import { settings } from './settings.js';
+import { getElectronHost } from './host/index.js';
 import {
   configurePrepTotal,
   getPrepRemainingMs,
@@ -32,8 +33,11 @@ import {
   resetTimer,
   selectMode,
   setActiveRemainingMs,
+  setTimerPoppedOut,
+  shownPrepSide,
   startTimer,
   subscribeTimer,
+  togglePrepShownSide,
 } from './timer-state.js';
 
 /** Format ms as MM:SS, clamping to 0 and rounding upward to whole
@@ -74,8 +78,16 @@ export function parseTimeInput(s: string): number | null {
 let mounted = false;
 
 /** Mount the timer UI into the panel placeholder in index.html.
- *  Idempotent — calling more than once no-ops after the first. */
-export function mountTimerUI(): void {
+ *  Idempotent — calling more than once no-ops after the first.
+ *
+ *  `popout: true` is the floating-window variant (timer.html): the
+ *  panel is ALWAYS shown (a pop-out window whose panel hid itself
+ *  would be an empty float), gets no pop-out button of its own, and
+ *  closes its window when the shared state says the timer is no
+ *  longer popped out (or no longer visible) — state is the single
+ *  driver; the window never decides on its own. */
+export function mountTimerUI(opts?: { popout?: boolean }): void {
+  const isPopout = opts?.popout === true;
   if (mounted) return;
   const panelEl = document.getElementById('timer-panel');
   if (!panelEl) return;
@@ -107,7 +119,54 @@ export function mountTimerUI(): void {
             aria-label="Affirmative prep"><span class="pmd-timer-prep-prefix">A:</span><span class="pmd-timer-prep-time" id="timer-aff-time">10:00</span></button>
     <button id="timer-neg-btn" class="pmd-timer-prep pmd-timer-neg" type="button"
             aria-label="Negative prep"><span class="pmd-timer-prep-prefix">N:</span><span class="pmd-timer-prep-time" id="timer-neg-time">10:00</span></button>
+    <button id="timer-prep-single-btn" class="pmd-timer-prep pmd-timer-prep-single" type="button"
+            aria-label="Prep"><span class="pmd-timer-prep-prefix">A:</span><span class="pmd-timer-prep-time" id="timer-prep-single-time">10:00</span></button>
+    <button id="timer-prep-switch-btn" class="pmd-timer-prep-switch" type="button"
+            title="Switch prep side" aria-label="Switch between affirmative and negative prep">⇄</button>
   `;
+  if (isPopout) panel.classList.add('pmd-timer-panel-popout');
+
+  // Pop-out / pop-in button, far column. Main windows (desktop
+  // only) get ⇱ "pop out"; the float itself gets ⇲ "pop back in" —
+  // without it the frameless window's only exits are Cmd-W and
+  // hiding the timer from a main window, neither discoverable. Web
+  // has no always-on-top windows to offer, so no button there.
+  const popoutHost = getElectronHost();
+  if (isPopout || popoutHost?.timerPopoutOpen) {
+    const btn = document.createElement('button');
+    btn.id = 'timer-popout-btn';
+    btn.className = 'pmd-timer-popout-btn';
+    btn.type = 'button';
+    const label = isPopout
+      ? 'Pop timer back into CardMirror'
+      : 'Pop timer out into a floating window';
+    btn.title = label;
+    btn.setAttribute('aria-label', label);
+    btn.textContent = isPopout ? '⇲' : '⇱';
+    btn.addEventListener('click', () => {
+      if (isPopout) {
+        // Clearing the flag closes this window via the subscription
+        // below and un-hides the panel in every main window.
+        setTimerPoppedOut(false);
+        return;
+      }
+      // Measure the rendered panel BEFORE hiding it so the float can
+      // hug the content exactly, and pass this window's chrome zoom
+      // so the float renders at the same scale (the pop-out has no
+      // host surface, so it can't apply the zoom itself).
+      const rect = panel.getBoundingClientRect();
+      // Order matters: flip the shared flag FIRST so every main
+      // window hides its panel before the float appears — the two
+      // must never be visible together, not even for a frame.
+      setTimerPoppedOut(true);
+      popoutHost?.timerPopoutOpen?.({
+        contentWidth: Math.ceil(rect.width),
+        contentHeight: Math.ceil(rect.height),
+        zoomFactor: settings.get('chromeScalePct') / 100,
+      });
+    });
+    panel.appendChild(btn);
+  }
 
   const display = document.getElementById('timer-display') as HTMLDivElement;
   const startBtn = document.getElementById('timer-start-btn') as HTMLButtonElement;
@@ -116,6 +175,13 @@ export function mountTimerUI(): void {
   const negBtn = document.getElementById('timer-neg-btn') as HTMLButtonElement;
   const affTime = document.getElementById('timer-aff-time') as HTMLSpanElement;
   const negTime = document.getElementById('timer-neg-time') as HTMLSpanElement;
+  // Compact-only controls: the single prep button (shows one side,
+  // per shownPrepSide) and the side switch. CSS hides them in the
+  // expanded layout and hides aff/neg in compact.
+  const prepSingleBtn = document.getElementById('timer-prep-single-btn') as HTMLButtonElement;
+  const prepSingleTime = document.getElementById('timer-prep-single-time') as HTMLSpanElement;
+  const prepSinglePrefix = prepSingleBtn.querySelector('.pmd-timer-prep-prefix') as HTMLSpanElement;
+  const prepSwitchBtn = document.getElementById('timer-prep-switch-btn') as HTMLButtonElement;
   const presetBtns: HTMLButtonElement[] = [];
   for (let i = 0; i < 3; i++) {
     const b = document.getElementById(`timer-preset-${i + 1}-btn`) as HTMLButtonElement;
@@ -134,6 +200,10 @@ export function mountTimerUI(): void {
   });
   affBtn.addEventListener('click', () => selectMode('affPrep'));
   negBtn.addEventListener('click', () => selectMode('negPrep'));
+  prepSingleBtn.addEventListener('click', () =>
+    selectMode(shownPrepSide() === 'aff' ? 'affPrep' : 'negPrep'),
+  );
+  prepSwitchBtn.addEventListener('click', () => togglePrepShownSide());
   for (const btn of presetBtns) {
     btn.addEventListener('click', () => {
       const idx = parseInt(btn.dataset['presetIndex'] ?? '0', 10);
@@ -204,6 +274,18 @@ export function mountTimerUI(): void {
     negTime.textContent = formatMs(getPrepRemainingMs(s, 'neg', now));
     affBtn.classList.toggle('pmd-timer-prep-active', s.mode === 'affPrep');
     negBtn.classList.toggle('pmd-timer-prep-active', s.mode === 'negPrep');
+    // Single prep button mirrors whichever side is shown, borrowing
+    // the aff/neg classes so the color / prefix treatments apply.
+    const side = shownPrepSide(s);
+    prepSingleBtn.classList.toggle('pmd-timer-aff', side === 'aff');
+    prepSingleBtn.classList.toggle('pmd-timer-neg', side === 'neg');
+    prepSinglePrefix.textContent = side === 'aff' ? 'A:' : 'N:';
+    prepSingleTime.textContent = formatMs(getPrepRemainingMs(s, side, now));
+    prepSingleBtn.setAttribute('aria-label', side === 'aff' ? 'Affirmative prep' : 'Negative prep');
+    prepSingleBtn.classList.toggle(
+      'pmd-timer-prep-active',
+      s.mode === (side === 'aff' ? 'affPrep' : 'negPrep'),
+    );
     // Update preset labels from settings (changes when the user
     // edits speech presets or switches profile).
     const presets = settings.get('timerSpeechPresets');
@@ -243,6 +325,14 @@ export function mountTimerUI(): void {
     applyChrome();
     render();
     ensureTick();
+    // Pop-out window: the shared state is the single driver of this
+    // window's existence — un-popping or hiding the timer anywhere
+    // closes the float. (window.close() works without extra
+    // privileges here because the main process opened this window.)
+    if (isPopout) {
+      const s = getTimerState();
+      if (!s.poppedOut || !s.visible) window.close();
+    }
   });
 
   // Compact-mode + visibility wiring — read from settings on mount
@@ -255,7 +345,11 @@ export function mountTimerUI(): void {
     // Visibility lives in the shared timer state (not settings)
     // so it broadcasts across windows. The pause-on-hide
     // behavior is handled inside `setTimerVisible` itself.
-    panel.hidden = !getTimerState().visible;
+    // While popped out, main windows hide the in-app panel — the
+    // timer must never show in the float and a window at once. The
+    // pop-out variant always shows (its window closes instead).
+    const s = getTimerState();
+    panel.hidden = isPopout ? false : !s.visible || s.poppedOut;
   }
   applyChrome();
   settings.subscribe(() => {

@@ -23,6 +23,8 @@ import { initUpdateChip } from './update-chip.js';
 import { mountTimerUI } from './timer-ui.js';
 import {
   getTimerState as getTimerStateNow,
+  reconcileTimerPopout,
+  setTimerPoppedOut,
   setTimerVisible,
   subscribeTimer,
 } from './timer-state.js';
@@ -738,6 +740,24 @@ function updatePlainPasteIndicator(armed: boolean): void {
   const updateChipEl = document.getElementById('update-chip') as HTMLButtonElement | null;
   const chipHost = getElectronHost();
   if (updateChipEl && chipHost) initUpdateChip(updateChipEl, chipHost);
+}
+
+// Timer pop-out reconciliation — the timer always LAUNCHES popped
+// in. The persisted poppedOut flag is cleared iff no pop-out window
+// actually exists right now: a fresh launch clears the stale flag
+// from quitting with the float open, while a mode-switch reload
+// (three-pane toggle reloads this window; the float survives it)
+// keeps the flag and the never-both-visible invariant intact. The
+// closed-event listener is the crash-path backstop that returns the
+// timer to the main windows if the float dies without writing state.
+{
+  const timerHost = getElectronHost();
+  if (timerHost?.timerPopoutExists) {
+    void timerHost.timerPopoutExists().then((exists) => reconcileTimerPopout(exists));
+    timerHost.onTimerPopoutClosed?.(() => setTimerPoppedOut(false));
+  } else {
+    reconcileTimerPopout(false);
+  }
 }
 
 const zoomOutBtn = document.getElementById('zoom-out-btn') as HTMLButtonElement;

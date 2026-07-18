@@ -116,6 +116,19 @@ export default defineConfig(({ command }) => {
     server: {
       fs: { allow: [path.resolve(__dirname), path.resolve(__dirname, '../card-cutter')] },
     },
+    // Second HTML entry: the floating always-on-top timer window
+    // (desktop pop-out; timer.html → timer-popout.ts). Tiny by
+    // construction — it pulls the timer UI + settings, never the
+    // editor. Also lands in the web build as a harmless dead-end
+    // page nothing links to.
+    build: {
+      rollupOptions: {
+        input: {
+          main: path.resolve(__dirname, 'index.html'),
+          timer: path.resolve(__dirname, 'timer.html'),
+        },
+      },
+    },
     // loro-crdt's wasm loader uses top-level await, which the dev-time
     // dependency pre-bundler (esbuild, pre-es2022 targets) rejects.
     // Excluding the pair serves them as native ESM in dev — modern dev

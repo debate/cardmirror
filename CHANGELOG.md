@@ -7,6 +7,28 @@ see `DETAILED_CHANGELOG.md`.
 
 ## Unreleased
 
+### Added
+
+- **Pop the timer out into a floating window** (desktop). A new ⇱
+  button on the timer panel moves the timer into a small
+  always-on-top window that stays visible over other apps — handy
+  for keeping speech and prep time in view while reading a speech
+  doc or anything else. While popped out, the timer leaves the
+  CardMirror window entirely; closing the float (or hiding the
+  timer anywhere) brings it back. The float controls the same
+  shared clocks as ever — start, pause, edit, and prep all sync
+  instantly with every window. The timer always starts a fresh
+  launch inside the app; pop it back out whenever you need it.
+
+### Changed
+
+- **A tighter compact timer.** The compact layout now shows one prep
+  clock instead of two, with a ⇄ button to switch between the
+  affirmative and negative balances (the shown side follows whichever
+  prep you select anywhere), and the reset and pop-out buttons stack
+  on the left just like the expanded layout. Net effect: compact
+  stays as narrow as it was before the pop-out button existed.
+
 ### Fixed
 
 - **Drag-to-reorder in the outline no longer goes dead after

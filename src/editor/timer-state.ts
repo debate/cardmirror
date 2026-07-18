@@ -46,6 +46,22 @@ export interface TimerState {
    *  reopen via the same localStorage snapshot as the rest of
    *  the timer state. */
   visible: boolean;
+  /** Whether the timer lives in the floating always-on-top pop-out
+   *  window (desktop only). While true, every main window HIDES its
+   *  in-app panel — the timer must never show in both places. The
+   *  flag persists with the rest of the state, so it can go stale
+   *  when the app quits with the pop-out open; the boot path calls
+   *  `reconcileTimerPopout` with the host's answer to "does a timer
+   *  window actually exist?" rather than clearing unconditionally —
+   *  a mode-switch reload (three-pane toggle) reloads the window
+   *  while the pop-out stays alive, and an unconditional clear
+   *  there would resurrect the in-app panel next to the float. */
+  poppedOut: boolean;
+  /** Which side's prep balance the COMPACT panel's single prep
+   *  button shows while the timer is in speech mode (a prep MODE
+   *  always wins — see `shownPrepSide`). Shared state so every
+   *  compact surface (windows + the pop-out) shows the same side. */
+  prepShownSide: 'aff' | 'neg';
 }
 
 const DEFAULT_PREP_MS = 10 * 60 * 1000;
@@ -60,6 +76,8 @@ function makeInitialState(): TimerState {
     negPrepBaseRemainingMs: DEFAULT_PREP_MS,
     prepTotalMs: DEFAULT_PREP_MS,
     visible: false,
+    poppedOut: false,
+    prepShownSide: 'aff',
   };
 }
 
@@ -102,6 +120,8 @@ function sanitize(raw: Partial<TimerState>): TimerState {
     negPrepBaseRemainingMs: nonNegInt(raw.negPrepBaseRemainingMs, base.negPrepBaseRemainingMs),
     prepTotalMs: nonNegInt(raw.prepTotalMs, base.prepTotalMs),
     visible: raw.visible === true,
+    poppedOut: raw.poppedOut === true,
+    prepShownSide: raw.prepShownSide === 'neg' ? 'neg' : 'aff',
   };
 }
 
@@ -245,7 +265,44 @@ export function selectMode(mode: TimerMode): void {
   // Snapshot whatever was running so re-selecting later resumes
   // from the right point.
   if (state.running) pauseTimer();
-  setState({ mode, running: false, runningSince: null });
+  // Choosing a prep side anywhere (expanded aff/neg buttons too)
+  // also makes it the compact panel's shown side, so dropping back
+  // to speech mode keeps showing the side last worked with.
+  if (mode === 'affPrep' || mode === 'negPrep') {
+    setState({ mode, running: false, runningSince: null, prepShownSide: mode === 'affPrep' ? 'aff' : 'neg' });
+  } else {
+    setState({ mode, running: false, runningSince: null });
+  }
+}
+
+/** The prep side the compact panel's single prep button shows: an
+ *  active prep MODE always wins (the button must show the clock
+ *  that's actually selected / running); otherwise the sticky
+ *  `prepShownSide` preference. */
+export function shownPrepSide(s: TimerState = state): 'aff' | 'neg' {
+  if (s.mode === 'affPrep') return 'aff';
+  if (s.mode === 'negPrep') return 'neg';
+  return s.prepShownSide;
+}
+
+/** Compact panel's side-switch button. In speech mode it's a pure
+ *  display flip; while a prep mode is selected it switches TO the
+ *  other side's prep (pausing first, standard selectMode
+ *  semantics) — a dead-looking switch that only changed a hidden
+ *  preference would read as broken. */
+export function togglePrepShownSide(): void {
+  const next: 'aff' | 'neg' = shownPrepSide(state) === 'aff' ? 'neg' : 'aff';
+  if (state.mode === 'affPrep' || state.mode === 'negPrep') {
+    if (state.running) pauseTimer();
+    setState({
+      mode: next === 'aff' ? 'affPrep' : 'negPrep',
+      running: false,
+      runningSince: null,
+      prepShownSide: next,
+    });
+  } else {
+    setState({ prepShownSide: next });
+  }
 }
 
 /** Set the ACTIVE mode's clock to a specific duration in ms (used by the
@@ -281,5 +338,28 @@ export function setTimerVisible(visible: boolean): void {
     // the same persist + broadcast path.
     pauseTimer();
   }
-  setState({ visible });
+  // Hiding the timer also retracts the pop-out: `visible: false` +
+  // `poppedOut: true` would be a hidden-but-floating contradiction.
+  // The pop-out window watches this state and closes itself when
+  // poppedOut goes false.
+  setState(visible ? { visible } : { visible, poppedOut: false });
+}
+
+/** Move the timer into (true) or back out of (false) the floating
+ *  pop-out window. Popping out implies the timer is visible —
+ *  there is no hidden-but-floating state. Does NOT pause: unlike
+ *  hiding, the clock stays perfectly watchable in the float. */
+export function setTimerPoppedOut(poppedOut: boolean): void {
+  if (state.poppedOut === poppedOut) return;
+  setState(poppedOut ? { poppedOut, visible: true } : { poppedOut });
+}
+
+/** Boot-time reconciliation for the persisted `poppedOut` flag.
+ *  Call with the host's live answer to "does a timer pop-out window
+ *  exist right now?" (false on web and when the host can't say).
+ *  Clears a stale flag left by quitting with the pop-out open —
+ *  without clearing it during a mode-switch reload, where the
+ *  pop-out window survives the reload and the flag is still true. */
+export function reconcileTimerPopout(popoutWindowExists: boolean): void {
+  if (state.poppedOut && !popoutWindowExists) setState({ poppedOut: false });
 }
