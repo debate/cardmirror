@@ -77,8 +77,8 @@ A few capabilities still need the **desktop app**: the background
 **[file-library search](#the-search-everything-palette-mod-shift-space)**,
 **folder-wide** bulk operations (the web app runs Clean / Convert one
 file at a time instead),
-**[Send to Verbatim Flow](#13-send-to-verbatim-flow)**,
-**[voice control](#14-voice-control)**, and
+**[Send to Verbatim Flow](#14-send-to-verbatim-flow)**,
+**[voice control](#15-voice-control)**, and
 **[collaboration](#9-collaboration)** (card sharing and co-editing). And saving in
 place needs a Chromium browser — in **Firefox and Safari** the editor runs
 but **[Save](#saving)** downloads a copy instead.
@@ -173,7 +173,7 @@ covered in full in the section linked.
 - **[A real multi-doc workspace](#7-the-multi-doc-workspace)** — three
   editable panes side by side, each with its own outline and history, and
   drag-copy between them.
-- **[Live views and linked copies](#9-live-views-and-linked-copies)** — show a
+- **[Live views and linked copies](#10-live-views-and-linked-copies)** — show a
   section in more than one place: a read-only **live view** that always tracks
   its source, or an editable **linked copy** you refresh — from this document or
   another file.
@@ -189,17 +189,17 @@ covered in full in the section linked.
 - **[Collaboration](#9-collaboration)** — send cards to other people's
   machines, or co-edit a document in real time; end-to-end encrypted.
   *(Desktop only.)*
-- **[Spaced-repetition flashcards](#11-learn-spaced-repetition-flashcards)**
+- **[Spaced-repetition flashcards](#12-learn-spaced-repetition-flashcards)**
   — study your own evidence; cards live on your machine and never travel
   with a shared file.
-- **[Private notes](#10-comments-and-notes)** — a personal annotation that,
+- **[Private notes](#11-comments-and-notes)** — a personal annotation that,
   like flashcards, stays out of the file you share unless you opt in.
-- **[AI features](#12-ai-features)** — format a cite, repair OCR/PDF
+- **[AI features](#13-ai-features)** — format a cite, repair OCR/PDF
   extraction errors, ask a question about a selection, or generate alt text
   and tables from an image.
-- **[Translate a selection](#12-ai-features)** — to the clipboard, with a
+- **[Translate a selection](#13-ai-features)** — to the clipboard, with a
   keyless backend that works even without AI features set up.
-- **[Display customizations and accessibility](#17-appearance-and-accessibility)**
+- **[Display customizations and accessibility](#18-appearance-and-accessibility)**
   — themes, dyslexia-friendly fonts, per-style colors, and color overrides
   that change how styles look on your screen without altering the document
   or its style definitions.
@@ -475,7 +475,7 @@ warnings, your custom rules), and regular **Shrink (Mod-8)** and **Regrow
   into the current one — handy when cutting a long article.
 - **Format Cite from selection (Mod-Shift-X)** uses AI to turn a pasted
   citation or URL into a properly styled cite (see
-  [AI features](#12-ai-features)).
+  [AI features](#13-ai-features)).
 - **Create Reference** copies the selected card text to your clipboard as
   a "for reference" excerpt: a `<<CITE FOR REFERENCE>>` heading line,
   body text reduced by 3pt, and highlights converted to a quiet grey
@@ -566,7 +566,7 @@ color to all of them at once.
 - **Insert Image** (Format menu) inserts an image from a file; you can
   also paste one from the clipboard. Right-click an image to **edit its
   alt text** (or have AI write it) and to **generate a table from the
-  image** (see [AI features](#12-ai-features)). Alt text round-trips to
+  image** (see [AI features](#13-ai-features)). Alt text round-trips to
   Word.
 
 ### Footnotes and endnotes
@@ -1057,7 +1057,7 @@ there and pull it back later — useful for parking common evidence temporarily.
 
 When it's time to share a speech with the judge or opponent, use the
 **Send Doc** options described under
-[Saving and file formats](#15-saving-and-file-formats) — a clean copy
+[Saving and file formats](#16-saving-and-file-formats) — a clean copy
 with comments, analytics, and undertags stripped — either through Save As
 or in one keystroke with **Save Send Doc (Mod-Alt-S)**.
 
@@ -1298,7 +1298,7 @@ sluggish, hiding it may help.
 | **Comment** | Yes (standard Word comment) | Feedback others should see |
 | **AI note** | No, unless you opt in | Answers from Ask AI |
 | **Private note** | No, unless you opt in | Your own annotations |
-| **Flashcard** | No, never | Study material (see [Learn](#11-learn-spaced-repetition-flashcards)) |
+| **Flashcard** | No, never | Study material (see [Learn](#12-learn-spaced-repetition-flashcards)) |
 
 - **Add a comment** to a selection from the comments cluster; comments
   are threads — others can reply.
@@ -1681,7 +1681,7 @@ and dragging cards around inside the editor is unaffected.
 - **`.docx`** — Word/Verbatim format. Use it to share. CardMirror writes
   docx that's indistinguishable from Verbatim's own output; some
   CardMirror-only extras (private notes, AI notes, flashcards) are left
-  out unless you opt in, and [live views and linked copies](#9-live-views-and-linked-copies) flatten
+  out unless you opt in, and [live views and linked copies](#10-live-views-and-linked-copies) flatten
   to plain cards (their links don't survive Word).
 
 ### Cleaning .docx styles ("stylepox")
@@ -1884,7 +1884,7 @@ headers shown inside each tab.
 - **Keep a Verbatim Flow connection warm** *(Windows)* — start the
   background Excel connection when CardMirror launches so your first
   Send to Flow is fast; leave off to start it on demand
-  (see [Send to Verbatim Flow](#13-send-to-verbatim-flow)).
+  (see [Send to Verbatim Flow](#14-send-to-verbatim-flow)).
 
 ### Files
 
@@ -1949,7 +1949,7 @@ file search scans.
 ### Appearance
 
 How things look. None of these change the file — only your view (see
-[Appearance and accessibility](#17-appearance-and-accessibility)).
+[Appearance and accessibility](#18-appearance-and-accessibility)).
 
 **Theme & chrome**
 
@@ -2172,7 +2172,7 @@ Typing helpers and the behavior of the cutting and condense commands
 - **Translation** — backend (MyMemory / Anthropic / Google Cloud
   Translation), source and target languages, MyMemory email, and Google
   API key for the Translate command (Mod-Shift-T). See
-  [Translate](#12-ai-features).
+  [Translate](#13-ai-features).
 - **Prepend a "translation by" marker** — put a `[TRANSLATION BY …]` line
   above the translated text on the clipboard. On by default.
 
@@ -2181,7 +2181,7 @@ Typing helpers and the behavior of the cutting and condense commands
 Rebind any command: search for it, click **+** to add a binding, **×** to
 remove one, **↺** to restore its default. A few window-level shortcuts
 (like Mod-W) are handled by the OS and can't be overridden (see
-[Keyboard shortcuts](#18-keyboard-shortcuts)).
+[Keyboard shortcuts](#19-keyboard-shortcuts)).
 
 ### Comments & AI
 
@@ -2189,7 +2189,7 @@ remove one, **↺** to restore its default. A few window-level shortcuts
 - **Comment author initials** — the badge on your comments;
   auto-derived from the name if left blank.
 - **Enable AI features** — master switch for the AI comment features;
-  needs an API key (see [AI features](#12-ai-features)).
+  needs an API key (see [AI features](#13-ai-features)).
 - **Anthropic API key** — stored locally; sent only to api.anthropic.com.
 - **AI model (advanced)** — the Claude model id all AI features use; blank
   uses the model built into your release. Set a newer id if the built-in
