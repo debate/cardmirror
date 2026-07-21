@@ -37,6 +37,18 @@ manual; [`PRIVACY.md`](./PRIVACY.md) for how CardMirror handles your data;
 
 You can find a video walkthrough of CardMirror's basic functions [here](https://www.youtube.com/playlist?list=PLXM5iwKNQkSs). 
 
+## Support
+
+CardMirror is free, and built and maintained by one person. If it's
+useful to you, two ways to help keep it going:
+
+- **Subscribe at [Debate Decoded](https://debate-decoded.ghost.io/)** —
+  recurring support that funds ongoing development, and the best way to
+  keep the project moving.
+- **[Tip once on Ko-fi](https://ko-fi.com/anthonytrufanov)** — a
+  one-time contribution, no account needed. (Or use the **Sponsor**
+  button at the top of the repo.)
+
 ## Install
 
 Desktop builds live on the [Releases page](https://github.com/ant981228/cardmirror/releases).
@@ -433,12 +445,6 @@ The app's interface icons are from the
 used under their free license. See
 [`THIRD-PARTY-NOTICES.md`](./THIRD-PARTY-NOTICES.md) for the full
 third-party attributions and license terms.
-
-This project was funded by the subscribers at
-[Debate Decoded](https://debate-decoded.ghost.io/) — subscribing is the
-best way to support my work. For a one-time contribution, you can also
-tip the jar at [Ko-fi](https://ko-fi.com/anthonytrufanov) (or use the
-**Sponsor** button at the top of this repo).
 
 ## License
 
