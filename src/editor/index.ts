@@ -2982,6 +2982,10 @@ function applyDisplayTypography(t: DisplayTypography): void {
   document.documentElement.style.setProperty('--pmd-emphasis-box-size', `${t.emphasisBoxSize}pt`);
   editorEl.style.setProperty('--pmd-pocket-box-size', `${t.pocketBoxSize}pt`);
   document.documentElement.style.setProperty('--pmd-pocket-box-size', `${t.pocketBoxSize}pt`);
+  // 0 = the font's automatic thickness (the CSS keyword, not 0pt).
+  const underlineSize = t.underlineSize > 0 ? `${t.underlineSize}pt` : 'auto';
+  editorEl.style.setProperty('--pmd-underline-size', underlineSize);
+  document.documentElement.style.setProperty('--pmd-underline-size', underlineSize);
   // Predicate class for the NON-default state; base CSS keeps the box.
   editorEl.classList.toggle('pmd-pocket-box-off', !t.pocketBox);
   document.documentElement.classList.toggle('pmd-pocket-box-off', !t.pocketBox);

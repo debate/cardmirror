@@ -13,6 +13,7 @@ function typographyAfterImport(dt: Record<string, unknown>): {
   pocketBox: boolean;
   pocketBoxSize: number;
   emphasisBoxSize: number;
+  underlineSize: number;
 } {
   const s = new SettingsStore();
   s.replaceAll({ displayTypography: dt });
@@ -41,5 +42,20 @@ describe('displayTypography box-size sanitize', () => {
     expect(typographyAfterImport({}).pocketBox).toBe(true);
     expect(typographyAfterImport({ pocketBox: false }).pocketBox).toBe(false);
     expect(typographyAfterImport({ pocketBox: 1 }).pocketBox).toBe(true); // coerced
+  });
+
+  it('underlineSize: 0 is a VALID value (auto), not garbage', () => {
+    // Unlike the box sizes, whose 0 falls back to a default — 0 is the
+    // "font's automatic thickness" sentinel and the shipped default.
+    expect(typographyAfterImport({}).underlineSize).toBe(0);
+    expect(typographyAfterImport({ underlineSize: 0 }).underlineSize).toBe(0);
+    expect(typographyAfterImport({ underlineSize: 1.5 }).underlineSize).toBe(1.5);
+    expect(typographyAfterImport({ underlineSize: 2.6 }).underlineSize).toBe(2.5);
+  });
+
+  it('underlineSize garbage falls back to auto (negative, huge, NaN)', () => {
+    expect(typographyAfterImport({ underlineSize: -1 }).underlineSize).toBe(0);
+    expect(typographyAfterImport({ underlineSize: 99 }).underlineSize).toBe(0);
+    expect(typographyAfterImport({ underlineSize: 'thick' }).underlineSize).toBe(0);
   });
 });

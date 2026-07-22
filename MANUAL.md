@@ -1970,7 +1970,9 @@ How things look. None of these change the file — only your view (see
 - **Style typography** — bold / italic / underline / box per named
   style, including: hat underline style (double, the classic look, or
   single), whether pockets draw their box (and its thickness), the
-  emphasis box thickness, and whether substructure letters are bolded.
+  emphasis box thickness, the underline thickness (blank = the font's
+  automatic weight; applies to underline, emphasis, and underlined
+  cites), and whether substructure letters are bolded.
   The font-size editor above it has a reset button that restores every
   style's default size.
 - **Body font** — the editor's content font, including dyslexia-friendly

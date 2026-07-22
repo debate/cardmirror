@@ -229,6 +229,12 @@ export interface DisplayTypography {
    *  the 3px the CSS hardcoded before this was a setting, so existing
    *  documents look identical. */
   pocketBoxSize: number; // pt
+  /** Thickness of the underline drawn by the underline / emphasis
+   *  marks (and cite, when `citeUnderlined` is on), in pt. 0 = the
+   *  font's automatic thickness. Display-only. Hat / block heading
+   *  underlines are part of the document look and keep theirs — same
+   *  stance as the alignment settings. */
+  underlineSize: number; // pt, 0 = auto
   undertagItalic: boolean;
   undertagBold: boolean;
 }
@@ -243,6 +249,7 @@ const DEFAULT_DISPLAY_TYPOGRAPHY: DisplayTypography = {
   emphasisBoxSize: 1,
   pocketBox: true,
   pocketBoxSize: 2.25,
+  underlineSize: 0,
   undertagItalic: true,
   undertagBold: false,
 };
@@ -4841,6 +4848,11 @@ function sanitizeDisplayTypography(raw: unknown): DisplayTypography {
   const ps = Number(r.pocketBoxSize);
   if (Number.isFinite(ps) && ps > 0 && ps <= 12) {
     out.pocketBoxSize = Math.round(ps * 4) / 4; // quarter-pt precision
+  }
+  // >= 0, unlike the box sizes: 0 is the meaningful "auto" value.
+  const us = Number(r.underlineSize);
+  if (Number.isFinite(us) && us >= 0 && us <= 12) {
+    out.underlineSize = Math.round(us * 4) / 4; // quarter-pt precision
   }
   return out;
 }

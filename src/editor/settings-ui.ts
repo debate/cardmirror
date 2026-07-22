@@ -1335,11 +1335,52 @@ function buildTypographyEditor(): HTMLElement {
   pocketSizeRow.appendChild(pocketUnit);
   wrap.appendChild(pocketSizeRow);
 
+  // Underline thickness — applies to the underline / emphasis marks
+  // (and cite under the citeUnderlined flag). Unlike the box sizes,
+  // 0 is meaningful: the font's automatic weight, shown as a blank
+  // input with an "auto" placeholder rather than a misleading "0 pt".
+  const underlineSizeRow = document.createElement('label');
+  underlineSizeRow.className = 'pmd-typography-size-row';
+  const underlineSizeLbl = document.createElement('span');
+  underlineSizeLbl.textContent = 'Underline thickness:';
+  underlineSizeRow.appendChild(underlineSizeLbl);
+  const underlineSizeInput = document.createElement('input');
+  underlineSizeInput.type = 'number';
+  underlineSizeInput.className = 'pmd-typography-size-input';
+  underlineSizeInput.min = '0.25';
+  underlineSizeInput.max = '12';
+  underlineSizeInput.step = '0.25';
+  underlineSizeInput.placeholder = 'auto';
+  const underlineSizeDisplay = (): string => {
+    const v = settings.get('displayTypography').underlineSize;
+    return v > 0 ? String(v) : '';
+  };
+  underlineSizeInput.value = underlineSizeDisplay();
+  underlineSizeInput.addEventListener('change', () => {
+    const raw = underlineSizeInput.value.trim();
+    const v = raw === '' ? 0 : parseFloat(raw);
+    if (!Number.isFinite(v) || v < 0) {
+      underlineSizeInput.value = underlineSizeDisplay();
+      return;
+    }
+    settings.set('displayTypography', {
+      ...settings.get('displayTypography'),
+      underlineSize: v,
+    });
+  });
+  underlineSizeRow.appendChild(underlineSizeInput);
+  const underlineUnit = document.createElement('span');
+  underlineUnit.className = 'pmd-typography-unit';
+  underlineUnit.textContent = 'pt';
+  underlineSizeRow.appendChild(underlineUnit);
+  wrap.appendChild(underlineSizeRow);
+
   // Re-render input values if settings change elsewhere.
   const unsubscribe = settings.subscribe(() => {
     const t = settings.get('displayTypography');
     sizeInput.value = String(t.emphasisBoxSize);
     pocketSizeInput.value = String(t.pocketBoxSize);
+    underlineSizeInput.value = underlineSizeDisplay();
     // Sync checkboxes — the first N are typography flags (column order
     // matches flagKeys), the last is the hide-emphasis-borders toggle.
     const checkboxes = wrap.querySelectorAll<HTMLInputElement>('input[type="checkbox"]');
