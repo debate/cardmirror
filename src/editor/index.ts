@@ -3122,6 +3122,13 @@ function applyNavAnalyticItalics(on: boolean): void {
   document.documentElement.classList.toggle('pmd-nav-analytic-italic', on);
 }
 
+/** Accessibility: cite-marked text at normal weight (display-only;
+ *  export weight is untouched). On documentElement so the ribbon's
+ *  style preview follows the same class. */
+function applyUnboldCites(on: boolean): void {
+  document.documentElement.classList.toggle('pmd-cite-unbold', on);
+}
+
 /** Steady text cursor: a body class that hides the native blinking
  *  caret; the italic-caret plugin then draws a steady caret in its
  *  place (CSS consumes the class). */
@@ -3339,6 +3346,7 @@ settings.subscribe((s) => {
   applyAnnotationShapes(s.annotationShapes);
   applyDistinguishShading(s.distinguishShading);
   applyNavAnalyticItalics(s.navAnalyticItalics);
+  applyUnboldCites(s.unboldCites);
   applyTimerPosition(s.timerPosition);
   applyCursorBlink(s.disableCursorBlink);
   if (s.readMode !== lastReadMode || s.hideEmphasisBordersInReadMode !== lastReadModeBorders) {
@@ -3582,6 +3590,7 @@ applyColorVision(settings.get('colorVisionFriendly'));
 applyAnnotationShapes(settings.get('annotationShapes'));
 applyDistinguishShading(settings.get('distinguishShading'));
 applyNavAnalyticItalics(settings.get('navAnalyticItalics'));
+applyUnboldCites(settings.get('unboldCites'));
 applyTimerPosition(settings.get('timerPosition'));
 applyPillVisibility(); // default-off dropzone pill + quick-card cluster, at boot
 // Build the timer panel + button bindings. Visibility is gated

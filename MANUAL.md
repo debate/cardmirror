@@ -2203,6 +2203,10 @@ remove one, **↺** to restore its default. A few window-level shortcuts
   on, or always off.
 - **Steady text cursor (no blinking)** — stop the text cursor blinking and
   show a steady caret instead. Off by default.
+- **Remove bold from cites** — render cite-marked text at normal weight
+  instead of bold, for readers who find dense bold runs visually
+  crowding. Display-only: exports and other machines still see the
+  standard bold cite. Off by default.
 - **Default document zoom** — the body-text zoom level documents open at, and
   reset to on reload (zoom is per-editor and does not persist across reloads).
   50–300%, 100% by default.

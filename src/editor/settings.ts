@@ -548,6 +548,11 @@ export interface Settings {
    *  survive both. Resolved into an `html.pmd-nav-analytic-italic`
    *  class (same pattern as pmd-nav-flat); style.css consumes it. */
   navAnalyticItalics: boolean;
+  /** Accessibility: render cite-marked text at normal weight instead
+   *  of the Verbatim bold. Display-only — export weight is unchanged.
+   *  Resolved into an `html.pmd-cite-unbold` class; style.css
+   *  consumes it in the editor and the ribbon style preview. */
+  unboldCites: boolean;
   /** Accessibility: when true, the text cursor doesn't blink — the
    *  native blinking caret is hidden and a steady custom caret is drawn
    *  in its place. */
@@ -1500,6 +1505,7 @@ const DEFAULTS: Settings = {
   annotationShapes: false,
   distinguishShading: false,
   navAnalyticItalics: false,
+  unboldCites: false,
   disableCursorBlink: false,
   accessibilityTreeEnabled: false,
   flowHostOnLaunch: false,
@@ -2289,6 +2295,15 @@ export const SETTING_METADATA: SettingMeta[] = [
     kind: 'toggle',
     category: 'accessibility',
     aliases: ['analytic italics', 'nav pane', 'navigation', 'colorblind', 'cvd'],
+  },
+  {
+    key: 'unboldCites',
+    label: 'Remove bold from cites',
+    description:
+      "Render cite-marked text at normal weight instead of bold. Dense bold runs are a visual-crowding trigger for some readers; this keeps cites readable without changing the document — exports and other machines still see the standard bold cite.",
+    kind: 'toggle',
+    category: 'accessibility',
+    aliases: ['cite bold', 'unbold', 'font weight', 'visual crowding'],
   },
   {
     key: 'reduceMotion',
@@ -3910,6 +3925,7 @@ function sanitize(s: Settings): Settings {
     annotationShapes: !!s.annotationShapes,
     distinguishShading: !!s.distinguishShading,
     navAnalyticItalics: !!s.navAnalyticItalics,
+    unboldCites: !!s.unboldCites,
     overrideShadingSlots: sanitizeColorSlots(
       s.overrideShadingSlots,
       (s as { overrideShadingColorValue?: unknown }).overrideShadingColorValue,

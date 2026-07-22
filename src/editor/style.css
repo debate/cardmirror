@@ -2040,6 +2040,10 @@ html.pmd-numbering-hidden #numbering-panel {
   font-weight: bold;
 }
 
+.pmd-cite-unbold #ribbon .ribbon-cite-panel.style-preview .formatting-panel-cite {
+  font-weight: normal;
+}
+
 .pmd-cite-underlined #ribbon .ribbon-cite-panel.style-preview .formatting-panel-cite {
   text-decoration: underline;
   text-decoration-thickness: var(--pmd-underline-size, auto);
@@ -3183,6 +3187,13 @@ code {
 .pmd-cite {
   font-weight: bold;
   font-size: var(--pmd-run-font-size, var(--pmd-size-cite));
+}
+
+/* Accessibility → "Remove bold from cites": normal weight, display
+   only. Root-level class so the editor and the ribbon preview both
+   follow one switch. */
+.pmd-cite-unbold .pmd-cite {
+  font-weight: normal;
 }
 
 /* StyleUnderline: just an underline. Per-style font size is driven
