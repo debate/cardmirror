@@ -2036,7 +2036,7 @@ export const SETTING_METADATA: SettingMeta[] = [
     key: 'timerShowFourthPreset',
     label: 'Show a fourth speech preset',
     description:
-      'Adds a fourth preset button for events whose speeches come in four distinct lengths (and a fourth duration field above). Preset 4 takes the Start/Pause cell, and Start/Pause becomes a full-height button beside the display. Expanded layout only — the compact layout drops all presets.',
+      'Adds a fourth preset button for events whose speeches come in four distinct lengths (and a fourth duration field above). The presets form a 2×2 block in order, and Start/Pause becomes a full-height button beside the display. Expanded layout only — the compact layout drops all presets.',
     kind: 'toggle',
     category: 'general',
     section: 'Timer',

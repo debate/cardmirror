@@ -1878,7 +1878,7 @@ headers shown inside each tab.
 - **Timer durations** — the active profile's speech presets (the
   preset buttons) and per-side prep total.
 - **Show a fourth speech preset** — for events whose speeches come in
-  four distinct lengths. Preset 4 takes the Start/Pause cell, and
+  four distinct lengths. The presets form a 2×2 block in order, and
   Start/Pause becomes a full-height button beside the display (a fourth
   duration field appears above). Expanded layout only — compact drops
   all presets. Off by default.

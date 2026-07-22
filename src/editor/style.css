@@ -11918,13 +11918,14 @@ html.pmd-timer-right #timer-panel {
 }
 
 /* Fourth speech preset (timerShowFourthPreset; expanded layout only —
-   compact hides every preset). Preset 4 takes Start/Pause's old cell,
-   and Start/Pause becomes a full-height column between reset and the
+   compact hides every preset). Start/Pause gives its cell to the
+   preset block and becomes a full-height column between reset and the
    display (same shape as reset); the display, preset block, and prep
-   column each shift one column right. Selector specificity mirrors
-   the base rules it overrides: the id-pair preset positions need the
-   panel-class prefix to win, and button-height overrides carry
-   `button.` to beat the (1,1,1) base button rule. */
+   column each shift one column right, and the four presets read in
+   order — P1 P2 / P3 P4 — across the 2×2 block. Selector specificity
+   mirrors the base rules it overrides: the id-pair preset positions
+   need the panel-class prefix to win, and button-height overrides
+   carry `button.` to beat the (1,1,1) base button rule. */
 #timer-preset-4-btn {
   display: none;
 }
@@ -11946,19 +11947,19 @@ html.pmd-timer-right #timer-panel {
   #timer-preset-4-btn {
   display: flex;
 }
-#ribbon .pmd-timer-panel.pmd-timer-four:not(.pmd-timer-compact) #timer-preset-4-btn {
-  grid-column: 4;
-  grid-row: 1;
-}
 #ribbon .pmd-timer-panel.pmd-timer-four:not(.pmd-timer-compact) #timer-preset-1-btn {
-  grid-column: 5;
+  grid-column: 4;
   grid-row: 1;
 }
 #ribbon .pmd-timer-panel.pmd-timer-four:not(.pmd-timer-compact) #timer-preset-2-btn {
+  grid-column: 5;
+  grid-row: 1;
+}
+#ribbon .pmd-timer-panel.pmd-timer-four:not(.pmd-timer-compact) #timer-preset-3-btn {
   grid-column: 4;
   grid-row: 2;
 }
-#ribbon .pmd-timer-panel.pmd-timer-four:not(.pmd-timer-compact) #timer-preset-3-btn {
+#ribbon .pmd-timer-panel.pmd-timer-four:not(.pmd-timer-compact) #timer-preset-4-btn {
   grid-column: 5;
   grid-row: 2;
 }
